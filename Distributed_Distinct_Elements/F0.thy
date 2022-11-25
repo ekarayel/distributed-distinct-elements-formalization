@@ -2,7 +2,7 @@ theory F0
   imports 
     "HOL-Library.Log_Nat"
     "Median_Method.Median"
-    "Pseudorandom_Combinators"
+    "Pseudorandom_Combinators_Hash"
 begin
 
 definition C2 :: real where "C2 = 3^2*2^22"
@@ -168,6 +168,33 @@ proof -
     by simp
 qed
 
+interpretation family_1: "\<G>_locale" "2" "n" "\<G> 2 n"
+  unfolding \<G>_locale_def using n_gt_0 by auto
+
+interpretation family_2: "\<H>_locale" "2" "n" "[(C6*b\<^sup>2)]\<^sub>S" "(\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S)"
+proof -
+  have a:"C6 * b^2 = (2^(5 + b_base*2))" 
+    unfolding C6_def b_def by (simp add: power_mult power_add) 
+  have "is_prime_power (C6 * b\<^sup>2)" 
+    unfolding a by (intro is_prime_power) auto
+  hence "is_prime_power (size [C6 * b\<^sup>2]\<^sub>S)"
+    unfolding nat_sample_space_def by simp
+  thus "\<H>_locale 2 [C6 * b\<^sup>2]\<^sub>S"
+    unfolding \<H>_locale_def using n_gt_0 by simp
+  show "\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S \<equiv> \<H> 2 n [(C6*b\<^sup>2)]\<^sub>S" by simp
+qed
+
+interpretation family_3: "\<H>_locale" "k" "C6*b\<^sup>2" "[b]\<^sub>S" "(\<H> k (C6*b\<^sup>2) [b]\<^sub>S)"
+proof -
+  have "is_prime_power (b)" 
+    unfolding b_def using b_base_ge_26 by (intro is_prime_power) auto
+  hence "is_prime_power (size [b]\<^sub>S)"
+    unfolding nat_sample_space_def by simp
+  thus "\<H>_locale k [b]\<^sub>S" using k_gt_0
+    unfolding \<H>_locale_def by simp
+  show "\<H> k (C6*b\<^sup>2) [b]\<^sub>S \<equiv> \<H> k (C6*b\<^sup>2) [b]\<^sub>S" by simp
+qed
+
 lemma f_range: 
   assumes "(f,g,h) \<in> sample_set \<Psi>"
   shows "f x \<le> max (nat \<lceil>log 2 n\<rceil>) 1"
@@ -176,8 +203,7 @@ proof -
     using sample_set_\<Psi> assms by auto
   then obtain i where f_def:"f = select (\<G> 2 n) i" unfolding sample_set_def by auto
   show ?thesis
-    unfolding f_def
-    by (intro \<G>_range n_gt_0) auto
+    unfolding f_def by (intro family_1.\<G>_range) 
 qed
 
 lemma fin_f:
@@ -197,39 +223,14 @@ qed
 lemma Max_int_range: "x \<le> (y::int) \<Longrightarrow> Max {x..y} = y"
   by auto
 
-lemma family_1_conditions: "0 < (2::nat)" "0 < n"
-  using n_gt_0 by auto
-
-lemma family_2_conditions:
-  shows "is_prime_power (size [(C6*b\<^sup>2)]\<^sub>S)" "(2::nat) > 0"
-proof -
-  have a:"C6 * b^2 = (2^(5 + b_base*2))" 
-    unfolding C6_def b_def by (simp add: power_mult power_add) 
-  have "is_prime_power (C6 * b\<^sup>2)" 
-    unfolding a by (intro is_prime_power) auto
-  thus "is_prime_power (size [C6 * b\<^sup>2]\<^sub>S)"
-    unfolding nat_sample_space_def by simp
-  show "(2::nat) > 0" by simp
-qed
-
-lemma family_3_conditions:
-  shows "is_prime_power (size [b]\<^sub>S)" "k > 0"
-proof -
-  have "is_prime_power b" 
-    unfolding b_def using b_base_ge_26 by (intro is_prime_power) auto
-  thus "is_prime_power (sample_space.size [b]\<^sub>S)"
-    unfolding nat_sample_space_def by simp
-  show "k > 0" using k_gt_0 by simp
-qed
-
 lemma select_\<Omega>_range: "select \<Omega> \<omega> i \<in> sample_set \<Psi>"
 proof -
   have "size (\<G> 2 n) > 0" 
-    using \<G>_size[OF family_1_conditions] by simp
+    using family_1.\<G>_size by simp
   moreover have "size  (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S) > 0" 
-    using \<H>_size[OF family_2_conditions] by simp
+    using family_2.\<H>_size by simp
   moreover have "size (\<H> k (C6*b\<^sup>2) [b]\<^sub>S) > 0"
-    using \<H>_size[OF family_3_conditions] by simp
+    using family_3.\<H>_size by simp
   ultimately have "size \<Psi> > 0" 
     unfolding \<Psi>_def by (simp add:prod_sample_space_def) 
 
