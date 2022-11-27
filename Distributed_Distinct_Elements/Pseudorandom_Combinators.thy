@@ -14,6 +14,16 @@ definition "sample_set S = (select S) ` {..<(size S)}"
 
 definition "sample_pmf S = map_pmf (select S) (pmf_of_set {..<(size S)})"
 
+lemma set_pmf_sample_pmf:
+  assumes "size S > 0"
+  shows "set_pmf (sample_pmf S) = sample_set S"
+proof -
+  have "set_pmf (pmf_of_set {..<size S}) = {..<size S}"
+    using assms by (intro set_pmf_of_set) auto
+  thus ?thesis
+    unfolding sample_pmf_def sample_set_def by simp
+qed
+
 definition nat_sample_space :: "nat \<Rightarrow> nat sample_space" ("[_]\<^sub>S")
   where "nat_sample_space n = \<lparr> size = n, select = id \<rparr>"
 

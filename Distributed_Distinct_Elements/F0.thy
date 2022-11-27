@@ -173,7 +173,7 @@ interpretation family_1: "\<G>_locale" "2" "n" "\<G> 2 n"
 
 interpretation family_2: "\<H>_locale" "2" "n" "[(C6*b\<^sup>2)]\<^sub>S" "(\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S)"
 proof -
-  have a:"C6 * b^2 = (2^(5 + b_base*2))" 
+  have a:"C6 * b^2 = 2^(5 + b_base*2)" 
     unfolding C6_def b_def by (simp add: power_mult power_add) 
   have "is_prime_power (C6 * b\<^sup>2)" 
     unfolding a by (intro is_prime_power) auto
@@ -186,7 +186,7 @@ qed
 
 interpretation family_3: "\<H>_locale" "k" "C6*b\<^sup>2" "[b]\<^sub>S" "(\<H> k (C6*b\<^sup>2) [b]\<^sub>S)"
 proof -
-  have "is_prime_power (b)" 
+  have "is_prime_power b" 
     unfolding b_def using b_base_ge_26 by (intro is_prime_power) auto
   hence "is_prime_power (size [b]\<^sub>S)"
     unfolding nat_sample_space_def by simp
