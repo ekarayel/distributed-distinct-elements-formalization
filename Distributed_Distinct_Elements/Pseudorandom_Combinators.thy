@@ -10,22 +10,48 @@ record 'a sample_space =
   size :: "nat"
   select :: "nat \<Rightarrow> 'a"
 
-definition "sample_set S = (select S) ` {..<(size S)}"
+definition "sample_set S = select S ` {..<size S}"
 
-definition "sample_pmf S = map_pmf (select S) (pmf_of_set {..<(size S)})"
+definition "sample_pmf S = map_pmf (select S) (pmf_of_set {..<size S})"
+
+locale sample_space =
+  fixes S
+  assumes size_S: "size S > 0"
+begin
+
+definition M where "M = measure_pmf (sample_pmf S)"
+
+sublocale prob_space "M"
+  unfolding M_def using prob_space_measure_pmf by auto
 
 lemma set_pmf_sample_pmf:
-  assumes "size S > 0"
-  shows "set_pmf (sample_pmf S) = sample_set S"
+  "set_pmf (sample_pmf S) = sample_set S"
 proof -
   have "set_pmf (pmf_of_set {..<size S}) = {..<size S}"
-    using assms by (intro set_pmf_of_set) auto
+    using size_S by (intro set_pmf_of_set) auto
   thus ?thesis
     unfolding sample_pmf_def sample_set_def by simp
 qed
 
+lemma integrable_M[simp]:
+  fixes f :: "'a \<Rightarrow> 'c::{banach, second_countable_topology}"
+  shows "integrable M f"
+proof -
+  have " finite (set_pmf (sample_pmf S))" 
+    unfolding set_pmf_sample_pmf sample_set_def 
+    by (intro finite_imageI) simp
+  thus ?thesis
+    unfolding M_def 
+    by (intro integrable_measure_pmf_finite)
+qed
+
+end
+
 definition nat_sample_space :: "nat \<Rightarrow> nat sample_space" ("[_]\<^sub>S")
   where "nat_sample_space n = \<lparr> size = n, select = id \<rparr>"
+
+lemma nat_sample_pmf: "sample_pmf ([x]\<^sub>S) = pmf_of_set {..<x}"
+  unfolding nat_sample_space_def sample_pmf_def by simp
 
 definition prod_sample_space :: 
   "'a sample_space \<Rightarrow> 'b sample_space \<Rightarrow> ('a \<times> 'b) sample_space" (infixr "\<times>\<^sub>S" 65)
@@ -118,6 +144,45 @@ proof -
   finally show ?thesis by simp
 qed
 
+lemma prod_sample_pmf: 
+  assumes "sample_space S"
+  assumes "sample_space T"
+  shows "sample_pmf (S \<times>\<^sub>S T) = pair_pmf (sample_pmf S) (sample_pmf T)" (is "?L = ?R")
+proof -
+  have size: "size S * size T > 0"
+    using assms sample_space_def by (metis nat_0_less_mult_iff)
+  hence a:"{..<size S * size T} \<noteq> {}" "finite {..<size S * size T}"
+    using lessThan_empty_iff by auto
+  have b:"x div size S mod size T = x div size S" if "x < size S * size T" for x
+    by (simp add: algebra_simps less_mult_imp_div_less that)
+  have "?L = map_pmf (\<lambda>i. (select S (i mod size S), select T (i div size S mod size T))) (pmf_of_set {..<size S * size T})"
+    unfolding sample_pmf_def prod_sample_space_def by simp
+  also have "... = map_pmf (\<lambda>i. (select S (i mod size S), select T (i div size S))) (pmf_of_set {..<size S * size T})"
+    using b
+    by (intro map_pmf_cong) (auto simp add: set_pmf_of_set[OF a])
+  also have "... = map_pmf ((\<lambda>(x,y). (select S x, select T y)) \<circ> (\<lambda>i. (i mod size S, i div size S))) (pmf_of_set {..<size S * size T})"
+    by (simp add:comp_def)
+  also have "... = map_pmf (\<lambda>(x,y). (select S x, select T y)) (map_pmf (\<lambda>i. (i mod size S, i div size S)) (pmf_of_set {..<size S * size T}))"
+    by (subst map_pmf_compose)  simp
+  also have "... = map_pmf (\<lambda>(x,y). (select S x, select T y)) (pair_pmf (pmf_of_set {..<size S}) (pmf_of_set {..<size T}))"
+    using size by (subst split_pmf_mod_div) auto
+  also have "... = ?R"
+    unfolding sample_pmf_def map_pair by simp
+  finally show ?thesis
+    by simp
+qed
+
+lemma prod_sample_space:
+  assumes "sample_space S"
+  assumes "sample_space T"
+  shows "sample_space (S \<times>\<^sub>S T)"
+proof -
+  have "size (S \<times>\<^sub>S T) > 0"
+    using assms sample_space.size_S sample_space_def
+    by (simp add:prod_sample_space_def) blast
+  thus ?thesis
+    by (unfold_locales) simp
+qed
 
 definition \<E> :: "nat \<Rightarrow> rat \<Rightarrow> 'a sample_space \<Rightarrow> (nat \<Rightarrow> 'a) sample_space"
   where "\<E> l \<Lambda> S = undefined"
@@ -126,9 +191,6 @@ lemma \<E>_range:
   assumes "size S > 0"
   shows "select (\<E> l \<Lambda> S) i j \<in> sample_set S"
   sorry
-
-
-
 
 
 end

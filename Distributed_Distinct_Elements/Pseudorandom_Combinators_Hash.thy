@@ -139,7 +139,7 @@ locale \<H>_locale =
   fixes k d R S
   assumes size_R_assm: "is_prime_power (size R)"
   assumes k_gt_0: "k > 0"
-  defines "S \<equiv> (\<H> k d R)"
+  defines "S \<equiv> \<H> k d R"
 begin
 
 definition p where "p = fst (split_prime_power (size R))"
@@ -228,6 +228,9 @@ lemma S_eq: "S = \<lparr> size = p^(m*k), select = (\<lambda> i x. select R (f' 
 lemma \<H>_size: "size S > 0" 
   unfolding S_eq using p_m_gt_0 k_gt_0 by simp
 
+sublocale sample_space "S"
+  unfolding sample_space_def using \<H>_size by simp
+
 lemma \<H>_range: "range (select S i) \<subseteq> (sample_set R)"
 proof -
   have "select S i x \<in> (sample_set R)" for x
@@ -302,9 +305,8 @@ proof -
   finally show ?thesis by simp
 qed
 
-
 lemma \<H>_indep:
-  "prob_space.k_wise_indep_vars (sample_pmf S) k (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) {..<d}" 
+  "k_wise_indep_vars  k (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) {..<d}" 
 proof -
   let ?p = "map_pmf g (pmf_of_set {..<p ^ (m * k)})"
   let ?h = "(\<lambda>i x. select R (f' (cw.hash (f x) i) mod p ^ n))"
@@ -333,7 +335,8 @@ proof -
     unfolding map_pmf_compose[symmetric] by (simp add:comp_def)
 
   thus ?thesis
-    unfolding sample_pmf_def S_eq by simp
+    unfolding M_def
+    unfolding sample_pmf_def  S_eq by simp
 qed
 end
 
@@ -409,8 +412,9 @@ proof (cases "j \<le> n")
 next
   case False
   have "size (\<G>' n) > 0" unfolding \<G>'_def by simp
+  hence "sample_space (\<G>' n)" unfolding sample_space_def by simp
   hence a: "set_pmf (sample_pmf (\<G>' n)) \<subseteq> {..n}"
-    using set_pmf_sample_pmf \<G>'_range by auto
+    using sample_space.set_pmf_sample_pmf \<G>'_range by auto
   have "?L = measure (sample_pmf (\<G>' n)) {\<omega>. \<omega> \<ge> j}" by simp
   also have "... \<le> measure (sample_pmf (\<G>' n)) {}" 
     using a False
@@ -427,8 +431,8 @@ qed
 definition \<G> :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<Rightarrow> nat) sample_space"
   where "\<G> k n = \<H> k n (\<G>' (max (nat \<lceil>log 2 n\<rceil>) 1))"
 
-locale \<G>_locale =
-  fixes k n  S
+locale \<G>_locale = 
+  fixes k n S
   assumes k_gt_0: "k > 0"
   assumes n_gt_0: "n > 0"
   defines "S \<equiv> \<G> k n"
@@ -464,12 +468,15 @@ qed
 lemma \<G>_size: "size (\<G> k n) > 0"
   using e.\<H>_size by simp
 
+sublocale sample_space "S"
+  unfolding S_def sample_space_def using  \<G>_size by simp
+
 lemma \<G>_prob:
   assumes "x < n"
-  shows "\<P>(f in sample_pmf S. f x \<ge> j) = of_bool (j \<le> (max (nat \<lceil>log 2 n\<rceil>) 1)) / 2^j" (is "?L = ?R")
+  shows "prob {f.  f x \<ge> j} = of_bool (j \<le> (max (nat \<lceil>log 2 n\<rceil>) 1)) / 2^j" (is "?L = ?R")
 proof -
   have "?L = measure (map_pmf (\<lambda>f. f x) (sample_pmf S)) {x. x \<ge> j}"
-    by simp
+    unfolding M_def by simp
   also have "... = measure (sample_pmf R) {x. x \<ge> j}"
     unfolding S_def 
     by (intro arg_cong2[where f="measure"] arg_cong[where f="measure_pmf"] e.\<H>_single assms) auto
@@ -481,7 +488,7 @@ proof -
 qed
 
 lemma \<G>_indep:
-  "prob_space.k_wise_indep_vars (sample_pmf S) k (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) {..<n}" 
+  "k_wise_indep_vars k (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) {..<n}" 
   unfolding S_def using e.\<H>_indep by simp
 
 end

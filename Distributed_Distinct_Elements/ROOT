@@ -1,0 +1,17 @@
+chapter AFP
+
+session Distributed_Distinct_Elements (AFP) = "HOL-Probability" +
+  options [timeout = 1200]
+  sessions
+    Median_Method
+    Universal_Hash_Families
+    Frequency_Moments
+  theories
+    F0
+    E1
+    E2
+    E3
+    E4
+    DDE_Preliminary
+    Pseudorandom_Combinators
+    Pseudorandom_Combinators_Hash
