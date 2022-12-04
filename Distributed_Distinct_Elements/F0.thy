@@ -3,45 +3,8 @@ theory F0
     "HOL-Library.Log_Nat"
     "Median_Method.Median"
     "Pseudorandom_Combinators_Hash"
+    "DDE_Preliminary"
 begin
-
-lemma (in prob_space) pmf_exp_mono:
-  fixes f g :: "'a \<Rightarrow> real"
-  assumes "M = measure_pmf p"
-  assumes "integrable M f" "integrable M g"
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<le> g x"
-  shows "integral\<^sup>L M f \<le> integral\<^sup>L M g"
-  using assms(2,3,4) unfolding assms(1)
-  by (intro integral_mono_AE AE_pmfI) auto
-
-lemma (in prob_space) pmf_markov:
-  assumes "M = measure_pmf p"
-  assumes "integrable M f" "c > 0"
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0" 
-  shows "prob {\<omega>. f \<omega> \<ge> c} \<le> expectation f / c" (is "?L \<le> ?R")
-proof -
-  have a:"AE \<omega> in M. 0 \<le> f \<omega>" 
-    unfolding assms(1) by (intro AE_pmfI assms(4)) auto
-  have b:"{} \<in> events" 
-    unfolding assms(1) by simp
-
-  have "?L = \<P>(\<omega> in M. f \<omega> \<ge> c)"
-    using assms(1) by simp
-  also have "... \<le>  expectation f / c"
-    by (intro integral_Markov_inequality_measure[OF _ b] assms a)
-  finally show ?thesis by simp
-qed
-
-lemma pair_pmf_prob_left: 
-  "measure_pmf.prob (pair_pmf A B) {\<omega>. P (fst \<omega>)} = measure_pmf.prob A {\<omega>. P \<omega>}" (is "?L = ?R")
-proof -
-  have "?L = measure_pmf.prob (map_pmf fst (pair_pmf A B)) {\<omega>. P \<omega>}"
-    by (subst measure_map_pmf) simp
-  also have "... = ?R"
-    by (subst map_fst_pair_pmf) simp
-  finally show ?thesis by simp
-qed
-
 
 section \<open>Algorithm\<close>
 
@@ -62,6 +25,16 @@ definition b_exp :: nat
   where "b_exp = nat (\<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
 definition b :: nat 
   where "b = 2^b_exp"
+
+definition \<rho> :: "real \<Rightarrow> real"
+  where "\<rho> x = b * (1-(1-1/ b) powr x)"
+
+(* \<rho>\<inverse> *)
+(* ln (1-x/b)/ ln (1-1/b) = y  *)
+
+definition \<rho>' :: "real \<Rightarrow> real"
+  where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
+
 definition l :: nat 
   where "l = nat (\<lceil>ln (1/real_of_rat \<epsilon>)\<rceil>)"
 definition k :: nat 
@@ -545,6 +518,8 @@ locale inner_algorithm_fix_A = inner_algorithm +
   defines "Y \<equiv> card A"
 begin
 
+definition s\<^sub>M where "s\<^sub>M = nat (\<lceil>log 2 Y\<rceil> - b_exp)"
+
 subsection \<open>Accuracy for $s=0$\<close>
 
 definition t\<^sub>1 :: "(nat \<Rightarrow> nat) \<Rightarrow> int" 
@@ -558,6 +533,10 @@ definition R :: "(nat \<Rightarrow> nat) \<Rightarrow> nat set"
 
 definition r :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> nat"
   where "r x f = card {a. a \<in> A \<and> f a \<ge> x}"
+
+definition p where "p =(\<lambda>(f,g,h). card { j. j \<in> {..<b} \<and> \<tau>\<^sub>1 (f,g,h) A 0 j \<ge> t f})"
+
+definition A\<^sub>S where "A\<^sub>S = (\<lambda>(f,g,h). 2 ^ t f * \<rho>' (p (f,g,h)))"
 
 lemma fin_A: "finite A"
   using A_range finite_nat_iff_bounded by auto

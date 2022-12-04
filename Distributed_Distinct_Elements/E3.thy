@@ -1,5 +1,5 @@
 theory E3
-  imports E2 Foo
+  imports E2
 begin
 
 context inner_algorithm_fix_A 
@@ -33,8 +33,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-
-lemma "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
+lemma e_3: "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
   let ?\<alpha> = "(\<lambda>(z,x,y) f. z < C6*b^2 \<and> x \<in> R f \<and> y \<in> R f \<and> x < y)"
   let ?\<beta> = "(\<lambda>(z,x,y) g. g x = z \<and> g y = z)"

@@ -7,7 +7,7 @@ begin
 
 definition E\<^sub>2 where "E\<^sub>2 = (\<lambda>(f,g,h). \<bar>card (R f) - Y / 2^(t f)\<bar> \<le> real_of_rat \<delta>/3 * Y / 2^(t f))"
 
-lemma "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
+lemma e_2: "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
   define t\<^sub>m :: int where "t\<^sub>m = \<lfloor>log 2 (real Y)\<rfloor> + 16 - b_exp"
 

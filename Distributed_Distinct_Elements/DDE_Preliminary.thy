@@ -1,6 +1,14 @@
 theory DDE_Preliminary
   imports Main "HOL-Probability.Probability_Mass_Function"  "Frequency_Moments.Frequency_Moments_Preliminary_Results"
+    "Frequency_Moments.Product_PMF_Ext" "Median_Method.Median"
+
 begin
+
+lemma (in prob_space) pmf_rev_mono:
+  assumes "M = measure_pmf p"
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<notin> Q \<Longrightarrow> x \<notin> P"
+  shows "prob P \<le> prob Q"
+  using assms pmf_mono by blast
 
 lemma (in prob_space) pmf_exp_mono:
   fixes f g :: "'a \<Rightarrow> real"
@@ -93,5 +101,51 @@ next
   then show ?thesis using False by simp
 qed
 
+lemma MVT_symmetric:
+  assumes "\<And>x. \<lbrakk>min a b \<le> x; x \<le> max a b\<rbrakk> \<Longrightarrow> DERIV f x :> f' x"
+  shows "\<exists>z::real. min a b \<le> z \<and> z \<le> max a b \<and> (f b - f a = (b - a) * f' z)"
+proof -
+  consider (a) "a < b" | (b) "a = b" | (c) "a > b"
+    by argo
+  then show ?thesis
+  proof (cases)
+    case a
+    then obtain z :: real where r: "a < z" "z < b" "f b - f a = (b - a) * f' z"
+      using assms MVT2[where a="a" and b="b" and f="f" and f'="f'"] by auto
+    have "a \<le> z" "z \<le> b" using r(1,2) by auto
+    thus ?thesis using a r(3) by auto
+  next
+    case b
+    then show ?thesis by auto
+  next
+    case c
+    then obtain z :: real where r: "b < z" "z < a" "f a - f b = (a - b) * f' z"
+      using assms MVT2[where a="b" and b="a" and f="f" and f'="f'"] by auto
+    have "f b - f a = (b-a) * f' z" using r by argo
+    moreover have "b \<le> z" "z \<le> a" using r(1,2) by auto
+    ultimately show ?thesis using c by auto
+  qed
+qed
+
+lemma MVT_interval:
+  fixes I :: "real set"
+  assumes "interval I" "a \<in> I" "b \<in> I"
+  assumes "\<And>x. x \<in> I \<Longrightarrow> DERIV f x :> f' x"
+  shows "\<exists>z. z \<in> I \<and> (f b - f a = (b - a) * f' z)"
+proof -
+  have a:"min a b \<in> I"
+    using assms(2,3) by (cases "a < b") auto
+  have b:"max a b \<in> I"
+    using assms(2,3) by (cases "a < b") auto
+  have c:"x \<in> {min a b..max a b} \<Longrightarrow> x \<in> I" for x
+    using interval_def assms(1) a b by auto
+  have "\<lbrakk>min a b \<le> x; x \<le> max a b\<rbrakk> \<Longrightarrow> DERIV f x :> f' x" for x
+    using c assms(4) by auto
+  then obtain z where z:"z \<ge> min a b" "z \<le> max a b" "f b - f a = (b-a) * f' z"
+    using MVT_symmetric by blast
+  have "z \<in> I"
+    using c z(1,2) by auto
+  thus ?thesis using z(3) by auto
+qed
 
 end

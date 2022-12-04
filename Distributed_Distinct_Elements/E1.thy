@@ -143,7 +143,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma "\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi>} \<le> 1/2^6"
+lemma e_1: "\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi>} \<le> 1/2^6"
 proof -
   have "\<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y \<notin> {b/2^16..b/2}} \<le> 
     \<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y < b/2^16} + \<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y > b/2}"
