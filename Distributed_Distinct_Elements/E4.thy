@@ -12,6 +12,15 @@ proof -
   show ?thesis sorry
 qed
 
+lemma (in prob_space)
+  assumes "M = measure_pmf p"
+  assumes "k_wise_indep_vars k (\<lambda>_. discrete) f D"
+  assumes "\<And>x. x \<in> D \<Longrightarrow> map_pmf (f x) p = pmf_of_set R"
+  defines "Y \<equiv> (\<lambda>\<omega>. real (card ((\<lambda>x. f x \<omega>) ` D)))"
+  defines "\<rho> \<equiv> real (card R) * (1-(1-1/real (card R))^(card D))" 
+  shows "prob {\<omega>. abs (Y \<omega> - \<rho>) > 9 * real (card D) / sqrt(card R)} \<le> 1/2^6"
+  sorry
+
 end
 
 end

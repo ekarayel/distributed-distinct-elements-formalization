@@ -4,6 +4,24 @@ theory DDE_Preliminary
 
 begin
 
+lemma (in prob_space) pmf_exp_of_fin_function:
+  assumes "M = measure_pmf p"
+  assumes "finite A" "g ` set_pmf p \<subseteq> A"
+  shows "expectation (\<lambda>\<omega>. f (g \<omega>)) = (\<Sum>y \<in> A. f y * prob {\<omega>. g \<omega> = y})"
+    (is "?L = ?R")
+proof -
+  have "?L = integral\<^sup>L (map_pmf g p) f"
+    using integral_map_pmf assms by simp
+  also have "... = (\<Sum>a\<in>A. f a * pmf (map_pmf g p) a)"
+    using assms(2,3)
+    by (intro integral_measure_pmf_real) auto
+  also have " ... = (\<Sum>y \<in> A. f y * prob (g -` {y}))"
+    unfolding assms(1) by (intro sum.cong arg_cong2[where f="(*)"] pmf_map) auto
+  also have "... = ?R"
+    by (intro sum.cong) (auto simp add: vimage_def) 
+  finally show ?thesis by simp
+qed
+
 lemma (in prob_space) pmf_rev_mono:
   assumes "M = measure_pmf p"
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<notin> Q \<Longrightarrow> x \<notin> P"
@@ -47,18 +65,31 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma split_pair_pmf: 
-  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" (is "?L = ?R")
+lemma integrable_pmf_iff_bounded:
+  fixes f :: "'a \<Rightarrow> real"
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> abs (f x) \<le> C"
+  shows "integrable (measure_pmf p) f"
 proof -
-  have " (\<integral>\<^sup>+ x. ennreal (measure_pmf.prob B {b. (x, b) \<in> S}) \<partial>A) \<le> (\<integral>\<^sup>+ x. 1 \<partial>A)" 
-    by (intro nn_integral_mono) simp
-  also have "... = 1"
+  obtain x where "x \<in> set_pmf p"
+    using set_pmf_not_empty by fast
+  hence "C \<ge> 0" using assms(1) by fastforce
+  hence " (\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) \<le> (\<integral>\<^sup>+ x. C \<partial>measure_pmf p)" 
+    using assms ennreal_le_iff
+    by (intro nn_integral_mono_AE AE_pmfI) auto
+  also have "... = C"
     by simp
   also have "... < Orderings.top"
     by simp
-  finally have "(\<integral>\<^sup>+ x. ennreal (measure_pmf.prob B {b. (x, b) \<in> S}) \<partial>A) < Orderings.top" by simp
-  hence a:"integrable (measure_pmf A) (\<lambda>x. measure_pmf.prob B {b. (x, b) \<in> S})"
-    by (simp add: integrable_iff_bounded )
+  finally have "(\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) < Orderings.top" by simp
+  thus ?thesis 
+    by (intro iffD2[OF integrable_iff_bounded]) auto
+qed
+
+lemma split_pair_pmf: 
+  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" (is "?L = ?R")
+proof -
+  have a:"integrable (measure_pmf A) (\<lambda>x. measure_pmf.prob B {b. (x, b) \<in> S})"
+    by (intro integrable_pmf_iff_bounded[where C="1"]) simp
 
   have "?L = (\<integral>\<^sup>+x. indicator S x \<partial>(measure_pmf (pair_pmf A B)))"
     by (simp add: measure_pmf.emeasure_eq_measure)
