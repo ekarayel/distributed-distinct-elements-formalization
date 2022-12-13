@@ -5,7 +5,10 @@ theory Balls_and_Bins
     "Discrete_Summation.Factorials" 
     "Twelvefold_Way.Twelvefold_Way_Entry3"
     "Basel_Sum_Approx"
+    "Lp.Lp"
 begin
+
+hide_const Discrete_Topology.discrete
 
 locale balls_and_bins_indep =
   fixes R B
@@ -18,7 +21,7 @@ definition "M = measure_pmf (prod_pmf R (\<lambda>_. pmf_of_set B))"
 sublocale prob_space "M"
   unfolding M_def using prob_space_measure_pmf by auto
 
-definition Y where "Y \<omega> = real (card ((\<lambda>x. \<omega> x) ` R))"
+definition Y where "Y \<omega> = real (card (\<omega> ` R))"
 definition r where "r = real (card R)"
 definition b where "b = real (card B)"
 
@@ -30,6 +33,8 @@ lemma var: "variance Y \<le> r * (r-1) / b"
 
 
 end
+
+
 
 
 
@@ -166,6 +171,43 @@ proof -
   finally show ?thesis by simp
 qed
 
+text \<open>A discrete probability space representing throwing |R| balls into |B| bins (k-wise independently)\<close>
+
+locale lim_balls_and_bins =
+  fixes R :: "'a set"  and B :: "'b set"
+  fixes k :: nat and p :: "('a \<Rightarrow> 'b) pmf"
+  fixes Z
+  assumes "finite R"
+  assumes "finite B"
+  assumes "prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
+  assumes "\<And>x. x \<in> R \<Longrightarrow> map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B"
+  defines "Z j \<omega> \<equiv> real (card {i. i \<in> R \<and> \<omega> i = (j::'b)})"
+begin
+
+(* Random variable counting the number of times bin j was hit *)
+
+lemma hit_count_prod_exp:
+  assumes "j1 \<in> B" "j2 \<in> B" "s+t \<le> k"
+  assumes "j1 \<noteq> j2 \<or> s = 0 \<or> t = 0"
+  defines "L \<equiv> {(xs,ys). set xs \<subseteq> R \<and> set ys \<subseteq> R \<and> set xs \<inter> set ys = {} \<and> length xs = s \<and> length ys = t}"
+  shows "(\<integral>\<omega>. Z j1 \<omega>^s * Z j2 \<omega>^t \<partial>p) = (\<Sum>(xs,ys) \<in> L. (1/real (card B))^(card (set xs) + card (set ys)))"
+  sorry
+
+lemma hit_count_prod_approx:
+  assumes "j1 \<in> B" "j2 \<in> B" "s+t \<le> k"
+  shows "\<bar>(\<integral>\<omega>. Z j1 \<omega>^s * Z j2 \<omega>^t \<partial>p) \<bar> \<le> 2^k * Bell k"
+  sorry
+
+lemma hit_count_moments:
+  assumes "s \<le> k"
+  assumes "j \<in> B"
+  shows "(\<integral>\<omega>. Z j \<omega>^s \<partial> p) = (\<Sum>i=0..s. real (Stirling s i) * (1 / real (card B))^i * ffact i (card R))" 
+    (is "?L = ?R") 
+  sorry
+
+
+end
+
 lemma hit_count_prod_exp:
   fixes R :: "'a set"
   fixes B :: "'b set"
@@ -217,7 +259,8 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have b: "prob_space.indep_vars (measure_pmf p) (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) (set (fst x) \<union> set (snd x))"
+  have b: 
+    "prob_space.indep_vars (measure_pmf p) (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) (set (fst x) \<union> set (snd x))"
     if "x \<in> L" for x
   proof -
     have "card (set (fst x) \<union> set (snd x)) \<le> card (set (fst x)) + card (set (snd x))"
@@ -265,47 +308,46 @@ proof -
     (\<Sum>ys | set ys \<subseteq> R \<and> length ys = t. (\<Prod>y \<leftarrow> ys. W2 y \<omega>)))"
     unfolding sum_power_distrib[OF assms(1)] by simp
   also have "... = measure_pmf.expectation p (\<lambda>\<omega>. 
-    (\<Sum>l\<in>{xs. set xs \<subseteq> R \<and> length xs = s} \<times> {ys. set ys \<subseteq> R \<and> length ys = t}. (\<Prod>x\<leftarrow>fst l. W1 x \<omega>) * (\<Prod>y\<leftarrow>snd l. W2 y \<omega>)))"
-    by (intro arg_cong[where f="measure_pmf.expectation p"]) (simp add: sum_product sum.cartesian_product case_prod_beta) 
+    (\<Sum>l\<in>{xs. set xs \<subseteq> R \<and> length xs = s} \<times> {ys. set ys \<subseteq> R \<and> length ys = t}. 
+      (\<Prod>x\<leftarrow>fst l. W1 x \<omega>) * (\<Prod>y\<leftarrow>snd l. W2 y \<omega>)))"
+    by (intro arg_cong[where f="measure_pmf.expectation p"]) 
+      (simp add: sum_product sum.cartesian_product case_prod_beta) 
   also have "... = (\<Sum>l\<in>{xs. set xs \<subseteq> R \<and> length xs = s} \<times> {ys. set ys \<subseteq> R \<and> length ys = t}.
     measure_pmf.expectation p (\<lambda>\<omega>. (\<Prod>x\<leftarrow>fst l. W1 x \<omega>) * (\<Prod>y\<leftarrow>snd l. W2 y \<omega>)))"
     unfolding W1_def W2_def
     by (intro Bochner_Integration.integral_sum integrable_pmf_iff_bounded[where C="1"] d e) auto 
-  also have "... = (\<Sum>l\<in> L. measure_pmf.expectation p (\<lambda>\<omega>. (\<Prod>x\<leftarrow>fst l. W1 x \<omega>) * (\<Prod>y\<leftarrow>snd l. W2 y \<omega>)))"
-    unfolding L_def using a
-    by (intro sum.mono_neutral_right finite_cartesian_product finite_lists_length_eq assms(1)) auto 
+  also have "... = (\<Sum>l\<in> L. measure_pmf.expectation p 
+    (\<lambda>\<omega>. (\<Prod>x\<leftarrow>fst l. W1 x \<omega>) * (\<Prod>y\<leftarrow>snd l. W2 y \<omega>)))"
+    unfolding L_def using a by (intro sum.mono_neutral_right finite_cartesian_product 
+        finite_lists_length_eq assms(1)) auto 
   also have "... = (\<Sum>l\<in> L. measure_pmf.expectation p (\<lambda>\<omega>. 
     (\<Prod>x \<in> set (fst l). W1 x \<omega>^count_list (fst l) x) * 
     (\<Prod>y \<in> set (snd l). W2 y \<omega>^count_list (snd l) y)))"
     unfolding prod_list_eval by simp
   also have "... = (\<Sum>l\<in> L. measure_pmf.expectation p (\<lambda>\<omega>. 
     (\<Prod>x \<in> set (fst l). of_bool(\<omega> x = j1)) * (\<Prod>y \<in> set (snd l). of_bool(\<omega> y = j2))))"
-      unfolding W1_def W2_def using count_list_gr_1
-      by (intro sum.cong arg_cong[where f="measure_pmf.expectation p"] ext prod.cong arg_cong2[where f="(*)"])
-       force+
+    unfolding W1_def W2_def using count_list_gr_1 by (intro sum.cong prod.cong 
+        arg_cong[where f="measure_pmf.expectation p"] ext arg_cong2[where f="(*)"]) force+
   also have "... = (\<Sum>l\<in> L. measure_pmf.expectation p (\<lambda>\<omega>. 
     (\<Prod>x \<in> set (fst l). of_bool(\<omega> x = (if x \<in> set (fst l) then j1 else j2))) * 
     (\<Prod>y \<in> set (snd l). of_bool(\<omega> y = (if y \<in> set (fst l) then j1 else j2)))))"
-    unfolding L_def
-    by (intro sum.cong arg_cong[where f="measure_pmf.expectation p"] ext arg_cong2[where f="(*)"] prod.cong)
-     auto
+    unfolding L_def by (intro sum.cong arg_cong[where f="measure_pmf.expectation p"] ext 
+        arg_cong2[where f="(*)"] prod.cong) auto
   also have "... = (\<Sum>l \<in> L. measure_pmf.expectation p (\<lambda>\<omega>. 
     (\<Prod>x \<in> (set (fst l) \<union> set (snd l)). of_bool(\<omega> x = (if x \<in> set (fst l) then j1 else j2)))))"
-    unfolding L_def 
-    by (intro sum.cong arg_cong[where f="measure_pmf.expectation p"] ext prod.union_disjoint[symmetric])
-     auto
+    unfolding L_def by (intro sum.cong arg_cong[where f="measure_pmf.expectation p"] ext 
+        prod.union_disjoint[symmetric]) auto
   also have "... = (\<Sum>l \<in> L. (\<Prod>x \<in> (set (fst l) \<union> set (snd l)). 
     measure_pmf.expectation p (\<lambda>\<omega>. of_bool(\<omega> x = (if x \<in> set (fst l) then j1 else j2)))))"
-    by (intro sum.cong prob_space.indep_vars_lebesgue_integral[OF prob_space_measure_pmf] integrable_pmf_iff_bounded[where C="1"]
-     prob_space.indep_vars_compose2[OF prob_space_measure_pmf b])  auto
+    by (intro sum.cong prob_space.indep_vars_lebesgue_integral[OF prob_space_measure_pmf] 
+        integrable_pmf_iff_bounded[where C="1"] 
+        prob_space.indep_vars_compose2[OF prob_space_measure_pmf b])  auto
   also have "... = (\<Sum>l \<in> L. (\<Prod>x \<in> (set (fst l) \<union> set (snd l)). \<alpha>))"
-    using assms(6,7) unfolding L_def
-    by (intro sum.cong prod.cong c) auto 
+    using assms(6,7) unfolding L_def by (intro sum.cong prod.cong c) auto 
   also have "... = (\<Sum>l \<in> L. \<alpha>^(card (set (fst l) \<union> set (snd l))))"
     by simp
   also have "... = (\<Sum>l \<in> L. \<alpha>^(card (set (fst l)) + card (set (snd l))))"
-    unfolding L_def
-    by (intro sum.cong arg_cong[where f="\<lambda>x. \<alpha>^x"] card_Un_disjnt) 
+    unfolding L_def by (intro sum.cong arg_cong[where f="\<lambda>x. \<alpha>^x"] card_Un_disjnt) 
      (auto simp add:disjnt_def)
   also have "... = ?R" 
     unfolding L_def \<alpha>_def by (simp add:case_prod_beta)
@@ -314,88 +356,39 @@ qed
 
 
 lemma hit_count_moments:
-  fixes R :: "'a set"
-  fixes B :: "'b set"
   assumes "finite R" "finite B" "s \<le> k"
   assumes "prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
   assumes "\<And>x. x \<in> R \<Longrightarrow> map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B"
   assumes "j \<in> B"
   defines "Z \<equiv> (\<lambda>\<omega>. real (card {i. i \<in> R \<and> \<omega> i = j}))"
-  shows 
-     "measure_pmf.expectation p (\<lambda>\<omega>. Z \<omega>^s) = 
-      (\<Sum>i=0..s. real (Stirling s i) * (1 / card B)^i * ffact i (card R))" (is "?L = ?R") 
+  shows "(\<integral>\<omega>. Z \<omega>^s \<partial> p) = (\<Sum>i=0..s. real (Stirling s i) * (1 / real (card B))^i * ffact i (card R))" 
+    (is "?L = ?R") 
 proof -
-  define W :: "'a \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" where "W = (\<lambda>i \<omega>. of_bool (\<omega> i = j) :: real)"
   define \<alpha> where "\<alpha> = 1 / real (card B)"
-
-  have Z_eq: "Z \<omega> = (\<Sum>i \<in> R. W i \<omega>)" for \<omega>
-    using assms(1) unfolding Z_def W_def
-    by (simp add:of_bool_def sum.If_cases Int_def)
-
-  have Z_pow_eq: "(Z \<omega>)^s = (\<Sum>xs| set xs \<subseteq> R \<and> length xs = s. (\<Prod>j \<leftarrow> xs. W j \<omega>))" for \<omega>
-    unfolding Z_eq sum_power_distrib[OF assms(1)] by simp
-
-  have e:"prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. borel) W R" 
-    unfolding W_def 
-    by (intro prob_space.k_wise_indep_vars_compose[OF _ assms(4)] prob_space_measure_pmf) simp
-
-  have c:"prob_space.indep_vars (measure_pmf p) (\<lambda>_. borel) W I" if "I \<subseteq> R" "card I \<le> k" for I
-    using that finite_subset assms(1)
-    by (intro prob_space.k_wise_indep_vars_subset[OF _ e] prob_space_measure_pmf) auto
-
-  have d: "integrable (measure_pmf p) (W x)" for x
-    unfolding W_def
-    by (intro integrable_pmf_iff_bounded[where C="1"]) simp
-
-  have e: "measure_pmf.expectation p (W x) = \<alpha>" (is "?L2 = _") if "x \<in> R" for x
-  proof -
-    have "?L2 = measure_pmf.expectation p (indicator {\<omega>. \<omega> x = j})"
-      unfolding W_def indicator_def by simp
-    also have "... = measure_pmf.prob p {\<omega>. \<omega> x = j}"
-      by simp
-    also have "... = measure_pmf.prob (map_pmf (\<lambda>\<omega>. \<omega> x) p) {j}"
-      by (subst measure_map_pmf) (simp add:vimage_def)
-    also have "... = measure_pmf.prob (pmf_of_set B) {j}"
-      using that by (subst assms(5)) auto
-    also have "... = 1/card B"
-      using assms(2,6) by (subst measure_pmf_of_set) auto
-    also have "... = \<alpha>"
-      unfolding \<alpha>_def by simp
-    finally show ?thesis by simp
-  qed
-
-  have a:
-    "measure_pmf.expectation p (\<lambda>\<omega>. (\<Prod>j \<leftarrow> xs. W j \<omega>)) = \<alpha>^ card (set xs)" (is "?L1 = ?R1")
-    if "set xs \<subseteq> R" and "length xs \<le> k" for xs
-  proof -
-    have "?L1 = measure_pmf.expectation p (\<lambda>\<omega>. \<Prod>x\<in>set xs. W x \<omega> ^ count_list xs x)"
-      by (simp add: prod_list_eval)
-    also have "... = measure_pmf.expectation p (\<lambda>\<omega>. \<Prod>x\<in>set xs. W x \<omega>)"
-      unfolding W_def using count_list_gr_1
-      by (intro arg_cong[where f="measure_pmf.expectation p"] ext prod.cong) force+
-    also have "... = (\<Prod>x\<in>set xs. measure_pmf.expectation p (\<lambda>\<omega>. W x \<omega>))"
-      using that(1) order_trans[OF card_length that(2)]
-      by (intro prob_space.indep_vars_lebesgue_integral[OF prob_space_measure_pmf] c d) auto
-    also have "... = (\<Prod>x\<in>set xs. \<alpha>)" 
-      using that by (intro prod.cong e) auto 
-    also have "... = ?R1" by simp
-    finally show ?thesis by simp
-  qed
 
   have b:"finite {xs. set xs \<subseteq> R \<and> length xs = s \<and> card (set xs) = i}" for i
     by (intro finite_subset[OF _ finite_lists_length_eq[OF assms(1), where n="s"]]) auto  
 
-  have "?L = (\<Sum>xs| set xs \<subseteq> R \<and> length xs = s. measure_pmf.expectation p (\<lambda>\<omega>. (\<Prod>j \<leftarrow> xs. W j \<omega>)))"
-    unfolding Z_pow_eq W_def
-    by (intro Bochner_Integration.integral_sum integrable_pmf_iff_bounded[where C="1"] prod_list_le_1_iff)
-     auto
-  also have "... = (\<Sum>xs| set xs \<subseteq> R \<and> length xs = s. \<alpha>^ card (set xs))"
-    using assms(3) by (intro sum.cong a) auto
-  also have "... = (\<Sum>xs \<in> (\<Union>i \<in> {0..s}.{ xs. set xs \<subseteq> R \<and> length xs = s \<and> card (set xs) = i}). \<alpha>^ card (set xs))"
+  have "?L = (\<integral>\<omega>. real (card {i \<in> R. \<omega> i = j}) ^ s * real (card {i \<in> R. \<omega> i = j}) ^ 0 \<partial> p)"
+    unfolding Z_def by simp
+  also have "... = (\<Sum>(xs, ys)\<in>{(xs, ys). set xs \<subseteq> R \<and> set ys \<subseteq> R \<and> set xs \<inter> set ys = {} \<and> 
+    length xs = s \<and> length ys = 0}. (1 / real (card B)) ^ (card (set xs) + card (set ys)))"
+    using assms by (intro hit_count_prod_exp[OF assms(1,2) _ assms(4,5)]) auto
+  also have "... = 
+    (\<Sum>x\<in>{(xs, ys). set xs \<subseteq> R \<and> length xs = s \<and> ys = ([] :: 'a list)}. \<alpha> ^ (card (set (fst x))))"
+    by (intro sum.cong) (auto simp add:\<alpha>_def)
+  also have "... = 
+    (\<Sum>x\<in>fst ` {(xs, ys). set xs \<subseteq> R \<and> length xs = s \<and> ys = ([] :: 'a list)}. \<alpha> ^ (card (set x)))"
+    by (subst sum.reindex) (auto simp add:inj_on_def)
+  also have "... = (\<Sum>xs| set xs \<subseteq> R \<and> length xs = s. \<alpha> ^ (card (set xs)))"
+    by (intro sum.cong)  (auto simp add:image_iff)
+  also have "... = 
+    (\<Sum>xs \<in> (\<Union>i \<in> {0..s}.{xs. set xs \<subseteq> R \<and> length xs = s \<and> card (set xs) = i}). \<alpha>^ card (set xs))"
     using card_length by (intro sum.cong) auto
-  also have "... = (\<Sum>i=0..s. (\<Sum>xs | set xs \<subseteq> R \<and> length xs = s \<and> card(set xs) = i.  \<alpha>^ card (set xs)))"
+  also have "... = 
+    (\<Sum>i=0..s. (\<Sum>xs | set xs \<subseteq> R \<and> length xs = s \<and> card(set xs) = i. \<alpha>^ card (set xs)))"
     using b by (subst sum.UNION_disjoint[symmetric]) auto 
-  also have "... = (\<Sum>i=0..s. (\<Sum>xs | set xs \<subseteq> R \<and> length xs = s \<and> card(set xs) = i.  \<alpha>^i))"
+  also have "... = (\<Sum>i=0..s. (\<Sum>xs | set xs \<subseteq> R \<and> length xs = s \<and> card(set xs) = i. \<alpha>^i))"
     by auto
   also have "... = (\<Sum>i=0..s. \<alpha>^i * card {xs. set xs \<subseteq> R \<and> length xs = s \<and> card(set xs) = i})"
     by (intro sum.cong) auto
@@ -469,17 +462,30 @@ lemma
   defines "Y \<equiv> (\<lambda>\<omega>. real (card ((\<lambda>x. \<omega> x) ` R)))"
   shows 
     exp_approx: "\<bar>measure_pmf.expectation (p False) Y - measure_pmf.expectation (p True) Y\<bar> \<le> 
-                    \<epsilon> / exp 1 * card R" (is "?A") and
-    var_approx: "\<bar>measure_pmf.variance (p False) Y - measure_pmf.variance (p True) Y\<bar> \<le> \<epsilon>\<^sup>2" (is "?B")
+      \<epsilon> / exp 1 * card R" (is "?A") and
+    var_approx: "\<bar>measure_pmf.variance (p False) Y - measure_pmf.variance (p True) Y\<bar> \<le> \<epsilon>\<^sup>2" 
+      (is "?B")
 proof -
   define M1 where "M1 = measure_pmf (p False)"
   define M2 where "M2 = measure_pmf (p True)"
+  define \<gamma> where "\<gamma> = Bell (k+1) / real (fact k)"
+  have \<gamma>_nonneg: "\<gamma> \<ge> 0"
+    unfolding \<gamma>_def by simp
 
   interpret M1: prob_space "M1"
     unfolding M1_def by (rule prob_space_measure_pmf)
 
   interpret M2: prob_space "M2"
     unfolding M2_def by (rule prob_space_measure_pmf)
+
+  define Z :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" 
+    where "Z = (\<lambda>i \<omega>. real (card { j . j \<in> R \<and> \<omega> j = i}))"
+
+  interpret H1: lim_balls_and_bins R B "2*k+2" "p False" "Z"
+    using assms unfolding Z_def by unfold_locales auto
+
+  interpret H2: lim_balls_and_bins R B "2*k+2" "p True" "Z"
+    using assms unfolding Z_def by unfold_locales auto
 
   define I :: "real set" where "I = real ` {1..k}"
   define \<phi> :: "real \<Rightarrow> real" where "\<phi> = (\<lambda>x. min x 1)"
@@ -581,11 +587,9 @@ proof -
     finally show ?thesis by simp
   qed
 
-  define Z :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" 
-    where "Z = (\<lambda>i \<omega>. real (card { j . j \<in> R \<and> \<omega> j = i}))"
 
   have z_moment_eq: 
-    "M1.expectation (\<lambda>\<omega>. Z i \<omega>^s) = M2.expectation (\<lambda>\<omega>. Z i \<omega>^s)"  (is "?L = ?R")
+    "(\<integral>\<omega>. Z i \<omega>^s \<partial>(p False)) = (\<integral>\<omega>. Z i \<omega>^s \<partial>(p True))"  (is "?L = ?R")
     if "s \<le> 2*k+2" "i \<in> B" for s i
   proof -
     have "?L = (\<Sum>i = 0..s. (Stirling s i) * (1 / real (card B)) ^ i * real (ffact i (card R)))"
@@ -595,11 +599,92 @@ proof -
     finally show ?thesis by simp
   qed
 
+  have z_moment_prod_eq:
+    "M1.expectation (\<lambda>\<omega>. Z i \<omega>^s * Z j \<omega>^t) = M2.expectation (\<lambda>\<omega>. Z i \<omega>^s * Z j \<omega>^t)" 
+    (is "?L = ?R") if "s+t \<le> 2*k+2" "i \<in> B" "j\<in> B" for s t i j
+  proof (cases "i \<noteq> j")
+    case True
+    have "?L = (\<Sum>(xs, ys)\<in>{(xs, ys). set xs \<subseteq> R \<and> set ys \<subseteq> R \<and> set xs \<inter> set ys = {} \<and> 
+      length xs = s \<and> length ys = t}. (1 / real (card B)) ^ (card (set xs) + card (set ys)))"
+      unfolding Z_def M1_def M2_def using assms True that
+      by (intro hit_count_prod_exp[OF assms(1,2) that(1)]) auto
+    also have "... = ?R"
+      unfolding Z_def M1_def M2_def using assms True that
+      by (intro hit_count_prod_exp[OF assms(1,2) that(1),symmetric]) auto
+    finally show ?thesis by simp
+  next
+    case False
+    have "?L = M1.expectation (\<lambda>\<omega>. Z i \<omega>^(s+t))"
+      using False by (simp add:power_add)
+    also have "... = M2.expectation (\<lambda>\<omega>. Z i \<omega>^(s+t))"
+      using that unfolding M1_def M2_def by (intro z_moment_eq)
+    also have "... = ?R"
+      using False by (simp add:power_add)
+    finally show ?thesis by simp
+  qed
+
+  have z_sum_moment_eq:
+    "M1.expectation (\<lambda>\<omega>. (Z i \<omega> + Z j \<omega>)^s) = M2.expectation (\<lambda>\<omega>. (Z i \<omega> + Z j \<omega>)^s)"  
+    (is "?L = ?R") if "s \<le> 2*k+2" "i \<in> B" "j \<in> B" for s i j
+  proof -
+    have a: "\<bar>Z i x ^ l * Z j x ^ (s - l)\<bar> \<le> real (card R ^ s)"  if "l \<in> {..s}" for l x
+    proof -
+      have "\<bar>Z i x ^ l * Z j x ^ (s - l)\<bar> \<le> Z i x ^ l * Z j x ^ (s - l)" 
+        unfolding Z_def by auto
+      also have "... \<le> real (card R) ^ l * real (card R) ^ (s-l)"
+        unfolding Z_def 
+        by (intro mult_mono power_mono of_nat_mono card_mono assms(1)) auto
+      also have "... = real (card R)^s" using that 
+        by (subst power_add[symmetric]) simp
+      also have "... = real (card R^s)"
+        by simp
+      finally show ?thesis by simp
+    qed
+    have "?L = M1.expectation (\<lambda>\<omega>. (\<Sum>l\<le>s. (s choose l) * Z i \<omega>^l * Z j \<omega>^(s-l)))"
+      by (intro arg_cong[where f="M1.expectation"] ext binomial_ring)
+    also have "... = M1.expectation (\<lambda>\<omega>. (\<Sum>l\<le>s. (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      by (intro arg_cong[where f="M1.expectation"] ext sum.cong) auto 
+    also have "... = (\<Sum>l\<le>s. M1.expectation (\<lambda>\<omega>. (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      unfolding M1_def by (intro Bochner_Integration.integral_sum integrable_mult_right 
+          integrable_pmf_iff_bounded[where C="card R^s"] a) auto
+    also have "... = (\<Sum>l\<le>s. (s choose l) * M1.expectation (\<lambda>\<omega>. (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      unfolding M1_def by (intro sum.cong integral_mult_right 
+          integrable_pmf_iff_bounded[where C="card R^s"] a) auto
+    also have "... = (\<Sum>l\<le>s. (s choose l) * M2.expectation (\<lambda>\<omega>. (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      using that by (intro sum.cong arg_cong2[where f="(*)"] z_moment_prod_eq) auto
+    also have "... = (\<Sum>l\<le>s. M2.expectation (\<lambda>\<omega>. (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      unfolding M2_def by (intro sum.cong integral_mult_right[symmetric] 
+          integrable_pmf_iff_bounded[where C="card R^s"] a) auto
+    also have "... = M2.expectation (\<lambda>\<omega>. (\<Sum>l\<le>s. (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l))))"
+      unfolding M2_def
+      by (intro Bochner_Integration.integral_sum[symmetric] integrable_mult_right 
+          integrable_pmf_iff_bounded[where C="card R^s"] a) auto
+    also have "... = M2.expectation (\<lambda>\<omega>. (\<Sum>l\<le>s. (s choose l) * Z i \<omega>^l * Z j \<omega>^(s-l)))"
+      by (intro arg_cong[where f="M2.expectation"] ext sum.cong) auto 
+    also have "... = ?R"
+      by (intro arg_cong[where f="M2.expectation"] ext binomial_ring[symmetric])
+    finally show ?thesis by simp
+  qed
+
   have Z_any_integrable:
     "integrable (p c) (\<lambda>\<omega>. f (Z i \<omega>))" for i c and f :: "real \<Rightarrow> real" 
     unfolding Z_def using assms(1) card_mono
     by (intro integrable_pmf_iff_bounded[where C="Max (abs ` f ` real ` {..card R})"])
      fastforce+ 
+
+  have q:"real (card A) + real (card B) \<in> real ` {..2 * card R}" if "A \<subseteq> R" "B \<subseteq> R" for A B
+  proof -
+    have "card A + card B \<le> card R + card R"
+      by (intro add_mono card_mono assms that)
+    also have "... = 2 * card R" by simp
+    finally show ?thesis by force
+  qed
+
+  hence Z_any_integrable':
+    "integrable (p c) (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>))" for i j c and f :: "real \<Rightarrow> real" 
+    unfolding Z_def using assms(1) card_mono abs_triangle_ineq
+    by (intro integrable_pmf_iff_bounded[where C="Max (abs ` f ` real ` {..2*card R})"] Max_ge 
+        finite_imageI imageI) auto
 
   have z1_any_integrable:
     "integrable M1 (\<lambda>\<omega>. f (Z i \<omega>))" for i and f :: "real \<Rightarrow> real"
@@ -609,9 +694,16 @@ proof -
     "integrable M2 (\<lambda>\<omega>. f (Z i \<omega>))" for i and f :: "real \<Rightarrow> real"
     unfolding M2_def using Z_any_integrable by simp
 
+  have z1_any_integrable':
+    "integrable M1 (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>))" for i j and f :: "real \<Rightarrow> real"
+    unfolding M1_def using Z_any_integrable' by simp
+
+  have z2_any_integrable':
+    "integrable M2 (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>))" for i j and f :: "real \<Rightarrow> real"
+    unfolding M2_def using Z_any_integrable' by simp
+
   have Z_poly_eq: "M1.expectation (\<lambda>\<omega>. poly f (Z i \<omega>)) = M2.expectation (\<lambda>\<omega>. poly f (Z i \<omega>))"
-    (is "?L = ?R") 
-    if "i \<in> B" "degree f \<le> 2*k+1" for f i
+    (is "?L = ?R") if "i \<in> B" "degree f \<le> 2*k+1" for f i
   proof -
     have "?L = (\<Sum>j\<le>degree f. M1.expectation (\<lambda>\<omega>. poly.coeff f j * Z i \<omega> ^ j))"
       unfolding poly_altdef
@@ -620,12 +712,31 @@ proof -
       by (intro sum.cong z_moment_eq Bochner_Integration.integral_mult_right z1_any_integrable)
        simp 
     also have "... = (\<Sum>j\<le>degree f. poly.coeff f j * M2.expectation (\<lambda>\<omega>. Z i \<omega> ^ j))"
-      using that by (intro sum.cong arg_cong2[where f="(*)"] z_moment_eq) auto
+      using that unfolding M1_def M2_def by (intro sum.cong arg_cong2[where f="(*)"] z_moment_eq) auto
     also have "... = (\<Sum>j\<le>degree f. M2.expectation (\<lambda>\<omega>. poly.coeff f j * Z i \<omega> ^ j))"
       by (intro sum.cong) auto 
     also have "... = ?R"
       unfolding poly_altdef by (intro Bochner_Integration.integral_sum[symmetric] 
           integrable_mult_right z2_any_integrable) 
+    finally show ?thesis by simp
+  qed
+
+  have Z_poly_eq_2: "M1.expectation (\<lambda>\<omega>. poly f (Z i \<omega> + Z j \<omega>)) = M2.expectation (\<lambda>\<omega>. poly f (Z i \<omega> + Z j \<omega>))"
+    (is "?L = ?R") if "i \<in> B" "j \<in> B" "degree f \<le> 2*k+1" for f i j 
+  proof -
+    have "?L = (\<Sum>d\<le>degree f. M1.expectation (\<lambda>\<omega>. poly.coeff f d * (Z i \<omega> + Z j \<omega>) ^ d))"
+      unfolding poly_altdef
+      by (intro Bochner_Integration.integral_sum integrable_mult_right z1_any_integrable')
+    also have "... = (\<Sum>d\<le>degree f. poly.coeff f d * M1.expectation (\<lambda>\<omega>. (Z i \<omega> + Z j \<omega>) ^ d))"
+      by (intro sum.cong z_moment_eq Bochner_Integration.integral_mult_right z1_any_integrable')
+       simp 
+    also have "... = (\<Sum>d\<le>degree f. poly.coeff f d * M2.expectation (\<lambda>\<omega>. (Z i \<omega> + Z j \<omega>) ^ d))"
+      using that by (intro sum.cong arg_cong2[where f="(*)"] z_sum_moment_eq) auto
+    also have "... = (\<Sum>d\<le>degree f. M2.expectation (\<lambda>\<omega>. poly.coeff f d * (Z i \<omega> + Z j \<omega>) ^ d))"
+      by (intro sum.cong) auto 
+    also have "... = ?R"
+      unfolding poly_altdef by (intro Bochner_Integration.integral_sum[symmetric] 
+          integrable_mult_right z2_any_integrable') 
     finally show ?thesis by simp
   qed
 
@@ -744,9 +855,8 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have z1_g_bound: 
-    "\<bar>integral\<^sup>L (p c) (\<lambda>\<omega>. g (Z i \<omega>))\<bar> \<le> (real (card R) / real (card B)) * Bell (k+1) / real (fact k)" 
-    (is "?L1 \<le> ?R11 / ?R12") if "i \<in> B" for i c
+  have z1_g_bound: "\<bar>integral\<^sup>L (p c) (\<lambda>\<omega>. g (Z i \<omega>))\<bar> \<le> (real (card R) / real (card B)) * \<gamma>" 
+    (is "?L1 \<le> ?R1") if "i \<in> B" for i c
   proof -
     have card_B_gt_0: "card B > 0" 
       using that card_gt_0_iff assms(2) by auto
@@ -757,38 +867,239 @@ proof -
       by (intro hit_count_moments[OF assms(1,2) _ assms(4,5)]) auto
     also have "... \<le> Bell (k+1) * real (card R) / real (card B)"
       by (intro hit_count_approx card_B_gt_0 assms(3)) auto 
-    also have "... = ?R11" by simp
-    finally have Z_pow_exp_bound: "measure_pmf.expectation (p c) (\<lambda>\<omega>. Z i \<omega>^(k+1)) \<le> ?R11"
+    also have "... = real (card R) / real (card B) * Bell (k+1)" by simp
+    finally have Z_pow_exp_bound: "measure_pmf.expectation (p c) (\<lambda>\<omega>. Z i \<omega>^(k+1)) \<le> 
+      real (card R) / real (card B) * Bell (k+1)"
       by simp
 
     have "?L1 \<le> measure_pmf.expectation (p c) (\<lambda>\<omega>. Z i \<omega> ^ (k + 1)) / real (fact k)"
       unfolding Z_def using assms(1)
       by (intro g_bound_abs[where m1="card R"]) (auto intro!:imageI card_mono)
-    also have "... \<le> ?R11 / real (fact k)"
+    also have "... \<le> real (card R) / real (card B) * Bell (k+1) / real (fact k)"
       by (intro divide_right_mono Z_pow_exp_bound) auto
+    finally show ?thesis by (simp add:\<gamma>_def)
+  qed
+
+  have g_add_bound: "\<bar>integral\<^sup>L (p c) (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>))\<bar> \<le> 2^(k+1) * \<gamma>" 
+    (is "?L1 \<le> ?R1") if "i \<in> B" "j \<in> B" for i j c
+  proof -
+    have a:"(\<integral>\<omega>. (Z i \<omega>^d * Z j \<omega>^(k+1-d)) \<partial>(p c)) \<le> Bell (k+1)" (is "?L2 \<le> ?R2") if "d \<in> {..k+1}" for d
+    proof -
+      define p' :: real where "p' = real (k+1) / real d"
+      define q' :: real where "q' = real (k+1) / real (k+1-d)"
+      have "?L2 = (\<integral>\<omega>. \<bar>Z i \<omega>^d * Z j \<omega>^(k+1-d)\<bar> \<partial>(p c))"
+        unfolding Z_def by simp
+      also have "... \<le> (\<integral>\<omega>. \<bar>Z i \<omega>^d\<bar> powr p' \<partial>(p c)) powr (1/p') * (\<integral>\<omega>. \<bar>Z j \<omega>^(k+1-d)\<bar> powr q' \<partial>(p c)) powr (1/q')"
+        apply (intro Holder_inequality(2) Z_any_integrable)
+        apply auto
+        sorry
+      also have "... \<le> ?R2" sorry
+      finally show ?thesis by simp
+    qed
+
+    have "?L1 \<le> measure_pmf.expectation (p c) (\<lambda>\<omega>. (Z i \<omega> + Z j \<omega>) ^ (k + 1)) / real (fact k)"
+      unfolding Z_def using assms(1)
+      by (intro g_bound_abs[where m1="2*card R"]) (auto intro!:imageI q)
+    also have "... = (\<integral>\<omega>. (\<Sum>d \<le> k+1. real (k+1 choose d) * (Z i \<omega>^d * Z j \<omega>^(k+1-d))) \<partial>(p c)) / real (fact k)"
+      by (subst binomial_ring) (simp add:algebra_simps)
+    also have "... = (\<Sum>d \<le> k+1. (\<integral>\<omega>. real (k+1 choose d) * (Z i \<omega>^d * Z j \<omega>^(k+1-d)) \<partial>(p c))) / real (fact k)"
+      apply (intro Bochner_Integration.integral_sum arg_cong2[where f="(/)"] integrable_mult_right)
+      sorry
+    also have "... = (\<Sum>d \<le> k+1. real (k+1 choose d) * (\<integral>\<omega>. (Z i \<omega>^d * Z j \<omega>^(k+1-d)) \<partial>(p c))) / real (fact k)"
+      by (simp del:power_Suc)
+    also have "... \<le> (\<Sum>d \<le> k+1. real (k+1 choose d) * Bell (k+1)) / real (fact k)"
+      by (intro divide_right_mono sum_mono mult_left_mono a) auto
+    also have "... = (\<Sum>d \<le> k+1. (k+1 choose d)) * Bell(k+1) / real (fact k)"
+      by (subst sum_distrib_right) simp
+    also have "... = ?R1"
+      by (subst choose_row_sum) (simp add:\<gamma>_def)
     finally show ?thesis by simp
   qed
 
   have Z_poly_diff: 
-    "M1.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>)) \<le> 3" (is "?L \<le> 3") 
-    if "i \<in> B" for i
+    "\<bar>M1.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>))\<bar> \<le> 2 * ((real (card R) / real (card B)) * \<gamma>)" 
+    (is "?L \<le> 2 * ?R") if "i \<in> B" for i
   proof -
-    have "?L = M1.expectation (\<lambda>\<omega>. f (Z i \<omega>)) + M1.expectation (\<lambda>\<omega>. g (Z i \<omega>)) -
-      M2.expectation (\<lambda>\<omega>. f (Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. g (Z i \<omega>))" 
+    have "?L = \<bar>M1.expectation (\<lambda>\<omega>. f (Z i \<omega>)) + M1.expectation (\<lambda>\<omega>. g (Z i \<omega>)) -
+      M2.expectation (\<lambda>\<omega>. f (Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. g (Z i \<omega>))\<bar>" 
       using z1_any_integrable z2_any_integrable unfolding \<phi>_exp by simp
-    also have "... = M1.expectation (\<lambda>\<omega>. g (Z i \<omega>)) + (- M2.expectation (\<lambda>\<omega>. g (Z i \<omega>)))"
+    also have "... = \<bar>M1.expectation (\<lambda>\<omega>. g (Z i \<omega>)) + (- M2.expectation (\<lambda>\<omega>. g (Z i \<omega>)))\<bar>"
       unfolding f_def using that deg_fp by (subst Z_poly_eq) auto
-    also have "... \<le> abs (M1.expectation (\<lambda>\<omega>. g (Z i \<omega>))) + abs (M2.expectation (\<lambda>\<omega>. g (Z i \<omega>)))"
-      by (intro add_mono) auto
-    also have "... \<le> 3" sorry
-
+    also have "... \<le> \<bar>M1.expectation (\<lambda>\<omega>. g (Z i \<omega>))\<bar> + \<bar>M2.expectation (\<lambda>\<omega>. g (Z i \<omega>))\<bar>"
+      by simp
+    also have "... \<le> ?R + ?R"
+      unfolding M1_def M2_def by (intro add_mono z1_g_bound that)
+    also have "... = 2 * ?R" 
+      by (simp add:algebra_simps)
     finally show ?thesis by simp
   qed
 
+  have Z_poly_diff_2: "\<bar>M1.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega>))\<bar> \<le> 2 * \<gamma>"
+    (is "?L \<le> ?R") if "i \<in> B" for i
+  proof -
+    have "?L \<le> 2 * ((real (card R) / real (card B)) * \<gamma>)"
+      by (intro Z_poly_diff that)
+    also have "... \<le> 2 * (1 * \<gamma>)"
+      using assms(3) assms(2) that card_gt_0_iff
+      by (intro mult_right_mono mult_left_mono \<gamma>_nonneg that iffD2[OF pos_divide_le_eq]) auto
+    also have "... = ?R" by simp
+    finally show ?thesis by simp
+  qed
 
+  have Z_poly_diff_3: 
+    "\<bar>M2.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega> + Z j \<omega>)) - M1.expectation (\<lambda>\<omega>. \<phi> (Z i \<omega> + Z j \<omega>))\<bar> \<le> 2^(k+2) * \<gamma>" 
+    (is "?L \<le> ?R") if "i \<in> B" "j \<in> B" for i j
+  proof -
+    have "?L = \<bar>M2.expectation (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>)) + M2.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>)) -
+      M1.expectation (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>)) - M1.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>))\<bar>" 
+      using z1_any_integrable' z2_any_integrable' unfolding \<phi>_exp by simp
+    also have "... = \<bar>M2.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>)) + (- M1.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>)))\<bar>"
+      unfolding f_def using that deg_fp by (subst Z_poly_eq_2) auto
+    also have "... \<le> \<bar>M1.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>))\<bar> + \<bar>M2.expectation (\<lambda>\<omega>. g (Z i \<omega> + Z j \<omega>))\<bar>"
+      by simp
+    also have "... \<le> 2^(k+1) * \<gamma> + 2^(k+1) * \<gamma>"
+      unfolding M1_def M2_def by (intro add_mono g_add_bound that)
+    also have "... = ?R" 
+      by (simp add:algebra_simps)
+    finally show ?thesis by simp
+  qed
 
-  show ?A sorry
-  show ?B sorry
+  have B_nonempty: "B \<noteq> {}" if "x \<in> R" for x 
+  proof  -
+    have "R \<noteq> {}" using that by auto
+    hence "card R > 0" using assms(1) by auto
+    hence "card B > 0" using assms by auto
+    thus ?thesis by auto
+  qed
+
+  have Y_eq: "Y \<omega> = (\<Sum>i \<in> B. \<phi>(Z i \<omega>))" if "\<omega> \<in> set_pmf (p c)" for c \<omega>
+  proof -
+    have "\<omega> ` R \<subseteq> B"
+    proof (rule image_subsetI)
+      fix x assume a:"x \<in> R"
+      have "\<omega> x \<in> set_pmf (map_pmf (\<lambda>\<omega>. \<omega> x) (p c))"
+        using that by (subst set_map_pmf) simp
+      also have "... = set_pmf (pmf_of_set B)"
+        by (intro arg_cong[where f="set_pmf"] assms(5) a)
+      also have "... = B"
+        by (intro set_pmf_of_set assms(2) B_nonempty[OF a])
+      finally show "\<omega> x \<in> B" by simp
+    qed
+    hence "(\<omega> ` R) = B \<inter> \<omega> ` R"
+      by auto
+    hence "Y \<omega> = card (B \<inter> \<omega> ` R)"
+      unfolding Y_def by auto
+    also have  "... = (\<Sum>i \<in> B. of_bool (i \<in> \<omega> ` R))"
+      unfolding of_bool_def using assms(2) by (subst sum.If_cases) auto
+    also have  "... = (\<Sum>i \<in> B. of_bool (card {r \<in> R.  \<omega> r = i} > 0))"
+      using assms(1) by (intro sum.cong arg_cong[where f="of_bool"]) 
+        (auto simp add:card_gt_0_iff) 
+    also have "... = (\<Sum>i \<in> B. \<phi>(Z i \<omega>))"
+      unfolding \<phi>_def Z_def by (intro sum.cong) (auto simp add:of_bool_def) 
+    finally show ?thesis by simp
+  qed
+
+  have Y_sq_eq: "Y \<omega>^ 2 = 
+    (\<Sum>i \<in> B \<times> B. \<phi>(Z (fst i) \<omega>) + \<phi>(Z (snd i) \<omega>) - \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>))" 
+    if "\<omega> \<in> set_pmf (p c)" for c \<omega>
+    using sum.cartesian_product sorry
+
+  have "\<bar>M1.expectation Y - M2.expectation Y\<bar> = 
+    \<bar>M1.expectation (\<lambda>\<omega>. \<Sum>i \<in> B. \<phi>(Z i \<omega>)) - M2.expectation (\<lambda>\<omega>. \<Sum>i \<in> B. \<phi>(Z i \<omega>))\<bar>"
+    unfolding M1_def M2_def by (intro arg_cong[where f="abs"] arg_cong2[where f="(-)"] 
+     Bochner_Integration.integral_cong_AE AE_pmfI Y_eq) auto
+  also have "... = 
+    \<bar>(\<Sum>i \<in> B. M1.expectation (\<lambda>\<omega>.  \<phi>(Z i \<omega>))) - (\<Sum>i \<in> B. M2.expectation (\<lambda>\<omega>. \<phi>(Z i \<omega>)))\<bar>"
+    by (intro arg_cong[where f="abs"] arg_cong2[where f="(-)"] 
+        Bochner_Integration.integral_sum z1_any_integrable z2_any_integrable)
+  also have "... = \<bar>(\<Sum>i \<in> B. M1.expectation (\<lambda>\<omega>.  \<phi>(Z i \<omega>)) - M2.expectation (\<lambda>\<omega>.  \<phi>(Z i \<omega>)))\<bar>"
+    by (subst sum_subtractf) simp
+  also have "... \<le> (\<Sum>i \<in> B. \<bar>M1.expectation (\<lambda>\<omega>.  \<phi>(Z i \<omega>)) - M2.expectation (\<lambda>\<omega>.  \<phi>(Z i \<omega>))\<bar>)"
+    by simp
+  also have "... \<le> (\<Sum>i \<in> B. 2 * ((real (card R) / real (card B)) * \<gamma>))"
+    by (intro sum_mono Z_poly_diff)
+  also have "... \<le> 2 * real (card R) * \<gamma>"
+    using \<gamma>_nonneg by simp
+  finally have Y_exp_diff_1: "\<bar>M1.expectation Y - M2.expectation Y\<bar> \<le>  2 * real (card R) * \<gamma>" by simp
+
+  have "\<bar>M1.expectation Y - M2.expectation Y\<bar> \<le>  2 * real (card R) * \<gamma>"
+    using Y_exp_diff_1 by simp
+  also have "... \<le> \<epsilon> / exp 1 * card R" sorry
+  finally show ?A
+    unfolding M1_def M2_def by simp
+
+  have "\<bar>M1.expectation Y - M2.expectation Y\<bar> \<le>  2 * real (card R) * \<gamma>"
+    using Y_exp_diff_1 by simp
+  also have "... \<le> 2 * real (card B) * \<gamma>" 
+    by (intro mult_right_mono mult_left_mono \<gamma>_nonneg of_nat_mono assms)auto
+  finally have Y_exp_diff_2: "\<bar>M1.expectation Y - M2.expectation Y\<bar> \<le> 2 * \<gamma> * real (card B)"
+    by (simp add:algebra_simps)
+
+  have int_Y: "integrable (measure_pmf (p c)) Y" for c
+    using assms(1) card_image_le unfolding Y_def
+    by (intro integrable_pmf_iff_bounded[where C="card R"])  auto
+
+  have int_Y_sq: "integrable (measure_pmf (p c)) (\<lambda>\<omega>. Y \<omega>^2)" for c
+    using assms(1) card_image_le unfolding Y_def
+    by (intro integrable_pmf_iff_bounded[where C="real (card R)^2"]) auto
+
+  have "\<bar>M1.expectation (\<lambda>\<omega>. Y \<omega> ^2) - M2.expectation (\<lambda>\<omega>. Y \<omega>^2)\<bar> =
+    \<bar>M1.expectation (\<lambda>\<omega>. (\<Sum>i \<in> B \<times> B. \<phi>(Z (fst i) \<omega>) + \<phi>(Z (snd i) \<omega>) - \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>))) - 
+     M2.expectation (\<lambda>\<omega>. (\<Sum>i \<in> B \<times> B. \<phi>(Z (fst i) \<omega>) + \<phi>(Z (snd i) \<omega>) - \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)))\<bar>" 
+    unfolding M1_def M2_def by (intro arg_cong[where f="abs"] arg_cong2[where f="(-)"] 
+       Bochner_Integration.integral_cong_AE AE_pmfI Y_sq_eq) auto
+  also have "... = \<bar>(\<Sum>i \<in> B \<times> B. 
+    M1.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>)) + M1.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>)) - 
+    M1.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)) - ( M2.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>)) + 
+    M2.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>)) - M2.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>))))\<bar>"
+    using z1_any_integrable z2_any_integrable z1_any_integrable'  z2_any_integrable'
+    by (simp add:Bochner_Integration.integral_sum sum_subtractf)
+  also have "... = \<bar>(\<Sum>i \<in> B \<times> B. 
+    (M1.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>))) + 
+    (M1.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>))) + 
+    (M2.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)) - M1.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>))))\<bar>"
+    by (intro arg_cong[where f="abs"] sum.cong) auto
+  also have "... \<le> (\<Sum>i \<in> B \<times> B. \<bar>
+    (M1.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>))) + 
+    (M1.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>))) + 
+    (M2.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)) - M1.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)))\<bar>)"
+    by (intro sum_abs)
+  also have "... \<le> (\<Sum>i \<in> B \<times> B.
+    \<bar>M1.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (fst i) \<omega>))\<bar> + 
+    \<bar>M1.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>)) - M2.expectation (\<lambda>\<omega>. \<phi>(Z (snd i) \<omega>))\<bar> + 
+    \<bar>M2.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>)) - M1.expectation(\<lambda>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>))\<bar>)"
+    by (intro sum_mono) auto
+  also have "... \<le> (\<Sum>i \<in> B \<times> B. 2*\<gamma> + 2 * \<gamma> + 2^(k+2)*\<gamma>)"
+    by (intro sum_mono add_mono Z_poly_diff_2 Z_poly_diff_3) auto 
+  also have "... = (2^(k+2)+4) * \<gamma> * card B^2"
+    by (simp add:card_cartesian_product power2_eq_square algebra_simps)
+  finally have Y_sq_exp_diff: 
+    "\<bar>M1.expectation (\<lambda>\<omega>. Y \<omega> ^2) - M2.expectation (\<lambda>\<omega>. Y \<omega>^2)\<bar> \<le> (2^(k+2)+4) * \<gamma> * card B^2" by simp
+
+  have Y_exp_rough_bound: "\<bar>integral\<^sup>L (p c) Y\<bar> \<le> card B" for c sorry 
+
+  have "\<bar>M1.variance Y - M2.variance Y\<bar> = \<bar>M1.expectation (\<lambda>\<omega>. Y \<omega> ^2) - 
+    M1.expectation Y^2 - (M2.expectation (\<lambda>\<omega>. Y \<omega> ^2) - M2.expectation Y^2)\<bar>"
+    unfolding M1_def M2_def
+    by (intro arg_cong[where f="abs"] arg_cong2[where f="(-)"] measure_pmf.variance_eq
+        int_Y int_Y_sq)
+  also have "... \<le> \<bar>M1.expectation (\<lambda>\<omega>. Y \<omega> ^2) - M2.expectation (\<lambda>\<omega>. Y \<omega>^2)\<bar> + 
+    \<bar>M1.expectation Y^2 - M2.expectation Y^2\<bar>"
+    by simp
+  also have "... = \<bar>M1.expectation (\<lambda>\<omega>. Y \<omega> ^2) - M2.expectation (\<lambda>\<omega>. Y \<omega>^2)\<bar> + 
+    \<bar>M1.expectation Y - M2.expectation Y\<bar>*\<bar>M1.expectation Y + M2.expectation Y\<bar>"
+    by (simp add:power2_eq_square algebra_simps abs_mult[symmetric])
+  also have "... \<le> (2^(k+2)+4) * \<gamma> * card B^2 + (2 * \<gamma> * card B) * (\<bar>M1.expectation Y\<bar> + \<bar>M2.expectation Y\<bar>)"
+    using \<gamma>_nonneg
+    by (intro add_mono mult_mono Y_sq_exp_diff Y_exp_diff_2) auto
+  also have "... \<le> (2^(k+2)+4) * \<gamma> * card B^2 + (2 * \<gamma> * card B) * (real (card B) + real (card B))"
+    unfolding M1_def M2_def using \<gamma>_nonneg
+    by (intro add_mono mult_left_mono Y_exp_rough_bound) auto
+  also have "... = (2^(k+2)+8) * \<gamma> * card B^2"
+    by (simp add:algebra_simps power2_eq_square)
+  also have "... \<le> \<epsilon>^2" sorry
+  finally show ?B 
+    unfolding M1_def M2_def by simp
 qed
 
 
