@@ -1,5 +1,5 @@
 theory DDE_Accuracy_Without_Cutoff
-  imports E4
+  imports E4  "HOL-Decision_Procs.Approximation"
 begin
 
 context inner_algorithm_fix_A
@@ -51,21 +51,8 @@ qed
 
 lemma rho_two_thirds: "\<rho> (2/3 * b) \<le> 3/5 *b"
 proof -
-  have "exp 1 ^ 13 < ((272::real) / 100 ) ^ 13"
-    by (intro power_strict_mono e_less_272) auto
-  also have "... \<le> 3^12"
-    by (simp add:numeral_eq_Suc)
-  finally have "exp 1 ^ 13 \<le> (3::real)^12" by simp
-  hence "exp 1 powr 13 \<le> (3::real) powr 12"
-    by simp
-  hence "(exp 1 powr 13) powr (1/12) \<le> ((3::real) powr 12) powr (1/12)"
-    by (intro powr_mono2) auto
-  hence "exp (13/12) \<le> (3::real)"
-    unfolding powr_powr powr_def by simp
-  hence "inverse (3::real) \<le> inverse (exp(13/12))"
-    by (subst inverse_le_iff_le) auto
-  hence "1/3 \<le> exp ( - 13 / 12::real )" 
-    by (subst (asm) exp_minus[symmetric]) auto
+  have "1/3 \<le> exp ( - 13 / 12::real )" 
+    by (approximation 8)
   also have "... \<le> exp ( - 1 - 2 / real b )" 
     using b_min by (intro iffD2[OF exp_le_cancel_iff]) (simp add:algebra_simps)
   also have "... \<le> exp ( b * (-(1/real b)-2*(1/real b)^2))" 
@@ -79,14 +66,8 @@ proof -
     using b_min by (subst exp_ln) auto
   finally have a:"1/3 \<le> (1-1/real b) powr b" by simp
 
-  have "(2/5) ^ 3 \<le> (1/3::real) ^ 2"
-    by (simp add:power2_eq_square power3_eq_cube)
-  hence "(2/5) powr 3 \<le> (1/3::real) powr 2"
-    using powr_numeral by simp
-  hence "((2/5) powr 3) powr (1/3) \<le> ((1/3::real) powr 2) powr (1/3)"
-    by (intro powr_mono2) auto
-  hence "2/5 \<le> (1/3) powr (2/3::real)"
-    unfolding powr_powr by simp
+  have "2/5 \<le> (1/3) powr (2/3::real)"
+    by (approximation 5)
   also have "... \<le> ((1-1/real b) powr b) powr (2/3)" 
     by (intro powr_mono2 a) auto
   also have "... = (1-1/real b) powr (2/3 * real b)" 
