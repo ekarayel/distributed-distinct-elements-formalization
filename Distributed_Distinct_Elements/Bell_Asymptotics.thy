@@ -263,12 +263,12 @@ theorem bell_approx_1:
   shows "real (Bell n) < (exp (-0.6+\<epsilon>) * n / ln (n + 1)) powr n" (is "?L < ?R")
 proof -
   have apx:
-    "exp(-0.0007::real) powr 55 < 0.97"
-    "exp(-55::real) \<le> 0.03" 
-    "2 * exp (- 1) \<le> (1::real)"
+    "exp (-0.0007) powr 55 < (0.97::real)"
+    "exp (-55) \<le> (0.03::real)" 
+    "2 * exp (-1) \<le> (1::real)"
     "exp 1 \<le> (55::real)" 
     "exp 4 \<le> (110::real)"
-    "ln (1 + 1 / exp 1) - 1 + (ln 55 + ln 2) / (55::real) \<le> - 0.6007"
+    "ln (1 + 1 / exp 1) - 1 + (ln 55 + ln 2) / 55 \<le> (- 0.6007::real)"
     by (approximation 13)+
 
   text \<open>Since n > 0 we can omit the first term from Dobi\'{n}ski's formula.\<close>
@@ -589,9 +589,11 @@ proof -
   next
     case ii
 
-    define bell_init_seg where "bell_init_seg = drop 1 (List.enumerate 0 (bell_list 54))"
+    define bell_init_seg 
+      where "bell_init_seg = drop 1 (List.enumerate 0 (bell_list 54))"
+
     define condition :: "(nat \<times> nat \<Rightarrow> bool)" 
-      where "condition = (\<lambda>(k, bk). real bk < (0.792 * k / ln (real k + 1)) powr k)"
+      where "condition = (\<lambda>(k, v). real v < (0.792 * k / ln (real k + 1)) powr k)"
   
     have filter_empty_intros:
       "filter P xs = [] \<Longrightarrow> \<not>(P x) \<Longrightarrow> filter P (x#xs) = []"
@@ -599,13 +601,13 @@ proof -
       by auto
   
     have a:"[] = filter (Not \<circ> condition) bell_init_seg"
-      apply (simp add: bell_init_seg_def numeral_eq_Suc)
+      unfolding bell_init_seg_def
       apply normalization
       apply (intro filter_empty_intros)
       by (simp add:condition_def not_le del:powr_numeral, approximation 15)+
   
     have "bell_init_seg = List.enumerate 1 (map Bell [1..<55])"
-      unfolding bell_init_seg_def bell_list_eq  enumerate_eq_zip drop_zip drop_map
+      unfolding bell_init_seg_def bell_list_eq enumerate_eq_zip drop_zip drop_map
       by simp
     hence "set bell_init_seg = {i. fst i \<ge> 1 \<and> fst i < 55 \<and> snd i = Bell (fst i)}"
       by (intro iffD2[OF set_eq_iff] allI) (auto simp add:in_set_enumerate_eq)
