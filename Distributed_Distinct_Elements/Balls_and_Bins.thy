@@ -1,4 +1,4 @@
-theory Balls_and_Bins_2
+theory Balls_and_Bins
   imports DDE_Preliminary 
     "HOL-Combinatorics.Stirling"
     "HOL-Computational_Algebra.Polynomial"
