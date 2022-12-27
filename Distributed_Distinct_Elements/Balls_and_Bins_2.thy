@@ -3,7 +3,9 @@ theory Balls_and_Bins_2
     "HOL-Combinatorics.Stirling"
     "HOL-Computational_Algebra.Polynomial"
     "Discrete_Summation.Factorials" 
+    "HOL-Decision_Procs.Approximation"
     "Poly_Extras"
+    "DDE_Transcendental_Extras"
 begin
 
 hide_fact "Henstock_Kurzweil_Integration.integral_sum"
@@ -117,7 +119,6 @@ lemma ffact_mono:
   unfolding prod_ffact[symmetric]
   by (intro prod_mono) auto
 
-
 lemma ffact_of_nat_nonneg:
   fixes x :: "'a :: {comm_ring_1, linordered_nonzero_semiring}" 
   assumes "x \<in> \<nat>"
@@ -210,31 +211,58 @@ next
   finally show ?thesis by simp
 qed
 
-lemma fact_moment_balls_and_bins:
+locale balls_and_bins_abs =
   fixes R :: "'a set" and B :: "'b set"
-  assumes "finite R" "J \<subseteq> B"
-  assumes "finite B" "J \<noteq> {}"
-  defines "Z \<equiv> (\<lambda>\<omega>. real (card {r \<in> R. \<omega> r \<in> J}))"
-  defines "p \<equiv> prod_pmf R (\<lambda>_. pmf_of_set B)"
-  shows "(\<integral>\<omega>. ffact s (Z \<omega>) \<partial>p) = ffact s (real (card R)) * (real (card J) / real (card B))^s"
+  assumes fin_B: "finite B" and B_ne: "B \<noteq> {}"
+  assumes fin_R: "finite R"
+begin
+
+text \<open>Independent balls and bins space:\<close>
+definition \<Omega> 
+  where "\<Omega> = prod_pmf R (\<lambda>_. pmf_of_set B)"
+
+lemma set_pmf_\<Omega>: "set_pmf \<Omega> = R \<rightarrow>\<^sub>E B"
+  unfolding \<Omega>_def set_prod_pmf[OF fin_R]
+  by  (simp add:comp_def set_pmf_of_set[OF B_ne fin_B])
+
+lemma card_B_gt_0: "card B > 0" 
+  using B_ne fin_B by auto
+
+lemma card_B_ge_1: "card B \<ge> 1"
+  using card_B_gt_0 by simp
+
+definition "Z j \<omega> = real (card {i. i \<in> R \<and> \<omega> i = (j::'b)})"
+definition "Y \<omega> = real (card (\<omega> ` R))"
+definition "\<mu> = real (card B) * (1 - (1-1/real (card B))^card R)"
+
+
+lemma fact_moment_balls_and_bins:
+  assumes "J \<subseteq> B" "J \<noteq> {}"
+  shows "(\<integral>\<omega>. ffact s (\<Sum>j \<in> J. Z j \<omega>) \<partial>\<Omega>) = ffact s (real (card R)) * (real (card J) / real (card B))^s"
     (is "?L = ?R")
 proof -
   let ?\<alpha> = "real (card J) / real (card B)"
   let ?q = "binomial_pmf (card R) ?\<alpha>"
   let ?Y = "(\<lambda>\<omega>. card {r \<in> R. \<omega> r \<in> J})"
 
-  have b_ne: "B \<noteq> {}"
-    using assms(2,4) by auto
-  hence set_pmf_p: "set_pmf p = R \<rightarrow>\<^sub>E B"
-    unfolding p_def set_prod_pmf[OF assms(1)]
-    by  (simp add:comp_def set_pmf_of_set[OF b_ne assms(3)])
-
   have fin_j: "finite J"
-    using finite_subset assms(2,3) by auto
+    using finite_subset assms(1) fin_B by auto
+
+  have Z_sum_eq: "(\<Sum>j \<in> J. Z j \<omega>) = real (?Y \<omega>)" for \<omega>
+  proof -
+    have "?Y \<omega> = card (\<Union>j \<in> J. {r \<in> R. \<omega> r= j})"
+      by (intro arg_cong[where f="card"]) auto
+    also have "... =  (\<Sum>i\<in>J. card {r \<in> R. \<omega> r = i})"
+      using fin_R fin_j by (intro card_UN_disjoint) auto
+    finally have "?Y \<omega> = (\<Sum>j \<in> J. card {r \<in> R. \<omega> r  = j})" by simp
+    thus ?thesis
+    unfolding Z_def of_nat_sum[symmetric] by simp
+  qed
+
   have j_le_b: "card J \<le> card B"
-    using assms(2,3) card_mono by auto
+    using assms(1) fin_B card_mono by auto
   have card_B_nz: "card B \<noteq> 0" 
-    using b_ne assms(3) by simp
+    using card_B_gt_0 by simp
   have \<alpha>_range: "?\<alpha> \<ge> 0" "?\<alpha> \<le> 1" 
     using j_le_b card_B_nz by auto
 
@@ -242,12 +270,12 @@ proof -
     (is "?L1=?R1") for x
   proof -
     have "?L1 = real (card (B \<inter> {\<omega>. (\<omega> \<in> J) = x})) / real (card B)"
-      using b_ne assms(3)
+      using B_ne fin_B 
       by (simp add:pmf_map measure_pmf_of_set vimage_def)
     also have "... = (if x then (card J) else (card (B - J))) / real (card B)"
-      using Int_absorb1[OF assms(2)] by (auto simp add:Diff_eq Int_def)
+      using Int_absorb1[OF assms(1)] by (auto simp add:Diff_eq Int_def)
     also have "... = (if x then (card J) / card B else (real (card B) - card J) / real (card B))"
-      using j_le_b fin_j assms(2,3) by (simp add: of_nat_diff card_Diff_subset)
+      using j_le_b fin_j assms(1) by (simp add: of_nat_diff card_Diff_subset)
     also have "... = (if x then ?\<alpha> else (1 - ?\<alpha>))"
       using card_B_nz by (simp add:divide_simps)
     also have "... = ?R1"
@@ -257,29 +285,29 @@ proof -
   hence c:"map_pmf (\<lambda>\<omega>. \<omega> \<in> J) (pmf_of_set B) = bernoulli_pmf ?\<alpha>" 
     by (intro pmf_eqI) simp
 
-  have "map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J) p = prod_pmf R (\<lambda>_. (map_pmf (\<lambda>\<omega>. \<omega> \<in> J) (pmf_of_set B)))"
-    unfolding map_pmf_def p_def restrict_def using assms(1)
+  have "map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J) \<Omega> = prod_pmf R (\<lambda>_. (map_pmf (\<lambda>\<omega>. \<omega> \<in> J) (pmf_of_set B)))"
+    unfolding map_pmf_def \<Omega>_def restrict_def using fin_R
     by (subst Pi_pmf_bind[where d'="undefined"]) auto
   also have "... = prod_pmf R (\<lambda>_. bernoulli_pmf ?\<alpha>)"
     unfolding c by simp
-  finally have b:"map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J) p  =  prod_pmf R (\<lambda>_. bernoulli_pmf ?\<alpha>)"
+  finally have b:"map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J) \<Omega>  =  prod_pmf R (\<lambda>_. bernoulli_pmf ?\<alpha>)"
     by simp
 
-  have "map_pmf ?Y p = map_pmf ((\<lambda>\<omega>. card {r \<in> R. \<omega> r}) \<circ> (\<lambda>\<omega>. \<lambda>r\<in>R. \<omega> r \<in> J)) p"
+  have "map_pmf ?Y \<Omega> = map_pmf ((\<lambda>\<omega>. card {r \<in> R. \<omega> r}) \<circ> (\<lambda>\<omega>. \<lambda>r\<in>R. \<omega> r \<in> J)) \<Omega>"
     unfolding comp_def
     by (intro map_pmf_cong arg_cong[where f="card"]) (auto simp add:comp_def) 
-  also have "... = (map_pmf (\<lambda>\<omega>. card {r \<in> R. \<omega> r}) \<circ> map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J)) p"
+  also have "... = (map_pmf (\<lambda>\<omega>. card {r \<in> R. \<omega> r}) \<circ> map_pmf (\<lambda>\<omega>. \<lambda>r \<in> R. \<omega> r \<in> J)) \<Omega>"
     by (subst map_pmf_compose[symmetric]) auto
   also have "... = map_pmf (\<lambda>\<omega>. card {r \<in> R. \<omega> r}) (prod_pmf R (\<lambda>_. (bernoulli_pmf ?\<alpha>)))"
     unfolding comp_def b by simp
   also have "... = ?q"
-    using \<alpha>_range by (intro binomial_pmf_altdef'[symmetric] assms(1)) auto
-  finally have a:"map_pmf ?Y p =?q"
+    using \<alpha>_range by (intro binomial_pmf_altdef'[symmetric] fin_R) auto
+  finally have a:"map_pmf ?Y \<Omega> =?q"
     by simp
 
-  have "?L = (\<integral>\<omega>. ffact s (real (?Y \<omega>)) \<partial>p)"
-    unfolding Z_def by simp
-  also have "... = (\<integral>\<omega>. ffact s (real \<omega>) \<partial>(map_pmf ?Y p))"
+  have "?L = (\<integral>\<omega>. ffact s (real (?Y \<omega>)) \<partial>\<Omega>)"
+    unfolding Z_sum_eq by simp
+  also have "... = (\<integral>\<omega>. ffact s (real \<omega>) \<partial>(map_pmf ?Y \<Omega>))"
     by simp
   also have "... = (\<integral>\<omega>. ffact s (real \<omega>) \<partial>?q)"
     unfolding a by simp
@@ -289,21 +317,14 @@ proof -
 qed
 
 lemma 
-  fixes R :: "'a set" and B :: "'b set"
-  assumes "finite R"
-  assumes "finite B" "card B \<ge> 1"
-  defines "Y \<equiv> (\<lambda>\<omega>. real (card (\<omega> ` R)))"
-  defines "p \<equiv> prod_pmf R (\<lambda>_. pmf_of_set B)"
-  shows exp_balls_and_bins: 
-      "measure_pmf.expectation p Y = real (card B) * (1 - (1 - 1 / real (card B))^(card R))" 
-      (is "?AL = ?AR")
-    and var_balls_and_bins: 
-      "measure_pmf.variance p Y \<le> card R * (real (card R) - 1) / card B"
+  shows exp_balls_and_bins: "measure_pmf.expectation \<Omega> Y = \<mu>" (is "?AL = ?AR")
+    and var_balls_and_bins: "measure_pmf.variance \<Omega> Y \<le> card R * (real (card R) - 1) / card B"
       (is "?BL \<le> ?BR")
 proof -
   let ?b = "real (card B)"
   let ?r = "card R"
-  define Z :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" where "Z = (\<lambda>i \<omega>. of_bool(i \<notin> \<omega> ` R))"
+  define Z :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" 
+    where "Z = (\<lambda>i \<omega>. of_bool(i \<notin> \<omega> ` R))"
   define \<alpha> where "\<alpha> = (1 - 1 / ?b)^?r"
   define \<beta> where "\<beta> = (1 - 2 / ?b)^?r"
 
@@ -320,7 +341,7 @@ proof -
     card (B \<times> B \<inter> {x. fst x = snd x}) + card (B \<times> B \<inter> -{x. fst x = snd x})"
     by (subst d) simp
   also have "... = card ((B \<times> B \<inter> {x. fst x = snd x}) \<union> (B \<times> B \<inter> -{x. fst x = snd x}))"
-    using finite_subset[OF _ finite_cartesian_product[OF assms(2,2)]]
+    using finite_subset[OF _ finite_cartesian_product[OF fin_B fin_B]]
     by (intro card_Un_disjoint[symmetric]) auto
   also have "... = card (B \<times> B)"
     by (intro arg_cong[where f="card"]) auto
@@ -331,65 +352,61 @@ proof -
   hence count_2: "real (card (B \<times> B \<inter> -{x. fst x = snd x})) = real (card B)^2 - card B"
     by (simp add:algebra_simps flip: of_nat_add of_nat_power) 
 
-  have B_ne: "B \<noteq> {}" 
-    using assms(3) by auto
-  hence set_pmf_p: "set_pmf p = (R \<rightarrow>\<^sub>E B)"
-    unfolding p_def set_prod_pmf[OF assms(1)]
-    using set_pmf_of_set[OF _ assms(2)] by simp
-  hence "finite (set_pmf p)" 
-    using assms(1,2) by (auto intro!:finite_PiE)
-  hence int: "integrable (measure_pmf p) f" 
+  hence "finite (set_pmf \<Omega>)" 
+    unfolding set_pmf_\<Omega>
+    using fin_R fin_B by (auto intro!:finite_PiE)
+  hence int: "integrable (measure_pmf \<Omega>) f" 
     for f :: "('a \<Rightarrow> 'b) \<Rightarrow> real"
     by (intro integrable_measure_pmf_finite) simp
 
-  have a:"prob_space.indep_vars (measure_pmf p) (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x) R" 
-    unfolding p_def using indep_vars_Pi_pmf[OF assms(1)] by metis
-  have b: "(\<integral>\<omega>. of_bool (\<omega> ` R \<subseteq> A) \<partial>p) = (real (card (B \<inter> A)) / real (card B))^card R" 
+  have a:"prob_space.indep_vars (measure_pmf \<Omega>) (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x) R" 
+    unfolding \<Omega>_def using indep_vars_Pi_pmf[OF fin_R] by metis
+  have b: "(\<integral>\<omega>. of_bool (\<omega> ` R \<subseteq> A) \<partial>\<Omega>) = (real (card (B \<inter> A)) / real (card B))^card R" 
     (is "?L = ?R") for A
   proof -
-    have "?L = (\<integral>\<omega>. (\<Prod> j \<in> R. of_bool(\<omega> j \<in> A)) \<partial>p)"
+    have "?L = (\<integral>\<omega>. (\<Prod> j \<in> R. of_bool(\<omega> j \<in> A)) \<partial>\<Omega>)"
       by (intro Bochner_Integration.integral_cong ext)
-        (auto simp add: of_bool_prod[OF assms(1)])
-    also have "... = (\<Prod> j \<in> R. (\<integral>\<omega>. of_bool(\<omega> j \<in> A) \<partial>p))"
-      using assms(1)
+        (auto simp add: of_bool_prod[OF fin_R])
+    also have "... = (\<Prod> j \<in> R. (\<integral>\<omega>. of_bool(\<omega> j \<in> A) \<partial>\<Omega>))"
+      using fin_R
       by (intro prob_space.indep_vars_lebesgue_integral[OF prob_space_measure_pmf] int
           prob_space.indep_vars_compose2[OF prob_space_measure_pmf a]) auto
-    also have "... = (\<Prod> j \<in> R. (\<integral>\<omega>. of_bool(\<omega> \<in> A) \<partial>(map_pmf (\<lambda>\<omega>. \<omega> j) p)))"
+    also have "... = (\<Prod> j \<in> R. (\<integral>\<omega>. of_bool(\<omega> \<in> A) \<partial>(map_pmf (\<lambda>\<omega>. \<omega> j) \<Omega>)))"
       by simp
     also have "... = (\<Prod> j \<in> R. (\<integral>\<omega>. of_bool(\<omega> \<in> A) \<partial>(pmf_of_set B)))"
-      unfolding p_def by (subst Pi_pmf_component[OF assms(1)]) simp
+      unfolding \<Omega>_def by (subst Pi_pmf_component[OF fin_R]) simp
     also have "... = ((\<Sum>\<omega>\<in>B. of_bool (\<omega> \<in> A)) / real (card B)) ^ card R"
-      by (simp add: integral_pmf_of_set[OF B_ne assms(2)])
+      by (simp add: integral_pmf_of_set[OF B_ne fin_B])
     also have "... = ?R"
-      unfolding of_bool_def sum.If_cases[OF assms(2)] by simp
+      unfolding of_bool_def sum.If_cases[OF fin_B] by simp
     finally show ?thesis by simp
   qed
 
-  have Z_exp: "(\<integral>\<omega>. Z i \<omega> \<partial>p) = \<alpha>" if "i \<in> B" for i
+  have Z_exp: "(\<integral>\<omega>. Z i \<omega> \<partial>\<Omega>) = \<alpha>" if "i \<in> B" for i
   proof -
     have "real (card (B \<inter> -{i})) = real (card (B - {i}))"
       by (intro algebra_cong) auto
     also have "... = real (card B - card {i})"
       using that by (subst card_Diff_subset)  auto
     also have "... = real (card B) - real (card {i})"
-      using assms(2) that by (intro of_nat_diff card_mono) auto
+      using fin_B that by (intro of_nat_diff card_mono) auto
     finally have c: "real (card (B \<inter> -{i})) = real (card B) - 1"
       by simp
 
-    have "(\<integral>\<omega>. Z i \<omega> \<partial>p) = (\<integral>\<omega>. of_bool(\<omega> ` R \<subseteq> - {i}) \<partial>p)"
+    have "(\<integral>\<omega>. Z i \<omega> \<partial>\<Omega>) = (\<integral>\<omega>. of_bool(\<omega> ` R \<subseteq> - {i}) \<partial>\<Omega>)"
       unfolding Z_def by simp
     also have "... = (real (card (B \<inter> -{i})) / real (card B))^card R"
       by (intro b)
     also have "... = ((real (card B) -1) / real (card B))^card R"
       by (subst c) simp
     also have "... = \<alpha>"
-      unfolding \<alpha>_def using assms(3)
+      unfolding \<alpha>_def using card_B_gt_0
       by (simp add:divide_eq_eq diff_divide_distrib)
     finally show ?thesis 
       by simp
   qed
 
-  have Z_prod_exp: "(\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial>p) = (if i = j then \<alpha> else \<beta>)" 
+  have Z_prod_exp: "(\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial>\<Omega>) = (if i = j then \<alpha> else \<beta>)" 
     if "i \<in> B" "j \<in> B" for i j
   proof -
     have "real (card (B \<inter> -{i,j})) = real (card (B - {i,j}))"
@@ -397,11 +414,11 @@ proof -
     also have "... = real (card B - card {i,j})"
       using that by (subst card_Diff_subset)  auto
     also have "... = real (card B) - real (card {i,j})"
-      using assms(2) that by (intro of_nat_diff card_mono) auto
+      using fin_B that by (intro of_nat_diff card_mono) auto
     finally have c: "real (card (B \<inter> -{i,j})) = real (card B) - card {i,j}"
       by simp
 
-    have "(\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial>p) = (\<integral>\<omega>. of_bool(\<omega> ` R \<subseteq> - {i,j}) \<partial>p)"
+    have "(\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial>\<Omega>) = (\<integral>\<omega>. of_bool(\<omega> ` R \<subseteq> - {i,j}) \<partial>\<Omega>)"
       unfolding Z_def of_bool_conj[symmetric]
       by (intro integral_cong ext) auto
     also have "... = (real (card (B \<inter> -{i,j})) / real (card B))^card R"
@@ -409,67 +426,67 @@ proof -
     also have "... = ((real (card B) - card {i,j}) / real (card B))^card R"
       by (subst c) simp
     also have "... = (if i = j then \<alpha> else \<beta>)" 
-      unfolding \<alpha>_def \<beta>_def using assms(3)
+      unfolding \<alpha>_def \<beta>_def using card_B_gt_0
       by (simp add:divide_eq_eq diff_divide_distrib)
     finally show ?thesis by simp
   qed
 
-  have Y_eq: "Y \<omega> = (\<Sum>i \<in> B. 1 - Z i \<omega>)" if "\<omega> \<in> set_pmf p" for \<omega> 
+  have Y_eq: "Y \<omega> = (\<Sum>i \<in> B. 1 - Z i \<omega>)" if "\<omega> \<in> set_pmf \<Omega>" for \<omega> 
   proof -
-    have "set_pmf p \<subseteq> Pi R (\<lambda>_. B)"
-      using set_pmf_p by (simp add:PiE_def)
+    have "set_pmf \<Omega> \<subseteq> Pi R (\<lambda>_. B)"
+      using set_pmf_\<Omega> by (simp add:PiE_def)
     hence "\<omega> ` R \<subseteq> B"
       using that by auto
     hence "Y \<omega> = card (B \<inter> \<omega> ` R)"
       unfolding Y_def using Int_absorb1 by metis
     also have "... = (\<Sum> i \<in> B. of_bool(i \<in> \<omega> ` R))"
-      unfolding of_bool_def sum.If_cases[OF assms(2)] by(simp)
+      unfolding of_bool_def sum.If_cases[OF fin_B] by(simp)
     also have "... = (\<Sum> i \<in> B. 1 - Z i \<omega>)"
       unfolding Z_def by (intro sum.cong) (auto simp add:of_bool_def)
     finally show "Y \<omega> = (\<Sum>i \<in> B. 1 - Z i \<omega>)" by simp
   qed
 
   have Y_sq_eq: "(Y \<omega>)\<^sup>2 = (\<Sum>(i,j) \<in> B \<times> B. 1 - Z i \<omega> - Z j \<omega> + Z i \<omega> * Z j \<omega>)"
-    if "\<omega> \<in> set_pmf p" for \<omega>
+    if "\<omega> \<in> set_pmf \<Omega>" for \<omega>
     unfolding Y_eq[OF that] power2_eq_square sum_product sum.cartesian_product
     by (intro sum.cong) (auto simp add:algebra_simps)
 
-  have "measure_pmf.expectation p Y = (\<integral>\<omega>. (\<Sum>i \<in> B. 1 - Z i \<omega>) \<partial> p)"
+  have "measure_pmf.expectation \<Omega> Y = (\<integral>\<omega>. (\<Sum>i \<in> B. 1 - Z i \<omega>) \<partial>\<Omega>)"
     using Y_eq by (intro integral_cong_AE AE_pmfI) auto
-  also have "... = (\<Sum>i \<in> B. 1 - (\<integral>\<omega>. Z i \<omega> \<partial>p))"
+  also have "... = (\<Sum>i \<in> B. 1 - (\<integral>\<omega>. Z i \<omega> \<partial>\<Omega>))"
     using int by simp
   also have "... = ?b * (1 - \<alpha>)"
     using Z_exp by simp
   also have "... = ?AR"
-    unfolding \<alpha>_def by simp
+    unfolding \<alpha>_def \<mu>_def by simp
   finally show "?AL = ?AR" by simp
 
-  have "measure_pmf.variance p Y = (\<integral>\<omega>. Y \<omega>^2 \<partial>p) - (\<integral>\<omega>. Y \<omega> \<partial>p)^2"
+  have "measure_pmf.variance \<Omega> Y = (\<integral>\<omega>. Y \<omega>^2 \<partial>\<Omega>) - (\<integral>\<omega>. Y \<omega> \<partial>\<Omega>)^2"
     using int by (subst measure_pmf.variance_eq) auto
   also have "... = 
-    (\<integral>\<omega>. (\<Sum>i \<in> B \<times> B. 1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial> p) - 
-    (\<integral>\<omega>. (\<Sum>i \<in> B. 1 - Z i \<omega>) \<partial>p)^2"
+    (\<integral>\<omega>. (\<Sum>i \<in> B \<times> B. 1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>) - 
+    (\<integral>\<omega>. (\<Sum>i \<in> B. 1 - Z i \<omega>) \<partial>\<Omega>)^2"
     using Y_eq Y_sq_eq
     by (intro algebra_cong integral_cong_AE AE_pmfI) (auto simp add:case_prod_beta)
   also have "... = 
-    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial> p)) -
-    (\<Sum>i \<in> B. (\<integral>\<omega>. (1 - Z i \<omega>) \<partial> p))^2"
+    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
+    (\<Sum>i \<in> B. (\<integral>\<omega>. (1 - Z i \<omega>) \<partial>\<Omega>))^2"
     by (intro algebra_cong integral_sum int) auto
   also have "... = 
-    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial> p)) -
-    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega>) \<partial> p) * (\<integral>\<omega>. (1 - Z (snd i) \<omega>) \<partial> p))"
+    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
+    (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega>) \<partial>\<Omega>) * (\<integral>\<omega>. (1 - Z (snd i) \<omega>) \<partial>\<Omega>))"
     unfolding power2_eq_square sum_product sum.cartesian_product
     by (simp add:case_prod_beta)
-  also have "... = (\<Sum>(i,j) \<in> B \<times> B. (\<integral>\<omega>. (1 - Z i \<omega> - Z j \<omega> + Z i \<omega> * Z j \<omega>) \<partial> p) -
-    (\<integral>\<omega>. (1 - Z i \<omega>) \<partial> p) * (\<integral>\<omega>. (1 - Z j \<omega>) \<partial> p))"
+  also have "... = (\<Sum>(i,j) \<in> B \<times> B. (\<integral>\<omega>. (1 - Z i \<omega> - Z j \<omega> + Z i \<omega> * Z j \<omega>) \<partial>\<Omega>) -
+    (\<integral>\<omega>. (1 - Z i \<omega>) \<partial>\<Omega>) * (\<integral>\<omega>. (1 - Z j \<omega>) \<partial>\<Omega>))"
     by (subst sum_subtractf[symmetric], simp add:case_prod_beta)
-  also have "... = (\<Sum>(i,j) \<in> B \<times> B. (\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial> p) -(\<integral>\<omega>. Z i \<omega> \<partial> p) * (\<integral> \<omega>. Z j \<omega> \<partial>p))"
+  also have "... = (\<Sum>(i,j) \<in> B \<times> B. (\<integral>\<omega>. Z i \<omega> * Z j \<omega> \<partial>\<Omega>) -(\<integral>\<omega>. Z i \<omega> \<partial>\<Omega>) * (\<integral> \<omega>. Z j \<omega> \<partial>\<Omega>))"
     using int by (intro sum.cong refl) (simp add:algebra_simps case_prod_beta)
   also have "... = (\<Sum>i \<in> B \<times> B. (if fst i = snd i then \<alpha> - \<alpha>^2 else \<beta> - \<alpha>^2))"
     by (intro sum.cong refl) 
       (simp add:Z_exp Z_prod_exp mem_Times_iff case_prod_beta power2_eq_square)
   also have "... = ?b * (\<alpha> - \<alpha>\<^sup>2) + (?b^2 - card B) * (\<beta> - \<alpha>\<^sup>2)"
-    using count_1 count_2 finite_cartesian_product assms(2) by (subst sum.If_cases) auto
+    using count_1 count_2 finite_cartesian_product fin_B by (subst sum.If_cases) auto
   also have "... = ?b^2 * (\<beta> - \<alpha>\<^sup>2) + ?b * (\<alpha> - \<beta>)"
     by (simp add:algebra_simps)
   also have "... = ?b * ((1-1/?b)^?r - (1-2/?b)^?r) - ?b^2 * (((1-1/?b)^2)^?r - (1-2/?b)^?r)"
@@ -494,40 +511,44 @@ proof -
     also have "... \<le> ?r * ((1/?b) * (?r - 1) * 1^(?r - 1-1))"
       using True by (intro mult_left_mono mult_mono power_mono) auto
     also have "... =  ?R"
-      using assms(2) by auto 
+      using card_B_gt_0 by auto 
     finally show "?L \<le> ?R" by simp
   next
     case False
-    hence "?b = 1" using assms(3) by simp
+    hence "?b = 1" using card_B_ge_1 by simp
     thus "?L \<le> ?R" 
       by (cases "card R =0") auto
   qed
-  finally show "measure_pmf.variance p Y \<le> card R * (real (card R) - 1)/ card B"
+  finally show "measure_pmf.variance \<Omega> Y \<le> card R * (real (card R) - 1)/ card B"
     by simp
-
 qed
 
+definition "lim_balls_and_bins k p = (
+   prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R \<and>
+  (\<forall>x. x \<in> R \<longrightarrow> map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B))"
 
-locale lim_balls_and_bins =
-  fixes R :: "'a set"  and B :: "'b set"
-  fixes k :: nat and p :: "('a \<Rightarrow> 'b) pmf"
-  fixes Z
-  assumes fin_R: "finite R"
-  assumes fin_B: "finite B"
-  assumes indep: "prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
-  assumes ran: "\<And>x. x \<in> R \<Longrightarrow> map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B"
-  (* Random variable counting the number of times bin j was hit *)
-  defines "Z j \<omega> \<equiv> real (card {i. i \<in> R \<and> \<omega> i = (j::'b)})"
-begin
+lemma indep:
+  assumes "lim_balls_and_bins k p"
+  shows "prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
+  using assms lim_balls_and_bins_def by simp
+
+lemma ran:
+  assumes "lim_balls_and_bins k p" "x \<in> R"
+  shows "map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B"
+  using assms lim_balls_and_bins_def by simp
 
 lemma Z_integrable:
-  "integrable p (\<lambda>\<omega>. f (Z i \<omega>) )" for i c and f :: "real \<Rightarrow> real" 
+  fixes f :: "real \<Rightarrow> real"
+  assumes "lim_balls_and_bins k p"
+  shows "integrable p (\<lambda>\<omega>. f (Z i \<omega>) )"
   unfolding Z_def using fin_R card_mono
   by (intro integrable_pmf_iff_bounded[where C="Max (abs ` f ` real ` {..card R})"])
    fastforce+ 
 
 lemma Z_any_integrable_2:
- "integrable p (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>))" for i j c and f :: "real \<Rightarrow> real" 
+ fixes f :: "real \<Rightarrow> real"
+  assumes "lim_balls_and_bins k p"
+  shows "integrable p (\<lambda>\<omega>. f (Z i \<omega> + Z j \<omega>))" 
 proof -
   have q:"real (card A) + real (card B) \<in> real ` {..2 * card R}" if "A \<subseteq> R" "B \<subseteq> R" for A B
   proof -
@@ -545,6 +566,7 @@ qed
 
 lemma hit_count_prod_exp:
   assumes "j1 \<in> B" "j2 \<in> B" "s+t \<le> k"
+  assumes "lim_balls_and_bins k p"
   defines "L \<equiv> {(xs,ys). set xs \<subseteq> R \<and> set ys \<subseteq> R \<and> 
     (set xs \<inter> set ys = {} \<or> j1 = j2) \<and> length xs = s \<and> length ys = t}"
   shows "(\<integral>\<omega>. Z j1 \<omega>^s * Z j2 \<omega>^t \<partial>p) = 
@@ -607,7 +629,7 @@ proof -
     moreover have "set (fst x) \<union> set (snd x) \<subseteq> R" 
       using that L_def by auto
     ultimately show ?thesis
-      by (intro prob_space.k_wise_indep_vars_subset[OF prob_space_measure_pmf indep])
+      by (intro prob_space.k_wise_indep_vars_subset[OF prob_space_measure_pmf indep[OF assms(4)]])
        auto
   qed
 
@@ -621,7 +643,7 @@ proof -
     also have "... = measure (map_pmf (\<lambda>\<omega>. \<omega> x) p) {z}"
       by (subst measure_map_pmf) (simp add:vimage_def)
     also have "... = measure (pmf_of_set B) {z}"
-      using that by (subst ran) auto
+      using that by (subst ran[OF assms(4)]) auto
     also have "... = 1/card B"
       using fin_B that by (subst measure_pmf_of_set) auto
     also have "... = \<alpha>"
@@ -679,36 +701,25 @@ proof -
     unfolding L_def \<alpha>_def by (simp add:case_prod_beta)
   finally show ?thesis by simp
 qed
-end
 
 lemma hit_count_prod_pow_eq: 
   assumes "i \<in> B" "j \<in> B"
-  assumes "lim_balls_and_bins R B k p"
-  assumes "lim_balls_and_bins R B k q"
+  assumes "lim_balls_and_bins k p"
+  assumes "lim_balls_and_bins k q"
   assumes "s+t \<le> k" 
-  defines "Z b \<omega> \<equiv> real (card {i \<in> R. \<omega> i = b})"
   shows "(\<integral>\<omega>. (Z i \<omega>)^s * (Z j \<omega>)^t \<partial>p) = (\<integral>\<omega>. (Z i \<omega>)^s * (Z j \<omega>)^t \<partial>q)"
-proof -
-  interpret H1: lim_balls_and_bins R B k p Z
-    using assms(3) unfolding Z_def by auto
-  interpret H2: lim_balls_and_bins R B k q Z
-    using assms(4) unfolding Z_def by auto
-  show "?thesis"
-    unfolding H1.hit_count_prod_exp[OF assms(1,2,5)]
-      H2.hit_count_prod_exp[OF assms(1,2,5)]
+    unfolding hit_count_prod_exp[OF assms(1,2,5,3)]
+    unfolding hit_count_prod_exp[OF assms(1,2,5,4)]
     by simp
-qed
 
 lemma hit_count_sum_pow_eq: 
   assumes "i \<in> B" "j \<in> B"
-  assumes "lim_balls_and_bins R B k p"
-  assumes "lim_balls_and_bins R B k q"
+  assumes "lim_balls_and_bins k p"
+  assumes "lim_balls_and_bins k q"
   assumes "s \<le> k" 
-  defines "Z b \<omega> \<equiv> real (card {i \<in> R. \<omega> i = b})"
   shows "(\<integral>\<omega>. (Z i \<omega> + Z j \<omega>)^s \<partial>p) = (\<integral>\<omega>. (Z i \<omega> + Z j \<omega>)^s \<partial>q)"
     (is "?L = ?R")
 proof -
-  have fin_R: "finite R" using assms(3) by (simp add:lim_balls_and_bins_def)
   have q2: "\<bar>Z i x ^ l * Z j x ^ (s - l)\<bar> \<le> real (card R ^ s)" 
     if "l \<in> {..s}" for s i j l x
   proof -
@@ -733,9 +744,9 @@ proof -
     by (intro sum.cong integral_mult_right
         integrable_pmf_iff_bounded[where C="card R^s"] q2) auto
   also have "... = (\<Sum>l\<le>s. real (s choose l) * (\<integral>\<omega>. (Z i \<omega>^l * Z j \<omega>^(s-l)) \<partial>q))"
-    unfolding Z_def using assms(5)
+    using assms(5)
     by (intro sum.cong arg_cong2[where f="(*)"] hit_count_prod_pow_eq[OF assms(1-4)])
-      auto
+       auto
   also have "... = (\<Sum>l\<le>s. (\<integral>\<omega>. real (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l)) \<partial>q))"
     by (intro sum.cong integral_mult_right[symmetric] 
         integrable_pmf_iff_bounded[where C="card R^s"] q2) auto
@@ -749,79 +760,70 @@ qed
 
 lemma hit_count_sum_poly_eq: 
   assumes "i \<in> B" "j \<in> B"
-  assumes "lim_balls_and_bins R B k p"
-  assumes "lim_balls_and_bins R B k q"
+  assumes "lim_balls_and_bins k p"
+  assumes "lim_balls_and_bins k q"
   assumes "f \<in> \<bbbP> k" 
-  defines "Z b \<omega> \<equiv> real (card {i \<in> R. \<omega> i = b})"
   shows "(\<integral>\<omega>. f (Z i \<omega> + Z j \<omega>) \<partial>p) = (\<integral>\<omega>. f (Z i \<omega> + Z j \<omega>) \<partial>q)"
     (is "?L = ?R")
 proof -
   obtain fp where f_def: "f = poly fp" "degree fp \<le> k"
     using assms(5) unfolding Polynomials_def by auto
 
-  interpret H1: lim_balls_and_bins R B k p Z
-    using assms(3) unfolding Z_def by auto
-  interpret H2: lim_balls_and_bins R B k q Z
-    using assms(4) unfolding Z_def by auto
   have "?L = (\<Sum>d\<le>degree fp. (\<integral>\<omega>. poly.coeff fp d * (Z i \<omega> + Z j \<omega>) ^ d \<partial>p))"
     unfolding f_def poly_altdef
-    by (intro integral_sum integrable_mult_right H1.Z_any_integrable_2)
+    by (intro integral_sum integrable_mult_right Z_any_integrable_2[OF assms(3)])
   also have "... = (\<Sum>d\<le>degree fp. poly.coeff fp d * (\<integral>\<omega>. (Z i \<omega> + Z j \<omega>) ^ d \<partial>p))"
-    by (intro sum.cong integral_mult_right H1.Z_any_integrable_2)
+    by (intro sum.cong integral_mult_right Z_any_integrable_2[OF assms(3)])
      simp 
   also have "... = (\<Sum>d\<le>degree fp. poly.coeff fp d *(\<integral>\<omega>. (Z i \<omega> + Z j \<omega>) ^ d \<partial>q))"
-    unfolding Z_def using f_def
-    by (intro sum.cong arg_cong2[where f="(*)"] hit_count_sum_pow_eq[OF assms(1,2,3,4)]) auto
+    using f_def
+    by (intro sum.cong arg_cong2[where f="(*)"] hit_count_sum_pow_eq[OF assms(1-4)]) auto
   also have "... = (\<Sum>d\<le>degree fp. (\<integral>\<omega>. poly.coeff fp d * (Z i \<omega> + Z j \<omega>) ^ d \<partial>q))"
     by (intro sum.cong) auto 
   also have "... = ?R"
     unfolding f_def poly_altdef by (intro integral_sum[symmetric] 
-        integrable_mult_right H2.Z_any_integrable_2) 
+        integrable_mult_right Z_any_integrable_2[OF assms(4)]) 
   finally show ?thesis by simp
 qed
 
 lemma hit_count_poly_eq: 
   assumes "b \<in> B"
-  assumes "lim_balls_and_bins R B k p"
-  assumes "lim_balls_and_bins R B k q"
+  assumes "lim_balls_and_bins k p"
+  assumes "lim_balls_and_bins k q"
   assumes "f \<in> \<bbbP> k" 
-  defines "Z \<omega> \<equiv> real (card {i \<in> R. \<omega> i = b})"
-  shows "(\<integral>\<omega>. f (Z \<omega>) \<partial>p) = (\<integral>\<omega>. f (Z \<omega>) \<partial>q)" (is "?L = ?R")
+  shows "(\<integral>\<omega>. f (Z b \<omega>) \<partial>p) = (\<integral>\<omega>. f (Z b \<omega>) \<partial>q)" (is "?L = ?R")
 proof -
   have a:"(\<lambda>a. f (a / 2)) \<in> \<bbbP> (k*1)"
     by (intro Polynomials_composeI[OF assms(4)] Polynomials_intros)
-  have "?L = \<integral>\<omega>. f ((Z \<omega> + Z \<omega>)/2) \<partial>p"
+  have "?L = \<integral>\<omega>. f ((Z b \<omega> + Z b \<omega>)/2) \<partial>p"
     by simp
-  also have "... = \<integral>\<omega>. f ((Z \<omega> + Z \<omega>)/2) \<partial>q"
-    unfolding Z_def using a
-    by (intro hit_count_sum_poly_eq[OF assms(1,1,2,3)]) simp
+  also have "... = \<integral>\<omega>. f ((Z b \<omega> + Z b \<omega>)/2) \<partial>q"
+    using a by (intro hit_count_sum_poly_eq[OF assms(1,1,2,3)]) simp
   also have "... = ?R" by simp
   finally show ?thesis by simp
 qed
 
 lemma lim_balls_and_bins_from_ind_balls_and_bins:
-  assumes "finite R"
-  assumes "finite B"
-  defines "p \<equiv> prod_pmf R (\<lambda>_. pmf_of_set B)"
-  shows "lim_balls_and_bins R B k p"
+  "lim_balls_and_bins k \<Omega>"
 proof -
-  have "prob_space.indep_vars (measure_pmf p) (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R" 
-    unfolding p_def using indep_vars_Pi_pmf[OF assms(1)] by metis
-  hence "prob_space.indep_vars (measure_pmf p) (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) J" if "J \<subseteq> R" for J
+  have "prob_space.indep_vars (measure_pmf \<Omega>) (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R" 
+    unfolding \<Omega>_def using indep_vars_Pi_pmf[OF fin_R] by metis
+  hence "prob_space.indep_vars (measure_pmf \<Omega>) (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) J" if "J \<subseteq> R" for J
     using prob_space.indep_vars_subset[OF prob_space_measure_pmf _ that] by auto
-  hence a:"prob_space.k_wise_indep_vars (measure_pmf p) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
+  hence a:"prob_space.k_wise_indep_vars (measure_pmf \<Omega>) k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
     by (simp add:prob_space.k_wise_indep_vars_def[OF prob_space_measure_pmf])
 
-  have b: "map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B" if "x \<in> R" for x
-    using that unfolding p_def Pi_pmf_component[OF assms(1)] by simp
+  have b: "map_pmf (\<lambda>\<omega>. \<omega> x) \<Omega> = pmf_of_set B" if "x \<in> R" for x
+    using that unfolding \<Omega>_def Pi_pmf_component[OF fin_R] by simp
 
   show ?thesis
-    using a b assms by unfold_locales auto
+    using a b fin_R fin_B unfolding lim_balls_and_bins_def by auto
 qed
 
-lemma (in lim_balls_and_bins) hit_count_factorial_moments:
+lemma hit_count_factorial_moments:
   assumes a:"j \<in> B" 
   assumes "s \<le> k"
+  assumes "lim_balls_and_bins k p"
   shows "(\<integral>\<omega>. ffact s (Z j \<omega>) \<partial>p) = ffact s (real (card R)) * (1 / real (card B))^s"
     (is "?L = ?R")
 proof -
@@ -830,27 +832,22 @@ proof -
   hence b: "ffact s \<in> (\<bbbP> k :: (real \<Rightarrow> real) set)" 
     using Polynomials_mono[OF assms(2)] by auto
 
-  define q where "q = prod_pmf R (\<lambda>_. pmf_of_set B)"
-  interpret H: lim_balls_and_bins R B k q Z
-    unfolding Z_def q_def 
-    by (intro lim_balls_and_bins_from_ind_balls_and_bins fin_R fin_B) simp
-
-  have "?L = (\<integral>\<omega>. ffact s  (Z j \<omega>) \<partial>q)"
-    unfolding Z_def
-    by (intro hit_count_poly_eq[OF a lim_balls_and_bins_axioms H.lim_balls_and_bins_axioms] b)
-  also have "... = (\<integral>\<omega>. ffact s (real (card {r \<in> R. \<omega> r \<in> {j}})) \<partial>q)"
-    unfolding Z_def by simp
+  have "?L = (\<integral>\<omega>. ffact s (Z j \<omega>) \<partial>\<Omega>)"
+    by (intro hit_count_poly_eq[OF a assms(3) lim_balls_and_bins_from_ind_balls_and_bins] b)
+  also have "... = (\<integral>\<omega>. ffact s (\<Sum>i \<in> {j}. Z i \<omega>) \<partial>\<Omega>)"
+    by simp
   also have "... = ffact s (real (card R)) * (real (card {j}) / real (card B)) ^ s "
-    unfolding q_def using assms(1)
+    using assms(1)
     by (intro fact_moment_balls_and_bins fin_R fin_B) auto
   also have "... = ?R"
     by simp
   finally show ?thesis by simp
 qed
 
-lemma (in lim_balls_and_bins) hit_count_factorial_moments_2:
+lemma hit_count_factorial_moments_2:
   assumes a:"i \<in> B" "j \<in> B" 
   assumes "i \<noteq> j" "s \<le> k" "card R \<le> card B" 
+  assumes "lim_balls_and_bins k p"
   shows "(\<integral>\<omega>. ffact s (Z i \<omega> + Z j \<omega>) \<partial>p) \<le> 2^s"
     (is "?L \<le> ?R")
 proof -
@@ -859,24 +856,14 @@ proof -
   hence b: "ffact s \<in> (\<bbbP> k :: (real \<Rightarrow> real) set)" 
     using Polynomials_mono[OF assms(4)] by auto
 
-  define q where "q = prod_pmf R (\<lambda>_. pmf_of_set B)"
-  interpret H: lim_balls_and_bins R B k q Z
-    unfolding Z_def q_def 
-    by (intro lim_balls_and_bins_from_ind_balls_and_bins fin_R fin_B) simp
-
-  have b_ne: "card B \<noteq> 0"
-    using H.fin_B assms(1) by auto
-
   have or_distrib: "(a \<and> b) \<or> (a \<and> c) \<longleftrightarrow> a \<and> (b \<or> c)" for a b c
     by auto
-  have "?L = (\<integral>\<omega>. ffact s  (Z i \<omega> + Z j \<omega>) \<partial>q)"
-    unfolding Z_def
-    by (intro hit_count_sum_poly_eq[OF a lim_balls_and_bins_axioms H.lim_balls_and_bins_axioms] b)
-  also have "... = (\<integral>\<omega>. ffact s (real (card {r \<in> R. \<omega> r \<in> {i,j}})) \<partial>q)"
-    unfolding Z_def of_nat_add[symmetric] using fin_R assms(3)
-    by (subst card_Un_disjoint[symmetric]) (auto simp add:Un_def or_distrib) 
+  have "?L = (\<integral>\<omega>. ffact s  (Z i \<omega> + Z j \<omega>) \<partial>\<Omega>)"
+    by (intro hit_count_sum_poly_eq[OF a assms(6) lim_balls_and_bins_from_ind_balls_and_bins] b)
+  also have "... = (\<integral>\<omega>. ffact s ((\<Sum>t \<in> {i,j}. Z t \<omega>)) \<partial>\<Omega>)"
+    using assms(3) by simp
   also have "... = ffact s (real (card R)) * (real (card {i,j}) / real (card B)) ^ s "
-    unfolding q_def using assms(1,2)
+    using assms(1,2)
     by (intro fact_moment_balls_and_bins fin_R fin_B) auto
   also have "... = real (ffact s (card R)) * (real (card {i,j}) / real (card B)) ^ s "
     by (simp add:of_nat_ffact)
@@ -886,17 +873,147 @@ proof -
     using assms(3)
     by (intro mult_mono of_nat_mono power_mono assms(5), simp_all)
   also have "... = ?R"
-    using b_ne by (simp add:divide_simps)
+    using card_B_gt_0 by (simp add:divide_simps)
   finally show ?thesis by simp
 qed
 
+lemma balls_and_bins_approx_helper:
+  fixes x :: real
+  assumes "x \<ge> 2"
+  assumes "real k \<ge> 5*x / ln x"
+  shows "k \<ge> 2"
+    and "2^(k+3) / fact k \<le> (1/exp x)^2" 
+    and "2 / fact k \<le> 1 / (exp 1 * exp x)"
+proof -
+  have ln_inv: "ln x = - ln (1/ x)"  if "x > 0" for x :: real
+    using that by (subst ln_div, auto)  
+
+  have apx:
+    "exp 1 \<le> (5::real)"
+    "4 * ln 4 \<le>  (2 - 2*exp 1/5)*ln (450::real)"
+    "ln 8 * 2 \<le> (450::real)"
+    "4 / 5 * 2 * exp 1 + ln (5 / 4) * exp 1 \<le> (5::real)"
+    "exp 1 \<le> (2::real)^4"
+    by (approximation 10)+
+
+  have "2 \<le> 5 * (x / (x-1))"
+    using assms(1) by (simp add:divide_simps)
+  also have "... \<le> 5 * (x / ln x)"
+    using assms(1)
+    by (intro mult_left_mono divide_left_mono ln_le_minus_one mult_pos_pos) auto
+  also have "... \<le> k" using assms(2) by simp
+  finally show k_ge_2: "k \<ge> 2" by simp
+
+  have "ln x * (2 * exp 1) = ln (((4/5) * x)*(5/4)) * (2 * exp 1)"
+    by simp
+  also have "... = ln ((4/5) * x) * (2 * exp 1) + ln((5/4))*(2 * exp 1)"
+    using assms(1) by (subst ln_mult, simp_all add:algebra_simps)
+  also have "... < (4/5)* x * (2 * exp 1) + ln (5/4) * (x * exp 1)"
+    using assms(1) by (intro add_less_le_mono mult_strict_right_mono ln_less_self 
+        mult_left_mono mult_right_mono)  (auto simp add:algebra_simps)
+  also have "... = ((4/5) * 2 * exp 1 + ln(5/4) * exp 1) * x"
+    by (simp add:algebra_simps)
+  also have "... \<le> 5 * x"
+    using assms(1) apx(4) by (intro mult_right_mono, simp_all)
+  finally have 1: "ln x * (2 * exp 1) \<le> 5 * x" by simp
+
+  have "ln 8 \<le> 3 * x - 5 * x * ln(2*exp 1 /5 * ln x) / ln x"
+  proof (cases "x \<in> {2..450}")
+    case True
+    then show ?thesis by (approximation 10 splitting: x=10)
+  next
+    case False
+    hence x_ge_450: "x \<ge> 450" using assms(1) by simp
+
+    have "4 * ln 4 \<le>  (2 - 2*exp 1/5)*ln (450::real)"
+      using apx(2) by (simp)
+    also have "... \<le> (2 - 2*exp 1/5)* ln x"
+      using x_ge_450 apx(1)
+      by (intro mult_left_mono iffD2[OF ln_le_cancel_iff], simp_all)
+    finally have "(2 - 2*exp 1/5) * ln x \<ge> 4 * ln 4" by simp
+    hence "2*exp 1/5 * ln x + 0 \<le> 2 * exp 1 / 5 * ln x + ((2 - 2*exp 1/5) * ln x - 4 * ln 4)" 
+      by (intro add_mono) auto
+    also have "... = 4 * (1/2) * ln x - 4 * ln 4" 
+      by (simp add:algebra_simps)
+    also have "... = 4 * (ln (x powr (1/2)) - ln 4)"
+      using x_ge_450 by (subst ln_powr, auto)
+    also have "... = 4 * (ln (x powr (1/2)/4))"
+      using x_ge_450 by (subst ln_div) auto
+    also have "... < 4 * (x powr (1/2)/4)"
+      using x_ge_450 by (intro mult_strict_left_mono ln_less_self) auto
+    also have "... = x powr (1/2)" by simp
+    finally have "2* exp 1/ 5 * ln x \<le> x powr (1/2)" by simp
+    hence "ln(2* exp 1/ 5 * ln x) \<le> ln (x powr (1/2))" 
+      using x_ge_450 ln_le_cancel_iff by simp
+    hence 0:"ln(2* exp 1/ 5 * ln x) / ln x \<le> 1/2"
+      using x_ge_450 by (subst (asm) ln_powr, auto)
+    have "ln 8 \<le> 3 * x - 5 * x * (1/2)"
+      using x_ge_450 apx(3) by simp
+    also have "... \<le> 3 * x - 5 * x * (ln(2* exp 1/ 5 * ln x) / ln x)"
+      using x_ge_450 by (intro diff_left_mono mult_left_mono 0) auto
+    finally show ?thesis by simp
+  qed
+
+  hence "2 * x + ln 8 \<le> 2 * x + (3 * x - 5 * x * ln(2*exp 1 /5 * ln x) / ln x)"
+    by (intro add_mono, auto)
+  also have "... = 5 * x + 5 * x * ln(5 / (2*exp 1*ln x)) / ln x"
+    using assms(1) by (subst ln_inv) (auto simp add:algebra_simps)
+  also have "... = 5 * x * (ln x + ln(5 / (2*exp 1*ln x))) / ln x"
+    using assms(1) by (simp add:algebra_simps add_divide_distrib)
+  also have "... = 5 * x * (ln (5 * x / (2 * exp 1 * ln x))) / ln x" 
+    using assms(1) by (subst ln_mult[symmetric], auto)
+  also have "... = (5 * x / ln x) * ln ((5 * x / ln x) / (2 * exp 1))"
+    by (simp add:algebra_simps)
+  also have "... \<le> k * ln (k / (2*exp 1))"
+    using assms(1,2) 1 k_ge_2
+    by (intro mult_mono iffD2[OF ln_le_cancel_iff] divide_right_mono)
+     auto
+  finally have "k * ln (k/(2*exp 1)) \<ge> 2*x + ln 8" by simp
+  hence "k * ln(2*exp 1/k) \<le> -2*x - ln 8"
+    using k_ge_2 by (subst ln_inv, auto)
+  hence "ln ((2*exp 1/k) powr k) \<le> ln(exp(-2*x)) - ln 8"
+    using k_ge_2 by (subst ln_powr, auto)
+  also have "... = ln(exp(-2*x)/8)"
+    by (simp add:ln_div)
+  finally have "ln ((2*exp 1/k) powr k) \<le>  ln (exp(-2*x)/8)" by simp
+  hence 1: "(2*exp 1/k) powr k \<le>  exp(-2*x)/8" 
+    using k_ge_2 assms(1) by (subst (asm) ln_le_cancel_iff) auto
+  have "2^(k+3)/fact k \<le> 2^(k+3)/(k / exp 1)^k" 
+    using k_ge_2 by (intro divide_left_mono fact_lower_bound_1) auto
+  also have "... = 8 * 2^k * (exp 1 / k)^k"
+    by (simp add:power_add algebra_simps power_divide)
+  also have "... = 8 * (2*exp 1/k) powr k"
+    using k_ge_2 powr_realpow
+    by (simp add:power_mult_distrib[symmetric])
+  also have "... \<le> 8 * (exp(-2*x)/8)"
+    by (intro mult_left_mono 1) auto
+  also have "... = exp((-x)*2)"
+    by simp
+  also have "... = exp(-x)^2"
+    by (subst exp_powr[symmetric], simp)
+  also have "... = (1/exp x)^2"
+    by (simp add: exp_minus inverse_eq_divide)
+  finally show 2:"2^(k+3)/fact k \<le> (1/exp x)^2" by simp
+
+  have "(2::real)/fact k = (2^(k+3)/fact k)/(2^(k+2))"
+    by (simp add:divide_simps power_add)
+  also have "... \<le> (1/exp x)^2/(2^(k+2))"
+    by (intro divide_right_mono 2, simp)
+  also have "... \<le> (1/exp x)^1/(2^(k+2))"
+    using assms(1) by (intro divide_right_mono power_decreasing) auto
+  also have "... \<le> (1/exp x)^1/(2^4)"
+    using k_ge_2 by (intro divide_left_mono power_increasing) auto
+  also have "... \<le> (1/exp x)^1/exp(1)"
+    using k_ge_2 apx(5) by (intro divide_left_mono) auto
+  also have "... = 1/(exp 1 * exp x)" by simp
+  finally show "(2::real)/fact k \<le> 1/(exp 1 * exp x)" by simp
+qed
+
 lemma
-  fixes R :: "'a set" and B :: "'b set"
-  fixes p :: "bool \<Rightarrow> ('a \<Rightarrow> 'b) pmf"
   assumes "card R \<le> card B"
-  assumes "\<And>c. lim_balls_and_bins R B (k+1) (p c)"
-(*  assumes "k \<ge> 4 * ln (card B / \<epsilon>) / ln (ln (card B / \<epsilon>))" *)
-  defines "Y \<equiv> (\<lambda>\<omega>. real (card (\<omega> ` R)))"
+  assumes "\<And>c. lim_balls_and_bins (k+1) (p c)"
+  assumes "\<epsilon> \<in> {0<..1/exp(2)}"
+  assumes "k \<ge> 5 * ln (card B / \<epsilon>) / ln (ln (card B / \<epsilon>))"
   shows 
     exp_approx: "\<bar>measure_pmf.expectation (p True) Y - measure_pmf.expectation (p False) Y\<bar> \<le> 
       \<epsilon> * real (card R)" (is "?A") and
@@ -906,11 +1023,18 @@ proof -
   let ?p1 = "p False"
   let ?p2 = "p True"
 
-  define Z :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> real" 
-    where "Z = (\<lambda>i \<omega>. real (card { j . j \<in> R \<and> \<omega> j = i}))"
+  have "exp (2::real) = 1/ (1/exp 2)" by simp
+  also have "... \<le> 1/ \<epsilon>"
+    using assms(3) by (intro divide_left_mono) auto
+  also have "... \<le> real (card B)/ \<epsilon>"
+    using assms(3) card_B_gt_0 by (intro divide_right_mono) auto
+  finally have "exp 2 \<le> real (card B) / \<epsilon>" by simp
+  hence k_condition_h: "2 \<le> ln (card B / \<epsilon>)"
+    using assms(3) card_B_gt_0 by (subst ln_ge_iff) auto 
+  have k_condition_h_2: "0 < real (card B) / \<epsilon>"
+    using assms(3) card_B_gt_0 by (intro divide_pos_pos) auto
 
-  interpret H: lim_balls_and_bins R B "k+1" "p c" "Z" for c
-    using assms(2) unfolding Z_def by auto
+  note k_condition = balls_and_bins_approx_helper[OF k_condition_h assms(4)]
 
   define \<phi> :: "real \<Rightarrow> real" where "\<phi> = (\<lambda>x. min x 1)"
 
@@ -919,7 +1043,8 @@ proof -
   have \<phi>_exp: "\<phi> x = f x + g x" for x
     unfolding g_def by simp
 
-  have k_ge_2: "k \<ge> 2" sorry
+  have k_ge_2: "k \<ge> 2" 
+    using k_condition(1) by simp
 
   define \<gamma> where "\<gamma> = 1 / real (fact k)"
   have \<gamma>_nonneg: "\<gamma> \<ge> 0"
@@ -999,7 +1124,7 @@ proof -
       unfolding Z_def by auto
     also have "... \<le> real (card R) ^ l * real (card R) ^ (s-l)"
       unfolding Z_def 
-      by (intro mult_mono power_mono of_nat_mono card_mono H.fin_R) auto
+      by (intro mult_mono power_mono of_nat_mono card_mono fin_R) auto
     also have "... = real (card R)^s" using that 
       by (subst power_add[symmetric]) simp
     also have "... = real (card R^s)"
@@ -1010,7 +1135,7 @@ proof -
   have q:"real (card A) + real (card B) \<in> real ` {..2 * card R}" if "A \<subseteq> R" "B \<subseteq> R" for A B
   proof -
     have "card A + card B \<le> card R + card R"
-      by (intro add_mono card_mono H.fin_R that)
+      by (intro add_mono card_mono fin_R that)
     also have "... = 2 * card R" by simp
     finally show ?thesis by force
   qed
@@ -1142,14 +1267,12 @@ proof -
   have z1_g_bound: "\<bar>\<integral>\<omega>. g (Z i \<omega>) \<partial>p c\<bar> \<le> (real (card R) / real (card B)) * \<gamma>" 
     (is "?L1 \<le> ?R1") if "i \<in> B" for i c
   proof -
-    have card_B_gt_0: "card B > 0" 
-      using that card_gt_0_iff H.fin_B by auto
 
     have "?L1 \<le> (\<integral>\<omega>. ffact (k+1) (Z i \<omega>) \<partial>p c) * \<gamma>"
-      unfolding Z_def using H.fin_R
-      by (intro g_bound_abs[where m="card R"]) (auto intro!:imageI card_mono)
+      unfolding Z_def using fin_R
+      by (intro g_bound_abs[where m1="card R"]) (auto intro!:imageI card_mono)
     also have "... = ffact (k+1) (real (card R)) * (1 / real (card B))^(k+1) * \<gamma>"
-      using that by (subst H.hit_count_factorial_moments, simp_all)
+      using that by (subst hit_count_factorial_moments[OF _ _ assms(2)], simp_all)
     also have "... = real (ffact (k+1) (card R)) * (1 / real (card B))^(k+1) * \<gamma>"
       by (simp add:of_nat_ffact)
     also have "... \<le> real (card R^(k+1)) * (1 / real (card B))^(k+1) * \<gamma>"
@@ -1168,9 +1291,10 @@ proof -
   proof -
     have "?L1 \<le> (\<integral>\<omega>. ffact (k+1) (Z i \<omega> + Z j \<omega>) \<partial>p c) * \<gamma>"
       unfolding Z_def using assms(1)
-      by (intro g_bound_abs[where m="2*card R"]) (auto intro!:imageI q)
+      by (intro g_bound_abs[where m1="2*card R"]) (auto intro!:imageI q)
     also have "... \<le> 2^(k+1) * \<gamma>"
-      by (intro \<gamma>_nonneg mult_right_mono H.hit_count_factorial_moments_2 that assms(1), simp) 
+      by (intro \<gamma>_nonneg mult_right_mono hit_count_factorial_moments_2[OF that(1,2,3) _ assms(1,2)])
+        auto
     finally show ?thesis by simp
   qed
 
@@ -1183,9 +1307,9 @@ proof -
 
     have "?L = \<bar>(\<integral>\<omega>. f (Z i \<omega>) \<partial>?p1) + (\<integral>\<omega>. g (Z i \<omega>) \<partial>?p1) - 
       (\<integral>\<omega>. f (Z i \<omega>) \<partial>?p2) - (\<integral>\<omega>. g (Z i \<omega>) \<partial>?p2)\<bar>"
-      using H.Z_integrable unfolding \<phi>_exp by simp
+      using Z_integrable[OF assms(2)] unfolding \<phi>_exp by simp
     also have "... = \<bar>(\<integral>\<omega>. g (Z i \<omega>) \<partial>?p1) + (- (\<integral>\<omega>. g (Z i \<omega>) \<partial>?p2))\<bar>"
-      unfolding Z_def by (subst Z_poly_eq) auto
+      by (subst Z_poly_eq) auto
     also have "... \<le> \<bar>(\<integral>\<omega>. g (Z i \<omega>) \<partial>?p1)\<bar> + \<bar>(\<integral>\<omega>. g (Z i \<omega>) \<partial>?p2)\<bar>"
       by simp
     also have "... \<le> ?R + ?R"
@@ -1201,7 +1325,7 @@ proof -
     have "?L \<le> 2 * ((real (card R) / real (card B)) * \<gamma>)"
       by (intro Z_poly_diff that)
     also have "... \<le> 2 * (1 * \<gamma>)"
-      using assms H.fin_B that \<gamma>_nonneg card_gt_0_iff
+      using assms fin_B that \<gamma>_nonneg card_gt_0_iff
       by (intro mult_mono that iffD2[OF pos_divide_le_eq]) auto
     also have "... = ?R" by simp
     finally show ?thesis by simp
@@ -1215,9 +1339,9 @@ proof -
 
     have "?L = \<bar>(\<integral>\<omega>. f (Z i \<omega> + Z j \<omega>) \<partial>?p2) + (\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p2) -
       (\<integral>\<omega>. f (Z i \<omega> + Z j \<omega>) \<partial>?p1) - (\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p1)\<bar>" 
-      using H.Z_any_integrable_2 unfolding \<phi>_exp by simp
+      using Z_any_integrable_2[OF assms(2)] unfolding \<phi>_exp by simp
     also have "... = \<bar>(\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p2) + (- (\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p1))\<bar>"
-      unfolding Z_def by (subst Z_poly_eq_2) auto
+      by (subst Z_poly_eq_2) auto
     also have "... \<le> \<bar>(\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p1)\<bar> + \<bar>(\<integral>\<omega>. g (Z i \<omega> + Z j \<omega>) \<partial>?p2)\<bar>"
       by simp
     also have "... \<le> 2^(k+1)*\<gamma> + 2^(k+1)*\<gamma>"
@@ -1227,13 +1351,6 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have B_nonempty: "B \<noteq> {}" if "x \<in> R" for x 
-  proof  -
-    have "R \<noteq> {}" using that by auto
-    hence "card R > 0" using H.fin_R by auto
-    hence "card B > 0" using assms by auto
-    thus ?thesis by auto
-  qed
 
   have Y_eq: "Y \<omega> = (\<Sum>i \<in> B. \<phi> (Z i \<omega>))" if "\<omega> \<in> set_pmf (p c)" for c \<omega>
   proof -
@@ -1243,9 +1360,9 @@ proof -
       have "\<omega> x \<in> set_pmf (map_pmf (\<lambda>\<omega>. \<omega> x) (p c))"
         using that by (subst set_map_pmf) simp
       also have "... = set_pmf (pmf_of_set B)"
-        by (intro arg_cong[where f="set_pmf"] assms H.ran a)
+        by (intro arg_cong[where f="set_pmf"] assms ran[OF assms(2)] a)
       also have "... = B"
-        by (intro set_pmf_of_set H.fin_B B_nonempty[OF a])
+        by (intro set_pmf_of_set fin_B B_ne)
       finally show "\<omega> x \<in> B" by simp
     qed
     hence "(\<omega> ` R) = B \<inter> \<omega> ` R"
@@ -1253,9 +1370,9 @@ proof -
     hence "Y \<omega> = card (B \<inter> \<omega> ` R)"
       unfolding Y_def by auto
     also have  "... = (\<Sum>i \<in> B. of_bool (i \<in> \<omega> ` R))"
-      unfolding of_bool_def using H.fin_B by (subst sum.If_cases) auto
+      unfolding of_bool_def using fin_B by (subst sum.If_cases) auto
     also have  "... = (\<Sum>i \<in> B. of_bool (card {r \<in> R.  \<omega> r = i} > 0))"
-      using H.fin_R by (intro sum.cong arg_cong[where f="of_bool"]) 
+      using fin_R by (intro sum.cong arg_cong[where f="of_bool"]) 
         (auto simp add:card_gt_0_iff) 
     also have "... = (\<Sum>i \<in> B. \<phi>(Z i \<omega>))"
       unfolding \<phi>_def Z_def by (intro sum.cong) (auto simp add:of_bool_def) 
@@ -1285,7 +1402,7 @@ proof -
       by (intro sum.cong refl) auto
     also have "... = (\<Sum>i\<in>?Bd. \<phi> (Z (fst i) \<omega>) * \<phi> (Z (snd i) \<omega>)) + 
       (\<Sum>i\<in>{x \<in> B \<times> B. fst x = snd x}. \<phi> (Z (fst i) \<omega>) * \<phi> (Z (snd i) \<omega>))"
-      using assms H.fin_B  by (intro sum.union_disjoint, auto)
+      using assms fin_B  by (intro sum.union_disjoint, auto)
     also have "... = (\<Sum>i\<in>?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) + 
       (\<Sum>i\<in>{x \<in> B \<times> B. fst x = snd x}. \<phi> (Z (fst i) \<omega>) * \<phi> (Z (fst i) \<omega>))"
       unfolding c by (intro arg_cong2[where f="(+)"] sum.cong) auto
@@ -1306,7 +1423,7 @@ proof -
   also have "... = 
     \<bar>(\<Sum>i \<in> B. (\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p1)) - (\<Sum>i \<in> B. (\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p2))\<bar>"
     by (intro arg_cong[where f="abs"] arg_cong2[where f="(-)"] 
-        integral_sum H.Z_integrable)
+        integral_sum Z_integrable[OF assms(2)])
   also have "... = \<bar>(\<Sum>i \<in> B. (\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p2))\<bar>"
     by (subst sum_subtractf) simp
   also have "... \<le> (\<Sum>i \<in> B. \<bar>(\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z i \<omega>) \<partial>?p2)\<bar>)"
@@ -1318,9 +1435,17 @@ proof -
   finally have Y_exp_diff_1: "\<bar>integral\<^sup>L ?p1 Y - integral\<^sup>L ?p2 Y\<bar> \<le> 2 * real (card R) *\<gamma>" 
     by simp
 
-  have "\<bar>integral\<^sup>L ?p1 Y - integral\<^sup>L ?p2 Y\<bar> \<le>  2 * real (card R) *\<gamma>"
-    using Y_exp_diff_1 by simp
-  also have "... \<le> \<epsilon> * card R" sorry
+  have "\<bar>integral\<^sup>L ?p1 Y - integral\<^sup>L ?p2 Y\<bar> \<le> (2 / fact k) * real (card R)"
+    using Y_exp_diff_1 by (simp add:algebra_simps \<gamma>_def)
+  also have "... \<le>  1 / (exp 1 * (real (card B) / \<epsilon>)) * card R"
+    using k_condition(3) k_condition_h_2 by (intro mult_right_mono) auto
+  also have "... =  \<epsilon> / (exp 1 * real (card B)) * card R"
+    by simp
+  also have "... \<le> \<epsilon> / (1 * 1) * card R"
+    using assms(3) card_B_gt_0
+    by (intro mult_right_mono divide_left_mono mult_mono) auto
+  also have "... = \<epsilon> * card R"
+    by simp
   finally show ?A
     by simp
 
@@ -1333,11 +1458,11 @@ proof -
     by (simp add:algebra_simps)
 
   have int_Y: "integrable (measure_pmf (p c)) Y" for c
-    using H.fin_R card_image_le unfolding Y_def
+    using fin_R card_image_le unfolding Y_def
     by (intro integrable_pmf_iff_bounded[where C="card R"])  auto
 
   have int_Y_sq: "integrable (measure_pmf (p c)) (\<lambda>\<omega>. Y \<omega>^2)" for c
-    using H.fin_R card_image_le unfolding Y_def
+    using fin_R card_image_le unfolding Y_def
     by (intro integrable_pmf_iff_bounded[where C="real (card R)^2"]) auto
 
   have "\<bar>(\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p1) -
@@ -1346,7 +1471,7 @@ proof -
     (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) + (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - 
     (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1) - ( (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2) + 
     (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2)))\<bar>" (is "?R3 \<le> _ ")
-    using H.Z_integrable H.Z_any_integrable_2 
+    using Z_integrable[OF assms(2)] Z_any_integrable_2[OF assms(2)] 
     by (simp add:integral_sum sum_subtractf)
   also have "... = \<bar>(\<Sum>i \<in> ?Bd. 
     ((\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)) + 
@@ -1377,7 +1502,7 @@ proof -
   also have "... \<le> \<bar>(\<integral>\<omega>. Y \<omega> \<partial>?p1) - (\<integral>\<omega>. Y \<omega> \<partial>?p2)\<bar> + 
     \<bar>(\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p1) -
     (\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p2)\<bar>"
-    using H.Z_integrable H.Z_any_integrable_2 int_Y by simp
+    using Z_integrable[OF assms(2)] Z_any_integrable_2[OF assms(2)] int_Y by simp
   also have "... \<le>  2 *\<gamma> * real (card B) + ?R3"
     by (intro add_mono Y_exp_diff_2, simp)
   also have "... \<le> (2^(k+2)+4) *\<gamma> * real (card B) + (2^(k+2)+4) *\<gamma> * real (card ?Bd)" 
@@ -1395,7 +1520,7 @@ proof -
     have "?L \<le> (\<integral>\<omega>. \<bar>Y \<omega>\<bar> \<partial>(p c))"
       by (intro integral_abs_bound)
     also have "... \<le> (\<integral>\<omega>. real (card R)  \<partial>(p c))"
-      unfolding Y_def using card_image_le[OF H.fin_R]
+      unfolding Y_def using card_image_le[OF fin_R]
       by (intro integral_mono integrable_pmf_iff_bounded[where C="card R"])
        auto
     also have "... = card R" by simp
@@ -1423,50 +1548,115 @@ proof -
   also have "... \<le> (2^(k+2)+2^(k+2)) * \<gamma> * real (card B)^2"
     using k_ge_2 \<gamma>_nonneg
     by (intro mult_right_mono add_mono power_increasing, simp_all)
-  also have "... = 2^(k+3) * \<gamma> * card B^2"
-    by (simp add:power_add)
-  also have "... \<le> \<epsilon>^2" sorry
+  also have "... = (2^(k+3) / fact k) * card B^2"
+    by (simp add:power_add \<gamma>_def)
+  also have "... \<le> (1 / (real (card B) / \<epsilon>))^2 * card B^2"
+    using k_condition(2) k_condition_h_2
+    by (intro mult_right_mono) auto
+  also have "... = \<epsilon>^2"
+    using card_B_gt_0 by (simp add:divide_simps)
   finally show ?B 
     by simp
 qed
 
 lemma
-  fixes R :: "'a set"
-  fixes B :: "'b set"
-  fixes p :: "('a \<Rightarrow> 'b) pmf"
-  assumes "finite R" "finite B" "card R \<le> card B" "card B \<ge> 1"
-  assumes "prob_space.k_wise_indep_vars (measure_pmf p) (k+1) (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) R"
-  assumes "\<And>c x. x \<in> R \<Longrightarrow> map_pmf (\<lambda>\<omega>. \<omega> x) p = pmf_of_set B"
-  defines "Y \<equiv> (\<lambda>\<omega>. real (card (\<omega> ` R)))"
-  defines "\<rho> \<equiv> real (card B) * (1 - (1-1/real (card B))^card R)"
-  shows exp_approx_2: "\<bar>measure_pmf.expectation p Y - \<rho>\<bar> \<le> card R / sqrt (card B)" 
+  assumes "card R \<le> card B" 
+  assumes "lim_balls_and_bins (k+1) p"
+  assumes "k \<ge> 7.5 * (ln (card B) + 2)"
+  shows exp_approx_2: "\<bar>measure_pmf.expectation p Y - \<mu>\<bar> \<le> card R / sqrt (card B)" 
       (is "?AL \<le> ?AR")
     and var_approx_2: "measure_pmf.variance p Y  \<le> real (card R)^2 / card B"
       (is "?BL \<le> ?BR")
 proof -
-  define q where "q = (\<lambda>c. if c then prod_pmf R (\<lambda>_. pmf_of_set B) else p)"
+  define q where "q = (\<lambda>c. if c then \<Omega> else p)"
 
-  have q_altdef: "q True = prod_pmf R (\<lambda>_. pmf_of_set B)" "q False = p"
+  have q_altdef: "q True = \<Omega>" "q False = p"
     unfolding q_def by auto
 
-  have a:"lim_balls_and_bins R B (k+1) (q c)" for c
-  proof (cases c)
-    case False
-    then show ?thesis
-      unfolding q_def using assms by unfold_locales auto
-  next
+  have a:"lim_balls_and_bins (k+1) (q c)" for c
+    unfolding q_def using assms lim_balls_and_bins_from_ind_balls_and_bins by auto
+
+  define \<epsilon> :: real where "\<epsilon> = min (sqrt (1/card B)) (1 / exp 2)"
+
+  have c: "\<epsilon> \<in> {0<..1 / exp 2}" 
+    using card_B_gt_0 unfolding \<epsilon>_def by auto 
+
+  have b: "5 * ln (card B / \<epsilon>) / ln (ln (card B / \<epsilon>)) \<le> real k"
+  proof (cases "card B \<ge> exp 4")
     case True
-    then show ?thesis
-      using lim_balls_and_bins_from_ind_balls_and_bins[OF assms(1,2)] 
-      unfolding q_def by simp
+    hence "sqrt(1/card B) \<le> sqrt(1/exp 4)"
+      using card_B_gt_0 by (intro real_sqrt_le_mono divide_left_mono) auto
+    also have "... = (1/exp 2)" 
+      by (subst powr_half_sqrt[symmetric]) (auto simp add:powr_divide exp_powr)
+    finally have "sqrt(1/card B) \<le> (1 / exp 2)" by simp
+    hence \<epsilon>_eq: "\<epsilon> = sqrt(1 /card B)"
+      unfolding \<epsilon>_def by simp
+
+    have "exp (6::real) = (exp 4) powr (3/2)"
+      by (simp add:exp_powr)
+    also have "...\<le> card B powr (3/2)"
+      by (intro powr_mono2 True) auto
+    finally have q4:"exp 6 \<le> card B powr (3/2)" by simp
+
+    have "(2::real) \<le> exp 6"
+      by (approximation 5)
+    hence q1: "2 \<le> real (card B) powr (3 / 2)"
+      using q4 by argo
+    have "(1::real) < ln(exp 6)" 
+      by (approximation 5)
+    also have "... \<le> ln (card B powr (3 / 2))"
+      using card_B_gt_0 by (intro iffD2[OF ln_le_cancel_iff] q4) auto
+    finally have q2: "1 < ln (card B powr (3 / 2))" by simp
+    have "exp (exp (1::real)) \<le> exp 6"
+      by (approximation 5) 
+    also have "... \<le> card B powr (3/2)" using q4 by simp
+    finally have "exp (exp 1) \<le> card B powr (3/2)"
+      by simp
+    hence q3: "1\<le>ln(ln (card B powr (3/2)))" 
+      using card_B_gt_0 q1 by (intro iffD2[OF ln_ge_iff] ln_gt_zero, auto)
+
+    have "5 * ln (card B / \<epsilon>) / ln (ln (card B / \<epsilon>)) =
+      5 * ln (card B powr (1+1/2)) / ln(ln (card B powr (1+1/2)))"
+      unfolding powr_add by (simp add:real_sqrt_divide  powr_half_sqrt[symmetric] \<epsilon>_eq)
+    also have "... \<le> 5 * ln (card B powr (1+1/2)) / 1"
+      using True q1 q2 q3 by (intro divide_left_mono mult_nonneg_nonneg mult_pos_pos 
+          ln_ge_zero ln_gt_zero) auto
+    also have "... = 5 * (1+1/2) * ln(card B)"
+      using card_B_gt_0 by (subst ln_powr) auto
+    also have "... = 7.5 * ln(card B)" by simp
+    also have "... \<le> k" using assms(3) by simp
+    finally show ?thesis by simp
+  next
+    case False
+    have "(1::real) / exp 2 \<le> sqrt(1 / exp 4)"
+      by (simp add:real_sqrt_divide powr_half_sqrt[symmetric] exp_powr)
+    also have "...\<le> sqrt(1 /card B)"
+      using False card_B_gt_0
+      by (intro real_sqrt_le_mono divide_left_mono mult_pos_pos) auto
+    finally have "1 / exp 2 \<le> sqrt(1/card B)"
+      by simp
+    hence \<epsilon>_eq: "\<epsilon> = 1/ exp 2"
+      unfolding \<epsilon>_def by simp
+
+    have q2:"5 * (ln x + 2) / ln (ln x + 2) \<le> 7.5 * (ln x + 2)" 
+      if "x \<in> {1..exp 4}" for x:: real
+      using that by (approximation 10 splitting: x=10)
+
+    have "5 * ln (card B / \<epsilon>) / ln (ln (card B / \<epsilon>)) = 
+          5 * (ln (card B) +2) / ln (ln (card B) + 2)"
+      using card_B_gt_0 unfolding \<epsilon>_eq by (simp add:ln_mult)
+    also have "... \<le> 7.5 * (ln (card B) + 2)"
+      using False card_B_gt_0 by (intro q2) auto
+    also have "... \<le> k" using assms(3) by simp
+    finally show ?thesis by simp
   qed
 
   have "?AL = \<bar>(\<integral>\<omega>. Y \<omega> \<partial>(q True)) - (\<integral>\<omega>. Y \<omega> \<partial>(q False))\<bar>"
-    using exp_balls_and_bins[OF assms(1,2,4)]
-    unfolding q_def Y_def \<rho>_def by simp
+    using exp_balls_and_bins unfolding q_def by simp
+  also have "... \<le> \<epsilon> * card R"
+    by (intro exp_approx[OF assms(1) a c b])
   also have "... \<le> sqrt (1 / card B) * card R"
-    unfolding Y_def
-    by (intro exp_approx[OF assms(3) a]) 
+    unfolding \<epsilon>_def by (intro mult_right_mono) auto
   also have "... = ?AR" using real_sqrt_divide by simp
   finally show "?AL \<le> ?AR" by simp
 
@@ -1476,17 +1666,18 @@ proof -
     then show ?thesis unfolding Y_def by simp
   next
     case "False"
-    hence "card R > 0" using assms(1) by auto
+    hence "card R > 0" using fin_R by auto
     hence card_R_ge_1: "real (card R) \<ge> 1" by simp
   
     have "?BL \<le> measure_pmf.variance (q True) Y + 
       \<bar>measure_pmf.variance (q True) Y - measure_pmf.variance (q False) Y\<bar>"
       unfolding q_def by auto
+    also have "... \<le> measure_pmf.variance (q True) Y + \<epsilon>^2"
+      by (intro add_mono var_approx[OF assms(1) a c b]) auto 
     also have "... \<le> measure_pmf.variance (q True) Y + sqrt(1 / card B)^2"
-      unfolding Y_def 
-      by (intro add_mono var_approx[OF assms(3) a]) auto 
+      unfolding \<epsilon>_def by (intro add_mono power_mono) auto
     also have "... \<le> card R * (real (card R) - 1) / card B + sqrt(1 / card B)^2"
-      unfolding q_altdef Y_def by (intro add_mono var_balls_and_bins[OF assms(1,2,4)]) auto
+      unfolding q_altdef  by (intro add_mono var_balls_and_bins) auto
     also have "... = card R * (real (card R) - 1) / card B + 1 / card B"
       by (auto simp add:power_divide real_sqrt_divide)
     also have "... \<le> card R * (real (card R) - 1) / card B + card R / card B"
@@ -1499,5 +1690,6 @@ proof -
   qed
 qed
 
+end
 
 end

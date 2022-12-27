@@ -1,5 +1,5 @@
 theory DDE_Accuracy_Without_Cutoff
-  imports E4  "HOL-Decision_Procs.Approximation"
+  imports E4  "HOL-Decision_Procs.Approximation" "Balls_and_Bins_2"
 begin
 
 context inner_algorithm_fix_A
@@ -24,27 +24,13 @@ proof -
     using \<rho>'_def by simp
 qed
 
-lemma powr_rev_mono:
-  fixes a x y :: real
-  assumes "a \<le> 1" "a > 0" "x \<ge> y"
-  shows "a powr x \<le> a powr y"
-proof -
-  have "a powr x = (a powr (-1)) powr (-x)"
-    by (simp add:powr_powr)
-  also have "... \<le> (a powr (-1)) powr (-y)"
-    using assms by (intro powr_mono) auto
-  also have "... = a powr y"
-    by (simp add:powr_powr)
-  finally show ?thesis by simp
-qed
-
 lemma rho_mono:
   assumes "x \<le> y"
   shows "\<rho> x \<le> \<rho> y" 
 proof-
   have "(1 - 1 / real b) powr y \<le> (1 - 1 / real b) powr x" 
     using b_min
-    by (intro powr_rev_mono assms) auto
+    by (intro powr_mono_rev assms) auto
   thus ?thesis 
     unfolding \<rho>_def by (intro mult_left_mono) auto
 qed
@@ -132,9 +118,10 @@ proof -
     by (simp add:\<rho>'_deriv_def algebra_simps)
 qed
 
-lemma "\<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" (is "?L \<le> ?R")
+lemma "\<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
+  (is "?L \<le> ?R")
 proof -
-  have "?L \<le> \<Psi>.prob {\<psi>. \<not>(E\<^sub>1 \<psi>) \<or>  \<not>(E\<^sub>2 \<psi>) \<or>  \<not>(E\<^sub>3 \<psi>) \<or>  \<not>(E\<^sub>4 \<psi>)}"
+  have "?L \<le> \<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"
   proof (rule \<Psi>.pmf_rev_mono[OF  \<Psi>.M_def])
     fix \<psi> assume "\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
@@ -249,11 +236,11 @@ proof -
       unfolding \<psi>_def by auto
   qed
   also have "... \<le> 
-    \<Psi>.prob {\<psi>. \<not>(E\<^sub>1 \<psi>) \<or> \<not>(E\<^sub>2 \<psi>) \<or> \<not>(E\<^sub>3 \<psi>)} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>(E\<^sub>4 \<psi>)}"
+    \<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi> \<or> \<not>E\<^sub>3 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>}"
     by (intro \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
-  also have "... \<le> (\<Psi>.prob {\<psi>. \<not>(E\<^sub>1 \<psi>) \<or> \<not>(E\<^sub>2 \<psi>)} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>(E\<^sub>3 \<psi>)}) + 1/2^6"
+  also have "... \<le> (\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>}) + 1/2^6"
     by (intro add_mono e_4 \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
-  also have "... \<le> ((\<Psi>.prob {\<psi>. \<not>(E\<^sub>1 \<psi>)} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> \<not>(E\<^sub>2 \<psi>)}) + 1/2^6) + 1/2^6"
+  also have "... \<le> ((\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>}) + 1/2^6) + 1/2^6"
     by (intro add_mono e_3 \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
   also have "... \<le> ((1/2^6 + 1/2^6) + 1/2^6) + 1/2^6"
     by (intro add_mono e_2 e_1) auto

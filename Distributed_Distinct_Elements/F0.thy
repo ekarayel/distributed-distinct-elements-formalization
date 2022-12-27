@@ -21,6 +21,7 @@ locale inner_algorithm =
   assumes \<delta>_gt_0: "\<delta> > 0" and \<delta>_lt_1: "\<delta> < 1"
 begin
 
+
 definition b_exp :: nat 
   where "b_exp = nat (\<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
 definition b :: nat 
@@ -28,9 +29,6 @@ definition b :: nat
 
 definition \<rho> :: "real \<Rightarrow> real"
   where "\<rho> x = b * (1-(1-1/ b) powr x)"
-
-(* \<rho>\<inverse> *)
-(* ln (1-x/b)/ ln (1-1/b) = y  *)
 
 definition \<rho>' :: "real \<Rightarrow> real"
   where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
