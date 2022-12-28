@@ -21,32 +21,36 @@ locale inner_algorithm =
   assumes \<delta>_gt_0: "\<delta> > 0" and \<delta>_lt_1: "\<delta> < 1"
 begin
 
-
 definition b_exp :: nat 
   where "b_exp = nat (\<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
 definition b :: nat 
   where "b = 2^b_exp"
 
 definition \<rho> :: "real \<Rightarrow> real"
-  where "\<rho> x = b * (1-(1-1/ b) powr x)"
+  where "\<rho> x = b * (1 - (1-1/b) powr x)"
 
 definition \<rho>' :: "real \<Rightarrow> real"
   where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
 
 definition l :: nat 
-  where "l = nat (\<lceil>ln (1/real_of_rat \<epsilon>)\<rceil>)"
+  where "l = nat \<lceil>ln (1/real_of_rat \<epsilon>)\<rceil>"
 definition k :: nat 
-  where "k = nat (\<lceil>ln (b\<^sup>2)\<rceil>)"
+  where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
 
-lemma powr_less_1: "x > 0 \<Longrightarrow> x < 1 \<Longrightarrow> (x::real)^2 < 1"
-  using power_strict_decreasing
-  by (metis pos2 power_0)
+lemma k_min: "7.5 * ln (real b) + 16 \<le> real k"
+  unfolding k_def by linarith
 
-lemma k_gt_0: "k > 0" sorry
 
 lemma l_gt_0: "l > 0" sorry
+
+
+
 lemma b_exp_ge_26: "b_exp \<ge> 26"
 proof -
+  have powr_less_1: "x > 0 \<Longrightarrow> x < 1 \<Longrightarrow> x^2 < 1" for x :: real
+    using power_strict_decreasing
+    by (metis pos2 power_0)
+
   have "2 powr 25 < C2" unfolding C2_def by simp
   also have "... < (C2*1) / (real_of_rat \<delta>)\<^sup>2"
     using \<delta>_gt_0 \<delta>_lt_1 unfolding C2_def
@@ -63,6 +67,36 @@ qed
 lemma b_min: "b \<ge> 2^26"
   unfolding b_def
   by (meson b_exp_ge_26  nat_power_less_imp_less not_less power_eq_0_iff power_zero_numeral)
+
+lemma k_gt_0: "k > 0"
+proof -
+  have "(0::real) < 7.5 * 0 + 16" by simp
+  also have "... \<le> 7.5 * ln(real b) + 16"
+    using b_min
+    by (intro add_mono mult_left_mono ln_ge_zero) auto
+  finally have "0 < real k"
+    using k_min by simp
+  thus ?thesis by simp
+qed
+  
+lemma b_ne: "{..<b} \<noteq> {}"
+proof -
+  have "0 \<in> {0..<b}"
+    using b_min by simp
+  thus ?thesis
+    by auto
+qed
+
+lemma b_lower_bound: "C2 / (of_rat \<delta>)^2 \<le> real b"
+proof -
+  have "C2 / (of_rat \<delta>)^2 = 2 powr (log 2 (C2 / (of_rat \<delta>)^2))"
+    using \<delta>_gt_0 unfolding C2_def by (intro powr_log_cancel[symmetric] divide_pos_pos) auto
+  also have "... \<le> 2 powr (nat \<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
+    by (intro powr_mono of_nat_ceiling) simp
+  also have "... = real b"
+    unfolding b_def b_exp_def by (simp add:powr_realpow)
+  finally show ?thesis by simp
+qed
 
 definition \<Psi> where 
   "\<Psi> = (\<G> 2 n) \<times>\<^sub>S (\<H> 2 n [C6*b\<^sup>2]\<^sub>S) \<times>\<^sub>S (\<H> k (C6*b\<^sup>2) [b]\<^sub>S)"
@@ -521,7 +555,7 @@ definition s\<^sub>M where "s\<^sub>M = nat (\<lceil>log 2 Y\<rceil> - b_exp)"
 subsection \<open>Accuracy for $s=0$\<close>
 
 definition t\<^sub>1 :: "(nat \<Rightarrow> nat) \<Rightarrow> int" 
-  where "t\<^sub>1 f = int_of_nat (Max (f ` A)) - b_exp + 9"
+  where "t\<^sub>1 f = int (Max (f ` A)) - b_exp + 9"
 
 definition t :: "(nat \<Rightarrow> nat) \<Rightarrow> nat"
   where "t f = nat (t\<^sub>1 f)"
@@ -532,7 +566,7 @@ definition R :: "(nat \<Rightarrow> nat) \<Rightarrow> nat set"
 definition r :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> nat"
   where "r x f = card {a. a \<in> A \<and> f a \<ge> x}"
 
-definition p where "p =(\<lambda>(f,g,h). card { j. j \<in> {..<b} \<and> \<tau>\<^sub>1 (f,g,h) A 0 j \<ge> t f})"
+definition p where "p =(\<lambda>(f,g,h). card {j\<in> {..<b}. \<tau>\<^sub>1 (f,g,h) A 0 j \<ge> t f})"
 
 definition A\<^sub>S where "A\<^sub>S = (\<lambda>(f,g,h). 2 ^ t f * \<rho>' (p (f,g,h)))"
 
@@ -611,9 +645,6 @@ proof -
   finally show "\<Psi>\<^sub>1.variance (r x) \<le> \<Psi>\<^sub>1.expectation (r x)" by simp
 qed
 
-
 end
-
-
 
 end

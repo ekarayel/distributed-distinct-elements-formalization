@@ -15,6 +15,12 @@ lemmas algebra_cong =
   arg_cong[where f="abs"]
   arg_cong[where f="card"]
 
+lemma (in prob_space) AE_pmfI:
+  assumes "M = measure_pmf p"
+  assumes "\<And>\<omega>. \<omega> \<in> set_pmf p \<Longrightarrow> P \<omega>"
+  shows "AE \<omega> in M. P \<omega>"
+  unfolding assms(1) by (intro AE_pmfI assms(2)) auto
+
 lemma (in prob_space) pmf_exp_of_fin_function:
   assumes "M = measure_pmf p"
   assumes "finite A" "g ` set_pmf p \<subseteq> A"
@@ -226,5 +232,7 @@ proof -
     using c z(1,2) by auto
   thus ?thesis using z(3) by auto
 qed
+
+notation "pair_pmf" (infixr "\<times>\<^sub>P" 65)
 
 end

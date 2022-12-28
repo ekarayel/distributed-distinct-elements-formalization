@@ -5,7 +5,7 @@ begin
 context inner_algorithm_fix_A 
 begin
 
-definition E\<^sub>3 where "E\<^sub>3 = (\<lambda>(f,g,h). (\<forall> a b. a \<in> R f \<and> b \<in> R f \<longrightarrow> g a = g b \<longrightarrow> a = b))"
+definition E\<^sub>3 where "E\<^sub>3 = (\<lambda>(f,g,h). inj_on g (R f))"
 
 lemma R_bound:
   fixes f g h
@@ -105,7 +105,7 @@ proof -
     hence "card (R f) \<le> 2/3 * b"
       using R_bound \<psi>_def by force
     moreover have "\<exists>a b. a \<in> R f \<and> b \<in> R f \<and> a \<noteq> b \<and> g a = g b"
-      using a unfolding \<psi>_def E\<^sub>3_def by auto
+      using a unfolding \<psi>_def E\<^sub>3_def inj_on_def by auto
     hence "\<exists>x y. x \<in> R f \<and> y \<in> R f \<and> x < y \<and> g x = g y"
       by (metis not_less_iff_gr_or_eq)
     hence "\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g"

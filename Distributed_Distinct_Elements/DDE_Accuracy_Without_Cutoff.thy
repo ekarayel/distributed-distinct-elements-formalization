@@ -1,5 +1,5 @@
 theory DDE_Accuracy_Without_Cutoff
-  imports E4  "HOL-Decision_Procs.Approximation" "Balls_and_Bins_2"
+  imports E4  "HOL-Decision_Procs.Approximation" "Balls_and_Bins"
 begin
 
 context inner_algorithm_fix_A

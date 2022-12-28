@@ -245,7 +245,7 @@ proof -
   let ?q = "binomial_pmf (card R) ?\<alpha>"
   let ?Y = "(\<lambda>\<omega>. card {r \<in> R. \<omega> r \<in> J})"
 
-  have fin_j: "finite J"
+  have fin_J: "finite J"
     using finite_subset assms(1) fin_B by auto
 
   have Z_sum_eq: "(\<Sum>j \<in> J. Z j \<omega>) = real (?Y \<omega>)" for \<omega>
@@ -253,18 +253,16 @@ proof -
     have "?Y \<omega> = card (\<Union>j \<in> J. {r \<in> R. \<omega> r= j})"
       by (intro arg_cong[where f="card"]) auto
     also have "... =  (\<Sum>i\<in>J. card {r \<in> R. \<omega> r = i})"
-      using fin_R fin_j by (intro card_UN_disjoint) auto
+      using fin_R fin_J by (intro card_UN_disjoint) auto
     finally have "?Y \<omega> = (\<Sum>j \<in> J. card {r \<in> R. \<omega> r  = j})" by simp
     thus ?thesis
     unfolding Z_def of_nat_sum[symmetric] by simp
   qed
 
-  have j_le_b: "card J \<le> card B"
+  have card_J: "card J \<le> card B"
     using assms(1) fin_B card_mono by auto
-  have card_B_nz: "card B \<noteq> 0" 
-    using card_B_gt_0 by simp
   have \<alpha>_range: "?\<alpha> \<ge> 0" "?\<alpha> \<le> 1" 
-    using j_le_b card_B_nz by auto
+    using card_J card_B_gt_0 by auto
 
   have "pmf (map_pmf (\<lambda>\<omega>. \<omega> \<in> J) (pmf_of_set B)) x = pmf (bernoulli_pmf ?\<alpha>) x" 
     (is "?L1=?R1") for x
@@ -275,9 +273,9 @@ proof -
     also have "... = (if x then (card J) else (card (B - J))) / real (card B)"
       using Int_absorb1[OF assms(1)] by (auto simp add:Diff_eq Int_def)
     also have "... = (if x then (card J) / card B else (real (card B) - card J) / real (card B))"
-      using j_le_b fin_j assms(1) by (simp add: of_nat_diff card_Diff_subset)
+      using card_J fin_J assms(1) by (simp add: of_nat_diff card_Diff_subset)
     also have "... = (if x then ?\<alpha> else (1 - ?\<alpha>))"
-      using card_B_nz by (simp add:divide_simps)
+      using card_B_gt_0 by (simp add:divide_simps)
     also have "... = ?R1"
       using \<alpha>_range by auto
     finally show ?thesis by simp
@@ -1688,6 +1686,64 @@ proof -
       by (simp add:algebra_simps power2_eq_square)
     finally show "?BL \<le> ?BR" by simp
   qed
+qed
+
+lemma devitation_bound:
+  assumes "card R \<le> card B" 
+  assumes "lim_balls_and_bins k p"
+  assumes "real k \<ge> 7.5 * ln (real (card B)) + 16"
+  shows "measure p {\<omega>. \<bar>Y \<omega> - \<mu>\<bar> > 9 * real (card R) / sqrt (real (card B))} \<le> 1 / 2^6" 
+    (is "?L \<le> ?R")
+proof (cases "card R > 0")
+  case True
+
+  define k' :: nat where "k' = k - 1"
+  have "(1::real) \<le> 7.5 * 0 + 16" by simp
+  also have "... \<le> 7.5 * ln (real (card B)) + 16"
+    using card_B_ge_1 by (intro add_mono mult_left_mono ln_ge_zero) auto
+  also have "... \<le> k" using assms(3) by simp
+  finally have k_ge_1: "k \<ge> 1" by simp 
+  have lim: "lim_balls_and_bins (k'+1) p" 
+    using k_ge_1 assms(2) unfolding  k'_def by simp
+
+  have k'_min: "real k' \<ge> 7.5 * (ln (real (card B)) + 2)"
+    using k_ge_1 assms(3) unfolding k'_def by simp
+
+  let ?r = "real (card R)" 
+  let ?b = "real (card B)"
+  have a: "integrable (measure_pmf p) (\<lambda>\<omega>. (Y \<omega>)\<^sup>2)" 
+    unfolding Y_def
+    by (intro integrable_pmf_iff_bounded[where C="real (card R)^2"])
+     (auto intro!: card_image_le[OF fin_R])
+
+  have "?L \<le> \<P>(\<omega> in measure_pmf p. \<bar>Y \<omega>- (\<integral>\<omega>. Y \<omega> \<partial>p)\<bar> \<ge> 8*?r / sqrt ?b)"
+  proof (rule measure_pmf.pmf_mono[OF refl])
+    fix \<omega> assume "\<omega> \<in> set_pmf p"
+    assume a:"\<omega> \<in> {\<omega>. 9 * real (card R) / sqrt (real (card B)) < \<bar>Y \<omega> - \<mu>\<bar>}"
+    have "8 * ?r / sqrt ?b = 9 * ?r / sqrt ?b - ?r / sqrt ?b"
+      by simp
+    also have "... \<le>  \<bar>Y \<omega> - \<mu>\<bar> - \<bar> (\<integral>\<omega>. Y \<omega> \<partial>p) - \<mu>\<bar>"
+      using a by (intro diff_mono exp_approx_2[OF assms(1) lim k'_min]) simp
+    also have "... \<le> \<bar>Y \<omega> - (\<integral>\<omega>. Y \<omega> \<partial>p)\<bar>"
+      by simp
+    finally have "8 * ?r / sqrt ?b \<le> \<bar>Y \<omega> - (\<integral>\<omega>. Y \<omega> \<partial>p)\<bar>" by simp
+    thus "\<omega> \<in> {\<omega> \<in> space (measure_pmf p). 8 * ?r / sqrt ?b \<le> \<bar>Y \<omega> - (\<integral>\<omega>. Y \<omega> \<partial>p)\<bar>}"
+      by simp
+  qed
+  also have "... \<le> measure_pmf.variance p Y / (8*?r / sqrt ?b)^2"
+    using True card_B_gt_0 a
+    by (intro measure_pmf.Chebyshev_inequality) auto
+  also have "... \<le> (?r^2 / ?b) / (8*?r / sqrt ?b)^2"
+    by (intro divide_right_mono var_approx_2[OF assms(1) lim k'_min]) simp
+  also have "... = 1/2^6"
+    using card_B_gt_0 True
+    by (simp add:power2_eq_square)
+  finally show ?thesis by simp
+next
+  case False
+  hence "R = {}" "card R = 0" using fin_R by auto
+  thus ?thesis
+    unfolding Y_def \<mu>_def by simp
 qed
 
 end
