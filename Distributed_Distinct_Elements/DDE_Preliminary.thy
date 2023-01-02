@@ -4,7 +4,6 @@ theory DDE_Preliminary
 
 begin
 
-
 lemmas algebra_cong =
   arg_cong2[where f="(+)"]
   arg_cong2[where f="(*)"]
@@ -51,8 +50,8 @@ lemma (in prob_space) pmf_exp_mono:
   assumes "integrable M f" "integrable M g"
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<le> g x"
   shows "integral\<^sup>L M f \<le> integral\<^sup>L M g"
-  using assms(2,3,4) unfolding assms(1)
-  by (intro integral_mono_AE AE_pmfI) auto
+  using assms(2,3,4) 
+  by (intro integral_mono_AE AE_pmfI[OF assms(1)]) auto
 
 lemma (in prob_space) pmf_markov:
   assumes "M = measure_pmf p"
@@ -61,7 +60,7 @@ lemma (in prob_space) pmf_markov:
   shows "prob {\<omega>. f \<omega> \<ge> c} \<le> expectation f / c" (is "?L \<le> ?R")
 proof -
   have a:"AE \<omega> in M. 0 \<le> f \<omega>" 
-    unfolding assms(1) by (intro AE_pmfI assms(4)) auto
+    by (intro AE_pmfI[OF assms(1)] assms(4)) auto
   have b:"{} \<in> events" 
     unfolding assms(1) by simp
 
@@ -121,9 +120,6 @@ proof -
     by (subst nn_integral_eq_integral) auto
   finally show ?thesis by simp
 qed
-
-lemma "infinite A \<Longrightarrow> inj_on f A \<Longrightarrow> infinite (f ` A)"
-  using finite_image_iff by blast
 
 lemma card_distinct_pairs:
   "card {x \<in> B \<times> B. fst x \<noteq> snd x} = card B^2 - card B" (is "card ?L = ?R")
@@ -232,7 +228,5 @@ proof -
     using c z(1,2) by auto
   thus ?thesis using z(3) by auto
 qed
-
-notation "pair_pmf" (infixr "\<times>\<^sub>P" 65)
 
 end

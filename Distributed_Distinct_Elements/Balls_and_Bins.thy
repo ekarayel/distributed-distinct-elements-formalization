@@ -235,10 +235,10 @@ definition "Z j \<omega> = real (card {i. i \<in> R \<and> \<omega> i = (j::'b)}
 definition "Y \<omega> = real (card (\<omega> ` R))"
 definition "\<mu> = real (card B) * (1 - (1-1/real (card B))^card R)"
 
-
 lemma fact_moment_balls_and_bins:
   assumes "J \<subseteq> B" "J \<noteq> {}"
-  shows "(\<integral>\<omega>. ffact s (\<Sum>j \<in> J. Z j \<omega>) \<partial>\<Omega>) = ffact s (real (card R)) * (real (card J) / real (card B))^s"
+  shows "(\<integral>\<omega>. ffact s (\<Sum>j \<in> J. Z j \<omega>) \<partial>\<Omega>) = 
+    ffact s (real (card R)) * (real (card J) / real (card B))^s"
     (is "?L = ?R")
 proof -
   let ?\<alpha> = "real (card J) / real (card B)"

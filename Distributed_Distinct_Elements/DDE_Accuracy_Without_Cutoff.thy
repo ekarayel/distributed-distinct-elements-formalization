@@ -118,7 +118,7 @@ proof -
     by (simp add:\<rho>'_deriv_def algebra_simps)
 qed
 
-lemma "\<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
+lemma l_6_8: "\<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
   have "?L \<le> \<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"

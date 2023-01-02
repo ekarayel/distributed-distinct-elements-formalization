@@ -7,23 +7,24 @@ begin
 
 definition E\<^sub>4 where "E\<^sub>4 = (\<lambda>(f,g,h). \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> \<le> real_of_rat \<delta>/12 * card (R f))"
 
-lemma e_4_h:  "9 / sqrt (real b) \<le> real_of_rat \<delta> / 12"
+lemma e_4_h: "9 / sqrt b \<le> of_rat \<delta> / 12"
 proof -
   have "108 \<le> sqrt (C2)"
     unfolding C2_def by (approximation 5)
-  also have "... \<le> sqrt(real_of_rat \<delta>^2 * real b)"
+  also have "... \<le> sqrt(of_rat \<delta>^2 * real b)"
     using b_lower_bound \<delta>_gt_0
     by (intro real_sqrt_le_mono) (simp add: pos_divide_le_eq algebra_simps)
-  also have "... = real_of_rat \<delta> * sqrt (real b)"
+  also have "... = of_rat \<delta> * sqrt b"
     using \<delta>_gt_0 by (simp add:real_sqrt_mult)
-  finally have "108 \<le> real_of_rat \<delta> * sqrt (real b)"  by simp
+  finally have "108 \<le> of_rat \<delta> * sqrt b"  by simp
   thus ?thesis
     using b_min by (simp add:pos_divide_le_eq)
 qed
 
 lemma e_4: "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
-  have a: "\<Psi>\<^sub>3.prob {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)} \<le> 1/2^6" (is "?L1 \<le> ?R1")
+  have a: "\<Psi>\<^sub>3.prob {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)} \<le> 1/2^6" 
+    (is "?L1 \<le> ?R1")
     if "f \<in> set_pmf (sample_pmf (\<G> 2 n))" "g \<in> set_pmf(sample_pmf (\<H> 2 n [C6 * b\<^sup>2]\<^sub>S))"
     for f g 
   proof (cases "card (R f) \<le> b \<and> inj_on g (R f)")
@@ -35,11 +36,6 @@ proof -
     have fin_R: "finite (g ` R f)"
       unfolding R_def using fin_A
       by (intro finite_imageI) simp
-
-    have "0 \<in> {0..<b}"
-      using b_min by simp
-    hence b_ne: "{..<b} \<noteq> {}"
-      by auto
 
     interpret B:balls_and_bins_abs "g ` R f" "{..<b}"
       using fin_R b_ne by unfold_locales auto 
@@ -69,12 +65,12 @@ proof -
     have card_g_le_b: "card (g ` R f) \<le> card {..<b}"
       unfolding card_g_R using True by simp
 
-    have "?L1 \<le> \<Psi>\<^sub>3.prob {h. \<bar>p (f,g,h) -\<rho> (card (R f))\<bar> > of_rat \<delta>/12 * card (R f)}"
-      unfolding E\<^sub>4_def by (intro \<Psi>\<^sub>3.pmf_mono[OF \<Psi>\<^sub>3.M_def]) auto
-    also have "... \<le> \<Psi>\<^sub>3.prob {h. \<bar>B.Y h - B.\<mu>\<bar> > 9 * real (card (g ` R f)) / sqrt (card {..<b})}"
+    have "?L1 \<le> \<Psi>\<^sub>3.prob {h. \<bar>B.Y h - B.\<mu>\<bar> > 9 * real (card (g ` R f)) / sqrt (card {..<b})}"
     proof (rule \<Psi>\<^sub>3.pmf_mono[OF \<Psi>\<^sub>3.M_def])
-      fix h assume b:"h \<in>  {h. \<bar>p (f,g,h) -\<rho> (card (R f))\<bar> > of_rat \<delta>/12 * card (R f)}"
-      assume c:"h \<in> set_pmf (sample_pmf (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S))"
+      fix h assume "h \<in> {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)}"
+      hence b: "\<bar>p (f,g,h) -\<rho> (card (R f))\<bar> > of_rat \<delta>/12 * card (R f)"
+        unfolding E\<^sub>4_def by simp
+      assume "h \<in> set_pmf (sample_pmf (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S))"
       hence "range h \<subseteq> sample_set [b]\<^sub>S"
         unfolding \<Psi>\<^sub>3.set_pmf_sample_pmf
         using \<Psi>\<^sub>3.\<H>_range sample_set_def by (metis imageE)
@@ -94,14 +90,14 @@ proof -
         by (auto simp add:set_eq_iff image_iff)
       also have "... = h ` (g ` (R f))"
         by (simp add:image_image)
-      finally have d:"{j \<in> {..<b}. int (t f) \<le> \<tau>\<^sub>1 (f, g, h) A 0 j} = h ` (g ` R f)"
+      finally have c:"{j \<in> {..<b}. int (t f) \<le> \<tau>\<^sub>1 (f, g, h) A 0 j} = h ` (g ` R f)"
         by simp 
       have "9 * real (card (g ` R f)) / sqrt (card {..<b}) = 9/ sqrt b * real (card (R f))"
         using card_image[OF g_inj] by simp
       also have "... \<le> of_rat \<delta>/12 * card (R f)" 
         by (intro mult_right_mono e_4_h) simp
       also have "... < \<bar>B.Y h - B.\<mu>\<bar>"
-        using b d unfolding B.Y_def p_def b_mu by simp
+        using b c unfolding B.Y_def p_def b_mu by simp
       finally show "h \<in> {h. \<bar>B.Y h - B.\<mu>\<bar> >  9 * real (card (g ` R f)) / sqrt (card {..<b})}"
         by simp
     qed

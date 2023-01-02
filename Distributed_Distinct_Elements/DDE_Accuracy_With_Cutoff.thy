@@ -120,6 +120,38 @@ lemma A_1_eq_A\<^sub>S:
   shows "A_1 (f,g,h) \<sigma> = A\<^sub>S (f,g,h)"
   unfolding A_1_def  A\<^sub>S_def t_2_eq_t[OF assms(1,2)] p_1_eq_p[OF assms(1,2)] by simp
 
+lemma l_6_9: "\<Psi>.prob {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > real_of_rat \<delta> * Y} \<le> 1/2^4" 
+  (is "?L \<le> ?R")
+proof -
+  have "\<Psi>.prob {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > of_rat \<delta> * Y} \<le>
+    \<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > of_rat \<delta> * Y \<or> t f < s\<^sub>M}"
+  proof (rule \<Psi>.pmf_mono[OF \<Psi>.M_def])
+    fix \<psi> 
+    assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M. real_of_rat \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>}"
+    assume d:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
+    obtain \<sigma> where b:"\<sigma> \<le> s\<^sub>M" and c:"of_rat \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>"
+      using a by auto
+    obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
+    hence e:"(f,g,h) \<in> sample_set \<Psi>"
+      using d \<psi>_def \<Psi>.set_pmf_sample_pmf by simp
+
+    show "\<psi> \<in> {(f, g, h). real_of_rat \<delta> * real Y < \<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<or> t f < s\<^sub>M}" 
+    proof (cases "t f \<ge> s\<^sub>M")
+      case True
+      hence f:"\<sigma> \<le> t f" using b by simp
+      have "of_rat \<delta> * real Y < \<bar>A\<^sub>S \<psi> - real Y\<bar>"
+        using A_1_eq_A\<^sub>S[OF e f] c unfolding \<psi>_def by simp      
+      then show ?thesis unfolding \<psi>_def by simp
+    next
+      case False
+      then show ?thesis unfolding \<psi>_def by simp
+    qed
+  qed
+  also have "... \<le> 1/2^4"
+    using l_6_8 by simp
+  finally show ?thesis by simp
+qed
+
 end
 
 end
