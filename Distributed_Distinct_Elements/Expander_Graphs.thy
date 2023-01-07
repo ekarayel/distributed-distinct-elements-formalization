@@ -2,6 +2,7 @@ theory Expander_Graphs
   imports Main 
     "HOL-Library.FuncSet" 
     "HOL-Library.Multiset" 
+    "HOL-Library.Monad_Syntax"
     "HOL-Types_To_Sets.Types_To_Sets"
     "HOL-Analysis.Finite_Cartesian_Product"
     "Smooth_Manifolds.Analysis_More"
@@ -18,6 +19,9 @@ lemma pythagoras:
 
 definition diag :: "('a :: zero)^'n \<Rightarrow> 'a^'n^'n"
   where "diag v = (\<chi> i j. if i = j then (v $ i) else 0)"
+
+definition ind_vec :: "'n set \<Rightarrow> real^'n"
+  where "ind_vec S = (\<chi> i. of_bool( i \<in> S))"
 
 lemma diag_mult_eq: "diag x ** diag y = diag (x * y)"
   unfolding diag_def 
@@ -127,8 +131,30 @@ lemma spec_boundD2:
   shows "norm (A *v v) \<le> l * norm v" 
   using assms unfolding spec_bound_def by simp
 
+lemma spec_bound_mono:
+  assumes "spec_bound A \<alpha>" "\<alpha> \<le> \<beta>"
+  shows "spec_bound A \<beta>"
+proof -
+  have "norm (A *v v) \<le> \<beta> * norm v" if "inner v 1 = 0"  for v
+  proof -
+    have "norm (A *v v) \<le> \<alpha> * norm v" 
+      by (intro spec_boundD2[OF assms(1)] that)
+    also have "... \<le> \<beta> * norm v"
+      by (intro mult_right_mono assms(2)) auto
+    finally show ?thesis by simp
+  qed
+  moreover have "\<beta> \<ge> 0"
+    using assms(2) spec_boundD1[OF assms(1)] by simp
+  ultimately show ?thesis 
+    unfolding spec_bound_def by simp
+qed
+
 definition nonneg_mat :: "real^'n^'m \<Rightarrow> bool"
   where "nonneg_mat A = (\<forall>i j. (A $ i) $ j \<ge> 0)"
+
+lemma nonneg_mat_1:
+  shows "nonneg_mat (mat 1)"
+  unfolding nonneg_mat_def mat_def by auto
 
 lemma nonneg_mat_prod:
   assumes "nonneg_mat A" "nonneg_mat B"
@@ -193,17 +219,18 @@ fun matrix_pow where
 
 lemma markov_orth_inv: 
   assumes "markov A"
-  assumes "inner x 1 = 0"
-  shows "inner (A *v x) 1 = 0"
+  shows "inner (A *v x) 1 = inner x 1"
 proof -
   have "inner (A *v x) 1 = inner x (1 v* A)"
     using dot_lmul_matrix inner_commute by metis
   also have "... = inner x 1"
     using markov_apply[OF assms(1)] by simp
-  also have "... = 0"
-    using assms(2) by simp
   finally show ?thesis by simp
 qed
+
+lemma markov_id:
+  "markov (mat 1)"
+  unfolding markov_def using nonneg_mat_1 by simp
 
 lemma markov_mult:
   assumes "markov A" "markov B"
@@ -221,19 +248,11 @@ proof -
     unfolding markov_def by simp
 qed
 
-lemma markov_orth_inv_pow: 
+lemma markov_matrix_pow:
   assumes "markov A"
-  assumes "inner x 1 = 0"
-  shows "inner (matrix_pow A k *v x) 1 = 0"
-proof (induction k)
-  case 0
-  then show ?case using assms(2) by simp
-next
-  case (Suc k)
-  have "inner (A *v ( matrix_pow A k *v x)) 1 = 0"
-    by (intro markov_orth_inv[OF assms(1)] Suc)
-  then show ?case by (simp add:matrix_vector_mul_assoc)
-qed
+  shows "markov (matrix_pow A k)"
+  using markov_id assms markov_mult
+  by (induction k, auto)
 
 lemma spec_bound_prod: 
   assumes "markov A" "markov B"
@@ -247,7 +266,7 @@ proof -
     have "norm ((A ** B) *v x) = norm (A *v (B *v x))"
       by (simp add:matrix_vector_mul_assoc)
     also have "... \<le> la * norm (B *v x)"
-      by (intro spec_boundD2[OF assms(3)] markov_orth_inv that assms(2))
+      by (intro spec_boundD2[OF assms(3)]) (simp add:markov_orth_inv that assms(2))
     also have "... \<le> la * (lb * norm x)" 
       by (intro spec_boundD2[OF assms(4)] mult_left_mono that la_ge_0)
     finally show ?thesis by simp
@@ -258,7 +277,6 @@ proof -
     using spec_bound_def by auto
 qed
 
-(* SHOULD FOLLOW FROM LAST *)
 lemma spec_bound_pow: 
   assumes "markov A"
   assumes "spec_bound A l"
@@ -268,23 +286,9 @@ proof (induction k)
   then show ?case unfolding spec_bound_def by simp
 next
   case (Suc k)
-  have "norm (matrix_pow A (Suc k) *v x) \<le> l^(Suc k) * norm x" if "inner x 1 = 0" for x
-  proof -
-    have "norm (matrix_pow A (Suc k) *v x) = norm (A *v (matrix_pow A k *v x))"
-      by (simp add:matrix_vector_mul_assoc)
-    also have "... \<le> l * norm (matrix_pow A k *v x)"
-      by (intro spec_boundD2[OF assms(2)] markov_orth_inv_pow that assms(1)) 
-    also have "... \<le> l * (l^k * norm x)"
-      by (intro mult_left_mono spec_boundD2[OF Suc] that spec_boundD1[OF assms(2)])
-    also have "... = l^(Suc k) * norm x"
-      by simp
-    finally show ?thesis
-      by simp
-  qed
-  moreover have "l^Suc k \<ge> 0" 
-    using spec_boundD1[OF assms(2)] by simp
-  ultimately show ?case 
-    unfolding spec_bound_def by simp
+  have "spec_bound (A ** matrix_pow A k) (l * l ^ k)"
+    by (intro spec_bound_prod assms Suc markov_matrix_pow)
+  thus ?case by simp
 qed
 
 (* REMOVE *)
@@ -442,10 +446,10 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma hitting_property:
+lemma hitting_property_alg:
   fixes S :: "('n :: finite) set"
   assumes l_range: "l \<in> {0..1}"
-  defines "P \<equiv> diag (\<chi> i. of_bool (i \<in> S))"
+  defines "P \<equiv> diag (ind_vec S)"
   defines "\<mu> \<equiv> card S / CARD('n)"
   assumes "\<And>M. M \<in> set Ms \<Longrightarrow> spec_bound M l \<and> markov M"
   shows "inner (foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms) 1 \<le> (\<mu> + l * (1-\<mu>))^(length Ms+1)"
@@ -453,16 +457,16 @@ proof -
   define t :: "real^'n" where "t = (\<chi> i. of_bool (i \<in> S))"
   define r where "r = foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms"
   have P_proj: "P ** P = P"
-    unfolding P_def diag_mult_eq by (intro arg_cong[where f="diag"]) (vector)
+    unfolding P_def diag_mult_eq ind_vec_def by (intro arg_cong[where f="diag"]) (vector)
 
   have P_1_left: "1 v* P = t"
-    unfolding P_def diag_def vector_matrix_mult_def t_def by simp
+    unfolding P_def diag_def ind_vec_def vector_matrix_mult_def t_def by simp
 
   have P_1_right: "P *v 1 = t"
-    unfolding P_def diag_def matrix_vector_mult_def t_def by simp
+    unfolding P_def diag_def ind_vec_def matrix_vector_mult_def t_def by simp
 
   have P_norm :"matrix_norm_bound P 1"
-    unfolding P_def by (intro matrix_norm_bound_diag) simp
+    unfolding P_def ind_vec_def by (intro matrix_norm_bound_diag) simp
 
   have norm_t: "norm t = sqrt (real (card S))" 
     unfolding t_def norm_vec_def L2_set_def of_bool_def
@@ -561,8 +565,425 @@ proof -
     unfolding r_def by simp
 qed
 
-section \<open>Expander Graphs\<close>
+lemma upto_append:
+  assumes "i \<le> j" "j \<le> k"
+  shows  "[i..<j]@[j..<k] = [i..<k]"
+  using assms by (metis less_eqE upt_add_eq_append)
 
+definition bool_list_split :: "bool list \<Rightarrow> (nat list \<times> nat)"
+  where "bool_list_split xs = foldl (\<lambda>(ys,z) x. (if x then (ys@[z],0) else (ys,z+1))) ([],0) xs" 
+
+lemma bool_list_split:
+  assumes "bool_list_split xs = (ys,z)"
+  shows "xs = concat (map (\<lambda>k. replicate k False@[True]) ys)@replicate z False"
+  using assms
+proof (induction xs arbitrary: ys z rule:rev_induct)
+  case Nil
+  then show ?case unfolding bool_list_split_def by simp
+next
+  case (snoc x xs)
+  obtain u v where uv_def: "bool_list_split xs = (u,v)" 
+    by (metis surj_pair)
+
+  show ?case 
+  proof (cases x)
+    case True
+    have a:"ys = u@[v]" "z = 0"
+      using snoc(2) True uv_def unfolding bool_list_split_def by auto
+    have "xs@[x] = concat (map (\<lambda>k. replicate k False@[True]) u)@replicate v False@[True]"
+      using snoc(1)[OF uv_def] True by simp
+    also have "... = concat (map (\<lambda>k. replicate k False@[True]) (u@[v]))@replicate 0 False"
+      by simp
+    also have "... = concat (map (\<lambda>k. replicate k False@[True]) (ys))@replicate z False"
+      using a by simp
+    finally show ?thesis by simp
+  next
+    case False
+    have a:"ys = u" "z = v+1"
+      using snoc(2) False uv_def unfolding bool_list_split_def by auto
+    have "xs@[x] = concat (map (\<lambda>k. replicate k False@[True]) u)@replicate (v+1) False"
+      using snoc(1)[OF uv_def] False unfolding replicate_add by simp
+    also have "... = concat (map (\<lambda>k. replicate k False@[True]) (ys))@replicate z False"
+      using a by simp
+    finally show ?thesis by simp
+  qed
+qed
+
+lemma bool_list_split_count:
+  assumes "bool_list_split xs = (ys,z)"
+  shows "length (filter id xs) = length ys"
+  unfolding bool_list_split[OF assms(1)] by (simp add:filter_concat comp_def)
+
+lemma foldl_concat:
+  "foldl f a (concat xss) = foldl (\<lambda>y xs. foldl f y xs) a xss"
+  by (induction xss rule:rev_induct, auto)
+
+
+fun intersperse :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a list"
+  where 
+    "intersperse x [] = []" |
+    "intersperse x (y#[]) = y#[]" |
+    "intersperse x (y#z#zs) = y#x#intersperse x (z#zs)"
+
+lemma intersperse_snoc:
+  assumes "xs \<noteq> []"
+  shows "intersperse z (xs@[y]) = intersperse z xs@[z,y]"
+  using assms
+proof (induction xs rule:list_nonempty_induct)
+  case (single x)
+  then show ?case by simp
+next
+  case (cons x xs)
+  then obtain xsh xst where t:"xs = xsh#xst"
+    by (metis neq_Nil_conv)
+  have "intersperse z ((x # xs) @ [y]) = x#z#intersperse z (xs@[y])"
+    unfolding t by simp
+  also have "... = x#z#intersperse z xs@[z,y]"
+    using cons by simp
+  also have "... = intersperse z (x#xs)@[z,y]"
+    unfolding t by simp
+  finally show ?case by simp
+qed
+
+lemma foldl_intersperse:
+  assumes "xs \<noteq> []"
+  shows "foldl f a ((intersperse x xs)@[x]) = foldl (\<lambda>y z. f (f y z) x) a xs"
+  using assms by (induction xs rule:rev_nonempty_induct) (auto simp add:intersperse_snoc)
+
+lemma foldl_intersperse_2:
+  shows "foldl f a (intersperse y (x#xs)) = foldl (\<lambda>x z. f (f x y) z) (f a x) xs"
+proof (induction xs rule:rev_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (snoc xst xs)
+  have "foldl f a (intersperse y ((x # xs) @ [xst])) = foldl (\<lambda>x. f (f x y)) (f a x) (xs @ [xst])" 
+    by (subst intersperse_snoc, auto simp add:snoc)
+  then show ?case  by simp
+qed
+
+lemma hitting_property_alg_2:
+  fixes S :: "('n :: finite) set" and l :: nat
+  assumes \<alpha>_range: "\<alpha> \<in> {0..1}"
+  assumes "I \<subseteq> {..<l}"
+  defines "P i \<equiv> (if i \<in> I then diag (ind_vec S) else mat 1)"
+  defines "\<mu> \<equiv> card S / CARD('n)"
+  assumes "spec_bound M \<alpha>" "markov M"
+  shows "foldl (\<lambda>x M. M *v x) stat (intersperse M (map P [0..<l])) \<bullet> 1 \<le> (\<mu> + \<alpha> * (1-\<mu>))^card I"
+    (is "?L \<le> ?R")
+proof (cases "I \<noteq> {}")
+  case True
+  define xs where "xs = map (\<lambda>i. i \<in> I) [0..<l]"
+  define Q where "Q = diag (ind_vec S)"
+  define P' where "P' = (\<lambda>x. if x then Q else mat 1)"
+
+  let ?rep = "(\<lambda>x. replicate x (mat 1))"
+
+  have P_eq: "P i = P' (i \<in> I)" for i
+    unfolding P_def P'_def Q_def by simp
+
+  have "l > 0" 
+    using True assms(2) by auto
+  hence xs_ne: "xs \<noteq> []" 
+    unfolding xs_def by simp
+
+  obtain ys z where ys_z: "bool_list_split xs = (ys,z)"
+    by (metis surj_pair)
+
+
+  have "length ys = length (filter id xs)" 
+    using bool_list_split_count[OF ys_z] by simp
+  also have "... = card (I \<inter> {0..<l})"
+    unfolding xs_def filter_map by (simp add:comp_def distinct_length_filter)
+  also have "... = card I"
+    using Int_absorb2[OF assms(2)] unfolding atLeast0LessThan by simp
+  finally have  len_ys: "length ys = card I" by simp
+
+  hence "length ys > 0"
+    using True assms(2) by (metis card_gt_0_iff finite_nat_iff_bounded)
+  then obtain yh yt where ys_split: "ys = yh#yt" 
+    by (metis length_greater_0_conv neq_Nil_conv)
+
+  have a:"foldl (\<lambda>x N. M *v (N *v x)) x (?rep z) \<bullet> 1 = x \<bullet> 1" for x
+  proof (induction z)
+    case 0
+    then show ?case by simp
+  next
+    case (Suc z)
+    have "foldl (\<lambda>x N. M *v (N *v x)) x (?rep (z+1)) \<bullet> 1 = x \<bullet> 1"
+      unfolding replicate_add using Suc 
+      by (simp add:markov_orth_inv[OF assms(6)])
+    then show ?case by simp
+  qed
+
+  have "M *v stat = stat" 
+    using assms(6) unfolding stat_def matrix_vector_mult_scaleR markov_def by simp
+  hence b: "foldl (\<lambda>x N. M *v (N *v x)) stat (?rep yh) = stat"
+    by (induction yh, auto)
+
+  have "foldl (\<lambda>x N. N *v (M *v x)) a (?rep x) = matrix_pow M x *v a" for x a
+  proof (induction x)
+    case 0
+    then show ?case by simp
+  next
+    case (Suc x)
+    have "foldl (\<lambda>x N. N *v (M *v x)) a (?rep (x+1)) =  matrix_pow M (x+1) *v a"
+      unfolding replicate_add using Suc by (simp add: matrix_vector_mul_assoc)
+    then show ?case by simp
+  qed
+  hence c: "foldl (\<lambda>x N. N *v (M *v x)) a (?rep x @ [Q]) = Q *v (matrix_pow M (x+1) *v a)" for x a
+    by (simp add:matrix_vector_mul_assoc matrix_mul_assoc)
+
+  have d: "spec_bound N \<alpha> \<and> markov N" if t1: "N \<in> set (map (\<lambda>x. matrix_pow M (x + 1)) yt)" for N
+  proof -
+    obtain y where N_def: "N = matrix_pow M (y+1)"
+      using t1 by auto
+    hence d1: "spec_bound N (\<alpha>^(y+1))"
+      unfolding N_def using spec_bound_pow assms(5,6) by blast
+    have "spec_bound N (\<alpha>^1)" 
+      using \<alpha>_range by (intro spec_bound_mono[OF d1] power_decreasing) auto 
+    moreover have "markov N"
+      unfolding N_def by (intro markov_matrix_pow assms(6))
+    ultimately show ?thesis by simp
+  qed
+
+  have "?L = foldl (\<lambda>x M. M *v x) stat (intersperse M (map P' xs)) \<bullet> 1"
+    unfolding P_eq xs_def map_map by (simp add:comp_def)
+  also have "... = foldl (\<lambda>x M. M *v x) stat (intersperse M (map P' xs)@[M]) \<bullet> 1"
+    by (simp add:markov_orth_inv[OF assms(6)]) 
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P' xs) \<bullet> 1"
+    using xs_ne by (subst foldl_intersperse) auto
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat ((ys \<bind> (\<lambda>x. ?rep x @ [Q])) @ ?rep z) \<bullet> 1"
+    unfolding bool_list_split[OF ys_z] P'_def List.bind_def by (simp add: comp_def map_concat)
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (ys \<bind> (\<lambda>x. ?rep x @ [Q])) \<bullet> 1"
+    by (simp add: a)
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (?rep yh @[Q]@(yt \<bind>(\<lambda>x. ?rep x @ [Q]))) \<bullet> 1"
+    unfolding ys_split by simp
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat ([Q]@(yt \<bind>(\<lambda>x. ?rep x @ [Q]))) \<bullet> 1"
+    by (simp add:b)
+  also have "... = foldl (\<lambda>x N. N *v x) stat ((intersperse M (Q#(yt \<bind>(\<lambda>x.?rep x@[Q]))))@[M])\<bullet>1"
+    by (subst foldl_intersperse, auto)
+  also have "... = foldl (\<lambda>x N. N *v x) stat (intersperse M (Q#(yt \<bind>(\<lambda>x.?rep x@[Q])))) \<bullet> 1"
+    by (simp add:markov_orth_inv[OF assms(6)]) 
+  also have "... = foldl (\<lambda>x N. N *v (M *v x)) (Q *v stat) (yt \<bind>(\<lambda>x.?rep x@[Q])) \<bullet> 1" 
+    by (subst foldl_intersperse_2, simp)
+  also have "... = foldl (\<lambda>a x. foldl (\<lambda>x N. N *v (M *v x)) a (?rep x @ [Q])) (Q *v stat) yt \<bullet> 1"
+    unfolding List.bind_def foldl_concat foldl_map by simp
+  also have "... = foldl (\<lambda>a x. Q *v (matrix_pow M (x+1) *v a)) (Q *v stat) yt \<bullet> 1"
+    unfolding c by simp
+  also have "... = foldl (\<lambda>a N. Q *v (N *v a)) (Q *v stat) (map (\<lambda>x. matrix_pow M (x+1)) yt) \<bullet> 1"
+    by (simp add:foldl_map)
+  also have "... \<le> (\<mu> + \<alpha>*(1-\<mu>))^(length (map (\<lambda>x. matrix_pow M (x+1)) yt)+1)"
+    unfolding \<mu>_def Q_def by (intro hitting_property_alg \<alpha>_range d) simp
+  also have "... = (\<mu> + \<alpha>*(1-\<mu>))^(length ys)" 
+    unfolding ys_split by simp
+  also have "... = ?R" unfolding len_ys by simp
+  finally show ?thesis by simp
+next
+  case False
+  hence I_empty: "I = {}" by simp
+
+  have "?L = stat \<bullet> (1 :: real^'n)"
+  proof (cases "l > 0")
+    case True
+    have "?L = foldl (\<lambda>x M. M *v x) stat ((intersperse M (map P [0..<l]))@[M]) \<bullet> 1"
+      by (simp add:markov_orth_inv[OF assms(6)]) 
+    also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P [0..<l])  \<bullet> 1"
+      using True by (subst foldl_intersperse, auto)
+    also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map (\<lambda>_. mat 1) [0..<l])  \<bullet> 1"
+      unfolding  P_def using I_empty by simp
+    also have "... = foldl (\<lambda>x _. M *v x) stat [0..<l] \<bullet> 1"
+      unfolding foldl_map by simp
+    also have "... = stat \<bullet> (1 :: real^'n)"
+      by (induction l, auto simp add:markov_orth_inv[OF assms(6)])
+    finally show ?thesis by simp
+  next
+    case False
+    then show ?thesis by simp
+  qed
+  also have "... = 1"
+    unfolding stat_def by (simp add:inner_vec_def)
+  also have "... \<le> ?R" unfolding I_empty by simp
+  finally show ?thesis by simp
+qed
+
+section \<open>Transfer Vectors and Matrices\<close>
+(*
+
+
+locale vec_mat_on =
+  fixes I :: "'a set"
+  assumes "I \<noteq> {}"
+  assumes "finite I"
+begin
+
+definition ind_vec_on :: "('a set) \<Rightarrow> ('a \<Rightarrow> real)" 
+  where "ind_vec_on S = (\<lambda>i. of_bool( i \<in> S))"
+
+definition diag_on :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real)" 
+  where "diag_on x i j = (if i = j then x i else 0)"
+definition one :: "'a \<Rightarrow> real" where "one = (\<lambda>_. 1)"
+definition stat_on :: "('a \<Rightarrow> real)" 
+  where "stat_on _ = (1/ card I)"
+definition mult_on where "mult_on A x i = (\<Sum>j \<in> I. (A i j) * (x j))"
+definition inner_on where "inner_on x y = (\<Sum>j \<in> I. x j * y j)"
+definition norm_on where "norm_on x = sqrt ( inner_on x x)"
+definition eq_on where "eq_on x y = (\<forall>i \<in> I. x i = y i)"
+
+definition nonneg_mat_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" where 
+  "nonneg_mat_on A = (\<forall>x \<in> I. (\<forall>y \<in> I. A x y \<ge> 0))"
+
+definition transpose_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real)" where 
+  "transpose_on A x y = A y x"
+
+definition markov_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" where 
+  "markov_on A = (nonneg_mat_on A \<and> eq_on (mult_on A one) one \<and> eq_on (mult_on (transpose_on A) one) one)"
+
+definition spec_bound_on where 
+  "spec_bound_on A l = (0 \<le> l \<and> (\<forall>x. inner_on x one = 0 \<longrightarrow> norm_on (mult_on A x) \<le> l * norm_on x))"  
+
+end
+
+locale vec_mat_on_2 = vec_mat_on +
+  fixes Rep :: "'b :: finite \<Rightarrow> 'a"
+  fixes Abs
+  assumes a:"type_definition Rep Abs I"
+begin
+
+definition rel where "rel x y = (Rep x = y)"
+
+definition vec_rel :: "(real^'b) \<Rightarrow> ('a \<Rightarrow> real) \<Rightarrow> bool" 
+  where "vec_rel x y = (\<forall>i. x $ i = y (Rep i))"
+
+definition mat_rel :: "(real^'b^'b) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" 
+  where "mat_rel x y = (\<forall>i j. x $ i $ j = y (Rep i) (Rep j))"
+
+definition set_rel :: "'b set \<Rightarrow> 'a set \<Rightarrow> bool"
+  where "set_rel x y = (Rep ` x = y)"
+
+lemma I_eq: "I = Rep ` UNIV"
+  using a
+  by (simp add: type_definition.Rep_range)
+
+context 
+  includes lifting_syntax
+begin
+
+lemma [transfer_rule]: "(vec_rel ===> vec_rel ===> ((=))) inner inner_on"
+  unfolding vec_rel_def inner_on_def inner_vec_def 
+  unfolding I_eq using type_definition.Rep_inject[OF a]
+  apply (subst sum.reindex)
+  by (auto intro!:rel_funI simp add:inj_def)
+
+lemma [transfer_rule]: "(mat_rel ===> vec_rel ===> vec_rel) (*v) mult_on"
+  unfolding mat_rel_def vec_rel_def mult_on_def matrix_vector_mult_def
+  unfolding I_eq  using type_definition.Rep_inject[OF a]
+  apply (subst sum.reindex)
+  by (auto intro!:rel_funI simp add:inj_def)
+
+lemma [transfer_rule]:"(vec_rel ===> ((=))) norm norm_on"
+  unfolding norm_eq_sqrt_inner norm_on_def
+  by transfer_prover
+
+lemma [transfer_rule]:"vec_rel stat stat_on"
+  unfolding stat_def stat_on_def vec_rel_def
+  using I_eq a type_definition.card by auto
+
+lemma [transfer_rule]:"(vec_rel ===> mat_rel) diag diag_on"
+  unfolding diag_on_def diag_def vec_rel_def mat_rel_def rel_fun_def 
+  using I_eq type_definition.Rep_inject[OF a] by auto
+
+lemma [transfer_rule]:"(set_rel ===> vec_rel) ind_vec ind_vec_on"
+  unfolding ind_vec_on_def ind_vec_def vec_rel_def set_rel_def rel_fun_def 
+  using I_eq type_definition.Rep_inject[OF a] by auto
+
+lemma [transfer_rule]: "set_rel UNIV I" 
+  unfolding set_rel_def I_eq by simp
+
+lemma [transfer_rule]: 
+  includes lifting_syntax
+  shows "((vec_rel ===> ((=))) ===> ((=))) All All"
+  apply (simp add:rel_fun_def)
+  sorry
+
+lemma [transfer_rule]: 
+  includes lifting_syntax
+  shows "((list_all2 mat_rel ===> ((=))) ===> ((=))) All All"
+  apply (simp add:rel_fun_def)
+  sorry
+print_locale! type_definition
+
+lemma [transfer_rule]: 
+  includes lifting_syntax
+  shows "((set_rel ===> ((=))) ===> ((=))) All (Ball (Pow I))"
+  using I_eq unfolding set_rel_def rel_fun_def by (auto simp add:subset_image_iff) 
+
+lemma [transfer_rule]:
+  "vec_rel (1::real^'b) one"
+  unfolding vec_rel_def one_def by simp
+
+lemma [transfer_rule]:
+  "(mat_rel ===> mat_rel) Finite_Cartesian_Product.transpose transpose_on"
+  unfolding transpose_def transpose_on_def mat_rel_def rel_fun_def
+  using I_eq by auto 
+
+lemma [transfer_rule]:
+  "(mat_rel ===> ((=))) nonneg_mat nonneg_mat_on"
+  unfolding nonneg_mat_def nonneg_mat_on_def mat_rel_def rel_fun_def
+  using I_eq by auto 
+
+lemma [transfer_rule]:
+  "(vec_rel ===> vec_rel ===> ((=))) (=) eq_on"
+  unfolding vec_rel_def eq_on_def rel_fun_def vec_eq_iff using I_eq by auto
+
+lemma [transfer_rule]:
+  "(mat_rel ===> ((=))) markov markov_on"
+  unfolding markov_def markov_on_def
+  apply (subst transpose_matrix_vector[symmetric])
+  by (transfer_prover)
+
+lemma [transfer_rule]:
+  "(set_rel ===> ((=))) card card"
+  unfolding set_rel_def rel_fun_def
+  using type_definition.Rep_inject[OF a]
+  by (auto intro!:card_image[symmetric] simp add:inj_on_def)
+
+lemma [transfer_rule]:
+  "CARD('b) = card I"
+  using I_eq type_definition.card[OF a] by simp
+
+lemma [transfer_rule]:
+  "(mat_rel ===> ((=)) ===> ((=))) spec_bound spec_bound_on"
+  unfolding spec_bound_def spec_bound_on_def
+  by (transfer_prover)
+
+lemma hitting_property_qualified:
+  assumes l_range: "l \<in> {0..1}"
+  shows "\<forall>S Ms. (let \<mu> = real (card S)/CARD('b); P = diag (ind_vec (S::'b set)) in 
+    (\<forall>M \<in> set Ms. spec_bound M l \<and> markov M) \<longrightarrow>
+    inner (foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms) 1 \<le> (\<mu> + l *(1-\<mu>))^(length Ms + 1))" 
+  using hitting_property[OF assms] by metis
+
+lemma hitting_property_lifted:
+  assumes "l \<in> {0..1}" "S \<subseteq> I"
+  defines "\<mu> \<equiv> real (card S) / real (card I)"
+  defines "P \<equiv> diag_on (ind_vec_on S)"
+  assumes "\<And>M. M\<in>set Ms \<Longrightarrow> spec_bound_on M l \<and> markov_on M"
+  shows "inner_on (foldl (\<lambda>x M. mult_on P (mult_on M x)) (mult_on P stat_on) Ms) one \<le> 
+    (\<mu> + l * (1 - \<mu>)) ^ (length Ms + 1)"
+  using assms hitting_property_qualified[transferred]
+  by (simp add:\<mu>_def P_def Let_def)
+
+
+
+
+end
+end
+*)
+
+
+section \<open>Expander Graphs\<close>
+(*
 record implicit_graph =
   ig_size :: nat
   ig_degree :: nat
@@ -656,7 +1077,7 @@ proof -
   note x = b[cancel_type_definition, OF c]
   show ?thesis by simp
 qed
-
-
+*)
+*)
 
 end
