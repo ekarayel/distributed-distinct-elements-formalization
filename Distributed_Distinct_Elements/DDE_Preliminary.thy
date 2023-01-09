@@ -102,7 +102,8 @@ proof -
 qed
 
 lemma split_pair_pmf: 
-  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" (is "?L = ?R")
+  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" 
+  (is "?L = ?R")
 proof -
   have a:"integrable (measure_pmf A) (\<lambda>x. measure_pmf.prob B {b. (x, b) \<in> S})"
     by (intro integrable_pmf_iff_bounded[where C="1"]) simp
@@ -120,6 +121,18 @@ proof -
     by (subst nn_integral_eq_integral) auto
   finally show ?thesis by simp
 qed
+
+lemma split_pair_pmf_2: 
+  "measure(pair_pmf A B) S = integral\<^sup>L B (\<lambda>a. measure_pmf.prob A {b. (b,a) \<in> S})" 
+  (is "?L = ?R")
+proof -
+  have "?L = measure (pair_pmf B A) {\<omega>. (snd \<omega>, fst \<omega>) \<in> S}"
+    by (subst pair_commute_pmf) (simp add:vimage_def case_prod_beta)
+  also have "... = ?R"
+    unfolding split_pair_pmf by simp
+  finally show ?thesis by simp
+qed
+
 
 lemma card_distinct_pairs:
   "card {x \<in> B \<times> B. fst x \<noteq> snd x} = card B^2 - card B" (is "card ?L = ?R")

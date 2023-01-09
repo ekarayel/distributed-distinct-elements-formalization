@@ -203,7 +203,7 @@ qed
 
 lemma foldl_matrix_mult_expand_2:
   fixes Ms :: "(real^'a^'a) list"
-  shows "(foldl (\<lambda>x M. M *v x) a Ms) \<bullet> 1= (\<Sum>x | length x = length Ms+1. 
+  shows "(foldl (\<lambda>x M. M *v x) a Ms) \<bullet> 1 = (\<Sum>x | length x = length Ms+1. 
           (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
   (is "?L = ?R")
 proof -
@@ -369,6 +369,17 @@ lemma size_walks:
   shows "size (walks G l) = (if l > 0 then card (vertices G) * d^(l-1) else 1)"
   using size_walks'[OF assms] unfolding walks_def by (cases l, auto)
 
+lemma walks_nonempty: 
+  assumes "regular G d"
+  shows "walks G l \<noteq> {#}"
+proof -
+  have "size (walks G l) > 0"
+    using regularD[OF assms] graphD[OF regularD(1)[OF assms]]
+    unfolding size_walks[OF assms] by auto 
+  thus "walks G l \<noteq> {#}"
+    by auto
+qed
+
 lemma count_walks':
   assumes "graph G"
   assumes "set xs \<subseteq> vertices G"
@@ -425,6 +436,8 @@ lemma count_walks:
   assumes "length xs = l" "l > 0"
   shows "count (walks G l) xs = (\<Prod>i \<in> {..<l-1}. count (edges G)  (xs ! i, xs ! (i+1)))"
   using assms unfolding walks_def by (cases l, auto simp add:count_walks')
+
+
 
 locale univ_regular_graph = 
   fixes G :: "('a :: finite) multi_graph" 
@@ -542,15 +555,6 @@ proof -
     unfolding spec_bound_def by auto
 qed
 
-lemma walks_nonempty: "walks G l \<noteq> {#}"
-proof -
-  have "size (walks G l) > 0"
-    using graphD[OF graph] d_gt_0
-    unfolding size_walks[OF regular] by auto 
-  thus "walks G l \<noteq> {#}"
-    by auto
-qed
-
 lemma walk_distr:
   "measure (pmf_of_multiset (walks G l)) {\<omega>. (\<forall>i<l. \<omega> ! i \<in> S i)} =
   foldl (\<lambda>x M. M *v x) stat (intersperse A (map (\<lambda>i. diag (ind_vec (S i))) [0..<l])) \<bullet> 1" 
@@ -586,7 +590,8 @@ proof (cases "l > 0")
     by simp
 
   have "?L = size {# w \<in># walks G l. \<forall>i<l. w ! i \<in> S i #} / (?n * ?d^(l-1))"
-    using True unfolding size_walks[OF regular] measure_pmf_of_multiset[OF walks_nonempty] by simp
+    using True unfolding size_walks[OF regular] 
+      measure_pmf_of_multiset[OF walks_nonempty[OF regular]] by simp
   also have "... = (\<Sum>w\<in>?W. real (count (walks G l) w) * of_bool (\<forall>i<l. w!i \<in> S i))/(?n*?d^(l-1))"
     unfolding size_filter_mset_conv sum_mset_conv_2[OF a b] by simp
   also have "... = (\<Sum>w\<in>?W. (\<Prod>i<l-1. real (count (edges G) (w!i,w!(i+1)))) * 
@@ -793,13 +798,11 @@ lemma walks_map: "walks H l = image_mset (map f) (walks G l)"
 end
 end
 
-
-
 lemma hitting_property_gen_aux:
   fixes S :: "('a :: finite) set"
   assumes "vertices G = UNIV"
   assumes "regular G d" "spectral_expansion G \<alpha>"
-  assumes "S \<subseteq> vertices G" "I \<subseteq> {..<l}"
+  assumes "I \<subseteq> {..<l}"
   defines "\<mu> \<equiv> real (card S) / card (vertices G)"
   shows "measure (pmf_of_multiset (walks G l)) {w. set (nths w I) \<subseteq> S} \<le> (\<mu>+\<alpha>*(1-\<mu>))^card I"
     (is "?L \<le> ?R")
@@ -818,14 +821,14 @@ proof -
     using assms(3) unfolding spectral_expansion_def by simp
 
   have "?L = measure (pmf_of_multiset (walks G l)) {w. \<forall>i<l. w ! i \<in> T i}"
-    using walks_nonempty set_walks_3[OF graph] unfolding T_def set_nths
+    using walks_nonempty[OF assms(2)] set_walks_3[OF graph] unfolding T_def set_nths
     by (intro measure_eq_AE AE_pmfI) auto
   also have "... = foldl (\<lambda>x M. M *v x) stat 
     (intersperse A (map (\<lambda>i. (if i \<in> I then diag (ind_vec S) else mat 1)) [0..<l])) \<bullet> 1"
     unfolding walk_distr T_def by (simp add:if_distrib if_distribR 0 cong:if_cong)
   also have "... \<le> ?R"
     unfolding \<mu>_def vertices_univ
-    by (intro hitting_property_alg_2[OF \<alpha>_range assms(5) spec markov])
+    by (intro hitting_property_alg_2[OF \<alpha>_range assms(4) spec markov])
   finally show ?thesis by simp
 qed
 
@@ -843,11 +846,7 @@ proof -
   have graph_G: "graph G" 
     using assms(1) unfolding regular_def by auto
 
-  have "size (walks G l) > 0"
-    using assms(1) graphD[OF graph_G]
-    unfolding size_walks[OF assms(1)] regular_def by auto 
-  hence walks_ne: "walks G l \<noteq> {#}"
-    by auto
+  note walks_ne = walks_nonempty[OF assms(1)]
 
   have t:?thesis if a:"\<exists>Rep Abs. type_definition Rep Abs (vertices G)"
   proof -
@@ -875,8 +874,8 @@ proof -
 
     have hp_0: "vertices H = UNIV"
       unfolding vertices_H[symmetric] Abs_image by simp
-    have hp_1: "regular H d" "spectral_expansion H \<alpha>" "Abs ` S \<subseteq> vertices H"
-      using assms(1,2)[transferred] vert_transfer[OF assms(3)] by auto
+    have hp_1: "regular H d" "spectral_expansion H \<alpha>"
+      using assms(1,2)[transferred] by auto
 
     have "set (nths y I) \<subseteq> S \<longleftrightarrow> Abs ` set (nths y I) \<subseteq> Abs ` S"
       if "y \<in> set_pmf (pmf_of_multiset (walks G l))" for y
@@ -929,6 +928,119 @@ proof -
   finally show ?thesis by simp
 qed
 
+lemma uniform_property_aux_univ:
+  assumes "regular G d"  "i < l" "vertices G = (UNIV :: ('a :: finite) set)"
+  shows "measure (pmf_of_multiset (walks G l)) {w. w ! i = x} = 1/real (card (vertices G))" 
+    (is "?L = ?R")
+proof -
+  interpret univ_regular_graph G d
+    using assms(1,3) by unfold_locales auto
+  define T where "T = (\<lambda>j. if j = i then {x} else UNIV)"
+
+  have 0: " diag (ind_vec UNIV) = mat 1"
+    unfolding diag_def ind_vec_def mat_def by vector
+
+  have "?L = measure (pmf_of_multiset (walks G l)) {w. \<forall>j < l. w ! j \<in> T j}"
+    unfolding T_def using assms(2) by simp
+  also have "... = 
+    foldl (\<lambda>x M. M *v x) stat (intersperse A (map (\<lambda>j. diag (ind_vec (T j))) [0..<l])) \<bullet> 1"
+    unfolding  walk_distr by simp
+  also have "... = 1/CARD('a)"
+    unfolding T_def if_distrib 0 uniform_property_alg[OF assms(2) markov] by simp
+  also have "... = ?R" 
+    unfolding vertices_univ by simp
+  finally show ?thesis  by simp
+qed
+
+lemmas uniform_property_aux_univ_internalized = 
+  uniform_property_aux_univ[internalize_sort "'a :: finite"]
+
+
+lemma uniform_property_aux:
+  assumes "regular G d"  "i < l" "x \<in> vertices G"
+  shows "measure (pmf_of_multiset (walks G l)) {w. w ! i = x} = 1/real (card (vertices G))" 
+    (is "?L = ?R")
+proof -
+  have graph_G: "graph G" 
+    using assms(1) unfolding regular_def by auto
+  note walks_ne = walks_nonempty[OF assms(1)]
+
+  have t:?thesis if a:"\<exists>Rep Abs. type_definition Rep Abs (vertices G)"
+  proof -
+    obtain Rep :: "'b \<Rightarrow> 'a" and Abs where d:"type_definition Rep Abs (vertices G)"
+      using a by auto
+    interpret type_definition Rep Abs "vertices G"
+      using d by simp
+                                
+    have "finite (vertices G)" using assms(1) regular_def graph_def by metis
+    hence cf: "class.finite TYPE('b)"
+      using d by (simp add:class.finite_def univ)
+
+    have inj_on_Abs: "inj_on Abs (vertices G)" 
+      using Abs_inject unfolding inj_on_def by auto
+
+    interpret graph_iso G Abs
+      using graph_G inj_on_Abs by unfold_locales auto
+
+    have hp_0: "vertices H = UNIV"
+      unfolding vertices_H[symmetric] Abs_image by simp
+    have hp_1: "regular H d"  using assms(1)[transferred] by auto
+
+    have "(y ! i = x) = (map Abs y ! i = Abs x)"
+      if "y \<in> set_pmf (pmf_of_multiset (walks G l))" for y
+    proof -
+      have "y \<in># walks G l" 
+        using that walks_ne by simp
+      hence "length y = l" "set y \<subseteq> vertices G"
+        using set_walks_3[OF graph_G] by auto
+      thus ?thesis using assms(2,3) Abs_inject by force
+    qed
+
+    hence "?L = measure (pmf_of_multiset (walks G l)) {w. map Abs w ! i = Abs x}" 
+      by (intro measure_eq_AE AE_pmfI, simp_all)
+    also have "... = measure (pmf_of_multiset (walks H l)) {w. w ! i = Abs x}" 
+      unfolding walks_map by (subst pmf_of_multiset_image_mset[OF walks_ne]) simp
+    also have "... = 1 / real (card (vertices H))"
+      by (intro uniform_property_aux_univ_internalized[OF _ hp_1] hp_0 assms(2) cf)
+    also have "... = 1 / real (card (vertices G))"
+      unfolding vertices_H[symmetric]  card_image[OF inj_on_Abs] by simp
+    finally show ?thesis by simp
+  qed
+  show ?thesis 
+    using t[cancel_type_definition] graphD[OF graph_G] by simp
+qed
+
+lemma uniform_property:
+  fixes G :: "'a multi_graph"
+  assumes "regular G d"  "i < l"
+  shows "map_pmf (\<lambda>w. w ! i) (pmf_of_multiset (walks G l)) = pmf_of_set (vertices G)" (is "?L = ?R")
+proof (rule pmf_eqI)
+  fix x :: "'a"
+  have a:"measure (pmf_of_multiset (walks G l)) {w. w ! i = x} = 0" (is "?L1 = ?R1")
+    if "x \<notin> vertices G"
+  proof -
+    have "?L1 \<le> measure (pmf_of_multiset (walks G l)) {w. set w \<subseteq> vertices G \<and> x \<in> set w}"
+      using walks_nonempty[OF assms(1)] set_walks_3[OF regularD(1)[OF assms(1)]] assms(2)
+      by (intro measure_pmf.pmf_mono[OF refl]) auto
+    also have "... \<le> measure (pmf_of_multiset (walks G l)) {}"
+      using that by (intro measure_pmf.pmf_mono[OF refl]) auto
+    also have "... = 0" by simp
+    finally have "?L1 \<le> 0" by simp
+    thus ?thesis using measure_le_0_iff by blast
+  qed
+
+  have "pmf ?L x = measure (pmf_of_multiset (walks G l)) {w. w ! i = x}"
+    unfolding pmf_map by (simp add:vimage_def)
+  also have "... = indicator (vertices G) x/real (card (vertices G))"
+    using uniform_property_aux[OF assms(1,2)] a
+    by (cases "x \<in> vertices G", auto)
+  also have "... = pmf ?R x"
+    using regularD[OF assms(1)] graphD
+    by (intro pmf_of_set[symmetric]) auto 
+  finally show "pmf ?L x = pmf ?R x" by simp
+qed
+
+
 lemma uniform_property_gen:
   fixes S :: "'a set"
   assumes "regular G d"
@@ -938,17 +1050,6 @@ lemma uniform_property_gen:
 proof -
 
   show ?thesis sorry
-qed
-
-lemma uniform_property_gen_2:
-  fixes S :: "'a set"
-  assumes "regular G d"  "i < l"
-  shows "map_pmf (\<lambda>w. w ! i) (pmf_of_multiset (walks G l)) = pmf_of_set (vertices G)" (is "?L = ?R")
-proof -
-  show ?thesis 
-    apply (intro pmf_eqI)
-    apply (simp add:pmf_map) sorry
-
 qed
 
 

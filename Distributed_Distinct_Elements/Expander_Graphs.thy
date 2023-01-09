@@ -807,277 +807,62 @@ next
   finally show ?thesis by simp
 qed
 
-section \<open>Transfer Vectors and Matrices\<close>
-(*
-
-
-locale vec_mat_on =
-  fixes I :: "'a set"
-  assumes "I \<noteq> {}"
-  assumes "finite I"
-begin
-
-definition ind_vec_on :: "('a set) \<Rightarrow> ('a \<Rightarrow> real)" 
-  where "ind_vec_on S = (\<lambda>i. of_bool( i \<in> S))"
-
-definition diag_on :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real)" 
-  where "diag_on x i j = (if i = j then x i else 0)"
-definition one :: "'a \<Rightarrow> real" where "one = (\<lambda>_. 1)"
-definition stat_on :: "('a \<Rightarrow> real)" 
-  where "stat_on _ = (1/ card I)"
-definition mult_on where "mult_on A x i = (\<Sum>j \<in> I. (A i j) * (x j))"
-definition inner_on where "inner_on x y = (\<Sum>j \<in> I. x j * y j)"
-definition norm_on where "norm_on x = sqrt ( inner_on x x)"
-definition eq_on where "eq_on x y = (\<forall>i \<in> I. x i = y i)"
-
-definition nonneg_mat_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" where 
-  "nonneg_mat_on A = (\<forall>x \<in> I. (\<forall>y \<in> I. A x y \<ge> 0))"
-
-definition transpose_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real)" where 
-  "transpose_on A x y = A y x"
-
-definition markov_on :: "('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" where 
-  "markov_on A = (nonneg_mat_on A \<and> eq_on (mult_on A one) one \<and> eq_on (mult_on (transpose_on A) one) one)"
-
-definition spec_bound_on where 
-  "spec_bound_on A l = (0 \<le> l \<and> (\<forall>x. inner_on x one = 0 \<longrightarrow> norm_on (mult_on A x) \<le> l * norm_on x))"  
-
-end
-
-locale vec_mat_on_2 = vec_mat_on +
-  fixes Rep :: "'b :: finite \<Rightarrow> 'a"
-  fixes Abs
-  assumes a:"type_definition Rep Abs I"
-begin
-
-definition rel where "rel x y = (Rep x = y)"
-
-definition vec_rel :: "(real^'b) \<Rightarrow> ('a \<Rightarrow> real) \<Rightarrow> bool" 
-  where "vec_rel x y = (\<forall>i. x $ i = y (Rep i))"
-
-definition mat_rel :: "(real^'b^'b) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> real) \<Rightarrow> bool" 
-  where "mat_rel x y = (\<forall>i j. x $ i $ j = y (Rep i) (Rep j))"
-
-definition set_rel :: "'b set \<Rightarrow> 'a set \<Rightarrow> bool"
-  where "set_rel x y = (Rep ` x = y)"
-
-lemma I_eq: "I = Rep ` UNIV"
-  using a
-  by (simp add: type_definition.Rep_range)
-
-context 
-  includes lifting_syntax
-begin
-
-lemma [transfer_rule]: "(vec_rel ===> vec_rel ===> ((=))) inner inner_on"
-  unfolding vec_rel_def inner_on_def inner_vec_def 
-  unfolding I_eq using type_definition.Rep_inject[OF a]
-  apply (subst sum.reindex)
-  by (auto intro!:rel_funI simp add:inj_def)
-
-lemma [transfer_rule]: "(mat_rel ===> vec_rel ===> vec_rel) (*v) mult_on"
-  unfolding mat_rel_def vec_rel_def mult_on_def matrix_vector_mult_def
-  unfolding I_eq  using type_definition.Rep_inject[OF a]
-  apply (subst sum.reindex)
-  by (auto intro!:rel_funI simp add:inj_def)
-
-lemma [transfer_rule]:"(vec_rel ===> ((=))) norm norm_on"
-  unfolding norm_eq_sqrt_inner norm_on_def
-  by transfer_prover
-
-lemma [transfer_rule]:"vec_rel stat stat_on"
-  unfolding stat_def stat_on_def vec_rel_def
-  using I_eq a type_definition.card by auto
-
-lemma [transfer_rule]:"(vec_rel ===> mat_rel) diag diag_on"
-  unfolding diag_on_def diag_def vec_rel_def mat_rel_def rel_fun_def 
-  using I_eq type_definition.Rep_inject[OF a] by auto
-
-lemma [transfer_rule]:"(set_rel ===> vec_rel) ind_vec ind_vec_on"
-  unfolding ind_vec_on_def ind_vec_def vec_rel_def set_rel_def rel_fun_def 
-  using I_eq type_definition.Rep_inject[OF a] by auto
-
-lemma [transfer_rule]: "set_rel UNIV I" 
-  unfolding set_rel_def I_eq by simp
-
-lemma [transfer_rule]: 
-  includes lifting_syntax
-  shows "((vec_rel ===> ((=))) ===> ((=))) All All"
-  apply (simp add:rel_fun_def)
-  sorry
-
-lemma [transfer_rule]: 
-  includes lifting_syntax
-  shows "((list_all2 mat_rel ===> ((=))) ===> ((=))) All All"
-  apply (simp add:rel_fun_def)
-  sorry
-print_locale! type_definition
-
-lemma [transfer_rule]: 
-  includes lifting_syntax
-  shows "((set_rel ===> ((=))) ===> ((=))) All (Ball (Pow I))"
-  using I_eq unfolding set_rel_def rel_fun_def by (auto simp add:subset_image_iff) 
-
-lemma [transfer_rule]:
-  "vec_rel (1::real^'b) one"
-  unfolding vec_rel_def one_def by simp
-
-lemma [transfer_rule]:
-  "(mat_rel ===> mat_rel) Finite_Cartesian_Product.transpose transpose_on"
-  unfolding transpose_def transpose_on_def mat_rel_def rel_fun_def
-  using I_eq by auto 
-
-lemma [transfer_rule]:
-  "(mat_rel ===> ((=))) nonneg_mat nonneg_mat_on"
-  unfolding nonneg_mat_def nonneg_mat_on_def mat_rel_def rel_fun_def
-  using I_eq by auto 
-
-lemma [transfer_rule]:
-  "(vec_rel ===> vec_rel ===> ((=))) (=) eq_on"
-  unfolding vec_rel_def eq_on_def rel_fun_def vec_eq_iff using I_eq by auto
-
-lemma [transfer_rule]:
-  "(mat_rel ===> ((=))) markov markov_on"
-  unfolding markov_def markov_on_def
-  apply (subst transpose_matrix_vector[symmetric])
-  by (transfer_prover)
-
-lemma [transfer_rule]:
-  "(set_rel ===> ((=))) card card"
-  unfolding set_rel_def rel_fun_def
-  using type_definition.Rep_inject[OF a]
-  by (auto intro!:card_image[symmetric] simp add:inj_on_def)
-
-lemma [transfer_rule]:
-  "CARD('b) = card I"
-  using I_eq type_definition.card[OF a] by simp
-
-lemma [transfer_rule]:
-  "(mat_rel ===> ((=)) ===> ((=))) spec_bound spec_bound_on"
-  unfolding spec_bound_def spec_bound_on_def
-  by (transfer_prover)
-
-lemma hitting_property_qualified:
-  assumes l_range: "l \<in> {0..1}"
-  shows "\<forall>S Ms. (let \<mu> = real (card S)/CARD('b); P = diag (ind_vec (S::'b set)) in 
-    (\<forall>M \<in> set Ms. spec_bound M l \<and> markov M) \<longrightarrow>
-    inner (foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms) 1 \<le> (\<mu> + l *(1-\<mu>))^(length Ms + 1))" 
-  using hitting_property[OF assms] by metis
-
-lemma hitting_property_lifted:
-  assumes "l \<in> {0..1}" "S \<subseteq> I"
-  defines "\<mu> \<equiv> real (card S) / real (card I)"
-  defines "P \<equiv> diag_on (ind_vec_on S)"
-  assumes "\<And>M. M\<in>set Ms \<Longrightarrow> spec_bound_on M l \<and> markov_on M"
-  shows "inner_on (foldl (\<lambda>x M. mult_on P (mult_on M x)) (mult_on P stat_on) Ms) one \<le> 
-    (\<mu> + l * (1 - \<mu>)) ^ (length Ms + 1)"
-  using assms hitting_property_qualified[transferred]
-  by (simp add:\<mu>_def P_def Let_def)
-
-
-
-
-end
-end
-*)
-
-
-section \<open>Expander Graphs\<close>
-(*
-record implicit_graph =
-  ig_size :: nat
-  ig_degree :: nat
-  ig_step :: "nat \<Rightarrow> nat \<Rightarrow> nat"
-
-definition ig_edges where "ig_edges g = 
-  {# (x, ig_step g x y). (x,y) \<in># (mset (List.product [0..<ig_size g] [0..<ig_degree g])) #}"
-
-definition in_degree where "in_degree g k = size {# (i,j) \<in># ig_edges g. j = k #}"
-definition out_degree where "out_degree g k = size {# (i,j) \<in># ig_edges g. i = k #}"
-
-(* typedef / locale? *)
-definition implicit_graph where
-  "implicit_graph g = (
-    ig_size g > 0 \<and> 
-    ig_degree g > 0 \<and> 
-    ig_step g \<in> {..<ig_size g} \<rightarrow> {..<ig_degree g} \<rightarrow> {..<ig_size g} \<and>
-    (\<forall>i<ig_size g. in_degree g i = ig_degree g))"
-
-definition spectral_bound where 
-  "spectral_bound g \<alpha> = (\<forall>x. 
-    sum x {..<ig_size g} = (0::real) \<longrightarrow> undefined )"
-
-definition matrix_vec_mult ::
-  "nat \<Rightarrow> (nat \<Rightarrow> nat \<Rightarrow> real) \<Rightarrow> (nat \<Rightarrow> real) \<Rightarrow> (nat \<Rightarrow> real)" where
-  "matrix_vec_mult n M x i = (\<Sum>j \<in> {..<n::nat}. M i j * x j)"
-
-
-definition myrel :: "nat \<Rightarrow> int \<Rightarrow> bool" 
-  where "myrel n x = (int n = x)"
-
-definition myzero :: int where "myzero = 0" 
-
-locale foo =
-  assumes "True"
-begin
-context
-  includes lifting_syntax 
-begin
-
-lemma [transfer_rule]: "((myrel ===> ((=))) ===> ((=))) (All) (Ball {0..})" 
-  unfolding myrel_def apply (intro rel_funI) sorry
-
-lemma [transfer_rule]: "myrel (0) myzero" 
-  unfolding myrel_def myzero_def by auto
-
-lemma [transfer_rule]: "(myrel ===> myrel) (Suc) ((+) 1)" 
-  unfolding myrel_def by auto
-
-lemma [transfer_rule]: "(myrel ===> myrel ===> ((=))) (\<le>) (\<le>)" 
-  unfolding myrel_def by fastforce
-
-
-end
-
-lemma a:"0 \<le> (0::nat)" by simp
-lemma b:"\<forall>x. x \<ge> (0::nat)" by simp
-
-end
-
-lemma "True"
-  using foo.a[transferred] foo.b[transferred] sorry
-
-lemma c:
-   "(myzero \<le> (myzero))" apply transfer sorry
-
-lemma "(x::int) < x+1"
-  apply transfer
-  apply (rule a)
-
-
-end
-
-
-
-lemma "True"
-  using finite_dimensional_vector_space_def
-  sorry
-
-  
-lemma test:
-  assumes "n > 0"
-  shows "True"
+lemma uniform_property_alg_2:
+  fixes x :: "('n :: finite)" and l :: nat
+  assumes "i < l"
+  defines "P j \<equiv> (if j = i then diag (ind_vec {x}) else mat 1)"
+  assumes "markov M"
+  shows "foldl (\<lambda>x M. M *v x) stat (intersperse M (map P [0..<l])) \<bullet> 1 = 1 / CARD('n)"
+    (is "?L = ?R") 
 proof -
-  define A where "A = {..<n}"
+  have a:"l > 0" using assms(1) by simp
 
-  have b:"True" if "\<exists>Rep Abs. type_definition Rep Abs A"
+  have 0: "foldl (\<lambda>x N. M *v (N *v x)) y (xs) \<bullet> 1 = y  \<bullet> 1" if "set xs \<subseteq> {mat 1}" for xs y
+    using that
+  proof (induction xs rule:rev_induct)
+    case Nil
+    then show ?case by simp
+  next
+    case (snoc x xs)
+    have "x = mat 1" 
+      using snoc(2) by simp
+    hence "foldl (\<lambda>x N. M *v (N *v x)) y (xs @ [x]) \<bullet> 1 = foldl (\<lambda>x N. M *v (N *v x)) y xs \<bullet> 1"
+      by (simp add:markov_orth_inv[OF assms(3)])
+    also have "... = y \<bullet> 1"
+      using snoc(2) by (intro snoc(1)) auto
+    finally show ?case by simp
+  qed
+
+  have M_stat: "M *v stat = stat" 
+    using assms(3) unfolding stat_def matrix_vector_mult_scaleR markov_def by simp
+
+  hence 1: "(foldl (\<lambda>x N. M *v (N *v x)) stat xs) = stat" if "set xs \<subseteq> {mat 1}" for xs
+    using that by (induction xs, auto)
+
+  have "?L = foldl (\<lambda>x M. M *v x) stat ((intersperse M (map P [0..<l]))@[M]) \<bullet> 1"
+    by (simp add:markov_orth_inv[OF assms(3)]) 
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P [0..<l]) \<bullet> 1"
+    using a by (subst foldl_intersperse) auto
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P ([0..<i+1]@[i+1..<l])) \<bullet> 1"
+    using assms(1) by (subst upto_append) auto
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P [0..<i + 1]) \<bullet> 1"
+    unfolding map_append foldl_append  P_def by (subst 0) auto
+  also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat (map P ([0..<i]@[i])) \<bullet> 1"
     by simp
-
-  have c:"A \<noteq> {}" sorry
-  note x = b[cancel_type_definition, OF c]
-  show ?thesis by simp
+  also have "... = (M *v (diag (ind_vec {x}) *v stat)) \<bullet> 1"
+    unfolding map_append foldl_append P_def by (subst 1) auto
+  also have "... = (diag (ind_vec {x}) *v stat) \<bullet> 1" 
+    by (simp add:markov_orth_inv[OF assms(3)]) 
+  also have "... = ((1/CARD('n)) *\<^sub>R ind_vec{x}) \<bullet> 1" 
+    unfolding diag_def ind_vec_def  stat_def matrix_vector_mult_def 
+    by (intro arg_cong2[where f="(\<bullet>)"] refl) 
+      (vector of_bool_def sum.If_cases if_distrib if_distribR)
+  also have "... = (1/CARD('n)) * (ind_vec {x} \<bullet> 1)"
+    by simp
+  also have "... = (1/CARD('n)) * 1"
+    unfolding inner_vec_def ind_vec_def of_bool_def 
+    by (intro arg_cong2[where f="(*)"] refl) (simp)
+  finally show ?thesis by simp
 qed
-*)
-*)
 
 end
