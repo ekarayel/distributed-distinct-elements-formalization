@@ -6,39 +6,6 @@ begin
 definition KL_div :: "real \<Rightarrow> real \<Rightarrow> real" 
   where "KL_div p q = p * ln (p/q) + (1-p) * ln ((1-p)/(1-q))"
 
-
-(* 
-  KL_div 1 d = ln(1/d) = d_avg^n
-
-
-  (card { Y i } \<ge> \<gamma> * n) = (card { Y i } \<ge> \<lceil>\<gamma>*n\<rceil>) \<le> exp (-n D (\<lceil>\<gamma>*n\<rceil>/n) \<delta>_avg) \<le> exp (-n D \<gamma> \<delta>_avg) ?
-
-  D (\<lceil>\<gamma>*n\<rceil>/n) \<delta>_avg \<ge> D \<gamma> \<delta>_avg
-
-  D a b \<ge> D a' b    if a \<ge> a' \<ge> b ?
-
-  a ln(a/b) + (1-a) ln ((1-a)/(1-b)) \<ge> a' ln(a'/b) + (1-a') ln((1-a')/(1-b))
-
-  a ln a - a ln b + (1-a) ln (1-a) - (1-a) ln (1-b) \<ge> a' ln a' - a' ln b + (1-a') ln (1-a') - (1-a') ln (1-b) 
-
-  a ln a - a' ln a' + (a'-a) ln b + (1-a) ln(1-a) - (1-a') ln(1-a') + (a-a') ln(1-b)  \<ge> 0
-
-
-  D x b = x ln(x/b) + (1-x) ln((1-x)/(1-b))
-
-  D' x b = ln(x/b) + x/(x/b)*(1/b) + - ln((1-x)/(1-b)) + (1-x) / ((1-x)/(1-b)) * (1/(1-b))
-        = ln(x/b) + 1 - ln((1-x)/(1-b)) - 1
-        = ln(x/b) - ln((1-x)/(1-b))
-
-  x > b
-
-
-
-*)
-
-
-
-
 theorem impagliazzo_kabanets_pmf:
   fixes Y :: "nat \<Rightarrow> 'a \<Rightarrow> bool" 
   fixes p :: "'a pmf"
@@ -47,65 +14,160 @@ theorem impagliazzo_kabanets_pmf:
   assumes "\<And>S. S \<subseteq> {..<n} \<Longrightarrow> measure p {\<omega>. (\<forall>i \<in> S. Y i \<omega>)} \<le> (\<Prod>i \<in> S. \<delta> i)"
   defines "\<delta>_avg \<equiv> (\<Sum>i\<in> {..<n}. \<delta> i)/n"
   assumes "\<gamma> \<in> {\<delta>_avg..1}"
+  assumes "\<delta>_avg > 0" 
   shows "measure p {\<omega>. real (card {i \<in> {..<n}. Y i \<omega>}) \<ge> \<gamma> * n} \<le> exp (-real n * KL_div \<gamma> \<delta>_avg)" 
     (is "?L \<le> ?R")
 proof -
   let ?n = "real n"
-  define q :: real where "q = (\<gamma>-\<delta>_avg)/(\<gamma>*(1-\<delta>_avg))"
-  define f where "f \<omega> = real (card {i. i < n \<and> Y i \<omega>})" for \<omega>
+  define q :: real where "q = (if \<gamma> = 1 then 1 else (\<gamma>-\<delta>_avg)/(\<gamma>*(1-\<delta>_avg)))"
+
   define g where "g \<omega> = card {i. i < n \<and> \<not>Y i \<omega>}" for \<omega>
-  let ?E = "(\<lambda>\<omega>. f \<omega> \<ge> \<gamma> * n)"
+  let ?E = "(\<lambda>\<omega>. real (card {i. i < n \<and> Y i \<omega>}) \<ge> \<gamma> * n)"
   let ?\<Xi> = "prod_pmf {..<n} (\<lambda>_. bernoulli_pmf q)"
 
-  have q_range:"q < 1" "q \<ge> 0" sorry
+  have q_range:"q \<in>{0..1}" 
+  proof (cases "\<gamma> < 1")
+    case True
+    then show ?thesis 
+      using assms(5,6)
+      unfolding q_def by (auto intro!:divide_nonneg_pos simp add:algebra_simps)
+  next
+    case False
+    hence "\<gamma> = 1" using assms(5) by simp
+    then show ?thesis unfolding q_def by simp
+  qed
 
   have abs_pos_le_1I: "abs x \<le> 1" if "x \<ge> 0" "x \<le> 1" for x :: real
     using that by auto
 
-  have "\<gamma> * ?n \<le> 1 * ?n" 
-    using assms(5) by (intro mult_right_mono) auto
-  hence 1:" \<gamma> * ?n \<le> ?n" by simp
+  have \<gamma>_n_nonneg: "\<gamma>*?n \<ge> 0" 
+    using assms(1,5,6) by simp 
+  define r where "r = n - nat \<lceil>\<gamma>*n\<rceil>"
 
-  have \<delta>_avg_ge_0: "\<delta>_avg \<ge> 0"
-    unfolding \<delta>_avg_def using assms(1,2)
-    by (intro divide_nonneg_pos sum_nonneg) auto
-
-  have f_ge_0: "f \<omega> \<ge> 0" for \<omega>
-    unfolding f_def by simp
-
-  have 2:"(1-q) powr (?n - \<gamma>*?n) \<le> (1-q)^ g \<omega>" if "?E \<omega>" for \<omega>
+  have 2:"(1-q) ^ r \<le> (1-q)^ g \<omega>" if "?E \<omega>" for \<omega>
   proof -
-    have "real (g \<omega>) = real (card ({i. i < n} - {i. i < n \<and> Y i \<omega>}))"
-      unfolding g_def by (intro arg_cong[where f="\<lambda>x. real (card x)"]) auto
-    also have "... = real (card {i. i < n} - card {i. i < n \<and> Y i \<omega>})"
-      unfolding f_def by (subst card_Diff_subset, auto)
-    also have "... = real (card {i. i < n}) - f \<omega>"
-      unfolding f_def by (intro of_nat_diff card_mono) auto
-    also have "... = n - f \<omega>" by simp
-    also have "... \<le> real n - \<gamma> * real n"
-      using that by (intro diff_mono) auto
-    finally have "real (g \<omega>) \<le> real n - \<gamma> * real n" by simp
-    hence "(1-q) powr (?n - \<gamma>*?n) \<le> (1-q) powr (real (g \<omega>))"
-      using q_range by (intro powr_mono_rev) auto
-    also have "... = (1-q)^g \<omega>"
-      using q_range by (simp add:powr_realpow)
+    have "g \<omega> = card ({i. i < n} - {i. i < n \<and> Y i \<omega>})"
+      unfolding g_def by (intro arg_cong[where f="\<lambda>x. card x"]) auto
+    also have "... = card {i. i < n} - card {i. i < n \<and> Y i \<omega>}"
+      by (subst card_Diff_subset, auto)
+    also have "... \<le> card {i. i < n} - nat \<lceil>\<gamma>*n\<rceil>"
+      using that \<gamma>_n_nonneg by (intro diff_le_mono2) simp
+    also have "... = r"
+      unfolding r_def by simp
+    finally have "g \<omega> \<le> r" by simp
+    thus "(1-q) ^ r \<le> (1-q) ^ (g \<omega>)"
+      using q_range by (intro power_decreasing) auto
+  qed
+
+  have \<gamma>_gt_0: "\<gamma> > 0"
+    using assms(5,6) by simp
+
+  have q_lt_1: "q < 1" if "\<gamma> < 1"
+  proof -
+    have "\<delta>_avg < 1" using assms(5) that by simp
+    hence "(\<gamma> - \<delta>_avg) / (\<gamma> * (1 - \<delta>_avg)) < 1" 
+      using \<gamma>_gt_0 assms(6) that
+      by (subst pos_divide_less_eq) (auto simp add:algebra_simps)
+    thus "q < 1"
+      unfolding q_def using that by simp
+  qed
+
+  have 5: "(\<delta>_avg * q + (1-q)) / (1-q) powr (1-\<gamma>) = exp (- KL_div \<gamma> \<delta>_avg)" (is "?L1 = ?R1")
+    if "\<gamma> < 1" 
+  proof -
+    have \<delta>_avg_range: "\<delta>_avg \<in> {0<..<1}" 
+      using that assms(5,6)  by simp
+
+    have "?L1 = (1 - (1-\<delta>_avg) * q) / (1-q) powr (1-\<gamma>)"
+      by (simp add:algebra_simps)
+    also have "... = (1 - (\<gamma>-\<delta>_avg) / \<gamma> ) / (1-q) powr (1-\<gamma>)"
+      unfolding q_def using that \<gamma>_gt_0 \<delta>_avg_range by simp
+    also have "... = (\<delta>_avg / \<gamma>) / (1-q) powr (1-\<gamma>)"
+      using \<gamma>_gt_0 by (simp add:divide_simps)
+    also have "... = (\<delta>_avg / \<gamma>) * (1/(1-q)) powr (1-\<gamma>)"
+      using q_lt_1[OF that] by (subst powr_divide, simp_all)
+    also have "... = (\<delta>_avg / \<gamma>) * (1/((\<gamma>*(1-\<delta>_avg)-(\<gamma>-\<delta>_avg))/(\<gamma>*(1-\<delta>_avg)))) powr (1-\<gamma>)"
+      using \<gamma>_gt_0 \<delta>_avg_range unfolding q_def by (simp add:divide_simps)
+    also have "... = (\<delta>_avg / \<gamma>) * ((\<gamma> / \<delta>_avg) *((1-\<delta>_avg)/(1-\<gamma>))) powr (1-\<gamma>)"
+      by (simp add:algebra_simps)
+    also have "... = (\<delta>_avg / \<gamma>) * (\<gamma> / \<delta>_avg) powr (1-\<gamma>) *((1-\<delta>_avg)/(1-\<gamma>)) powr (1-\<gamma>)"
+      using \<gamma>_gt_0  \<delta>_avg_range that by (subst powr_mult, auto)
+    also have "... = (\<delta>_avg / \<gamma>) powr 1 * (\<delta>_avg / \<gamma>) powr -(1-\<gamma>) *((1-\<delta>_avg)/(1-\<gamma>)) powr (1-\<gamma>)"
+      using \<gamma>_gt_0 \<delta>_avg_range that unfolding powr_minus_divide by (simp add:powr_divide)
+    also have "... = (\<delta>_avg / \<gamma>) powr \<gamma> *((1-\<delta>_avg)/(1-\<gamma>)) powr (1-\<gamma>)"
+      by (subst powr_add[symmetric]) simp
+    also have "... = exp ( ln ((\<delta>_avg / \<gamma>) powr \<gamma> *((1-\<delta>_avg)/(1-\<gamma>)) powr (1-\<gamma>)))"
+      using \<gamma>_gt_0 \<delta>_avg_range that by (intro exp_ln[symmetric] mult_pos_pos) auto
+    also have "... =  exp ((ln ((\<delta>_avg / \<gamma>) powr \<gamma>) + ln (((1 - \<delta>_avg) / (1 - \<gamma>)) powr (1-\<gamma>))))" 
+      using \<gamma>_gt_0 \<delta>_avg_range that by (subst ln_mult) auto
+    also have "... =  exp ((\<gamma> * ln (\<delta>_avg / \<gamma>) + (1 - \<gamma>) * ln ((1 - \<delta>_avg) / (1 - \<gamma>))))" 
+      using \<gamma>_gt_0 \<delta>_avg_range that by (simp add:ln_powr algebra_simps)
+    also have "... =  exp (- (\<gamma> * ln (\<gamma> / \<delta>_avg) + (1 - \<gamma>) * ln ((1 - \<gamma>) / (1 - \<delta>_avg))))" 
+      using \<gamma>_gt_0 \<delta>_avg_range that by (simp add: ln_div algebra_simps)
+    also have "... = ?R1"
+      unfolding KL_div_def by simp
+
     finally show ?thesis by simp
   qed
 
-  have 3: "(\<delta>_avg * q + (1-q)) / (1-q) powr (1-\<gamma>) \<le> exp (- KL_div \<gamma> \<delta>_avg)"
-    sorry
+  have 3: "(\<delta>_avg * q + (1-q)) ^ n / (1-q) ^ r \<le> exp (- ?n* KL_div \<gamma> \<delta>_avg)" (is "?L1 \<le> ?R1")
+  proof (cases "\<gamma> < 1")
+    case True
+    have "\<gamma> * real n \<le> 1 * real n" 
+      using True by (intro mult_right_mono) auto
+    hence "r = real n - real (nat \<lceil>\<gamma> * real n\<rceil>)"
+      unfolding r_def by (subst of_nat_diff) auto
+    also have "... = real n - \<lceil>\<gamma> * real n\<rceil>"
+      using \<gamma>_n_nonneg by (subst of_nat_nat, auto)
+    also have "... \<le> ?n - \<gamma> * ?n"
+      by (intro diff_mono) auto
+    also have "... = (1-\<gamma>) *?n" by (simp add:algebra_simps)
+    finally have r_bound: "r \<le> (1-\<gamma>)*n" by simp
 
-  define r where "r = n - nat \<lceil>\<gamma>*n\<rceil>"
+    have "?L1 = (\<delta>_avg * q + (1-q)) ^ n / (1-q) powr r"
+      using q_lt_1[OF True] assms(1) by (simp add: powr_realpow)
+    also have "... = (\<delta>_avg * q + (1-q)) powr n / (1-q) powr r"
+      using q_lt_1[OF True] assms(6) q_range
+      by (subst powr_realpow[symmetric], auto intro!:add_nonneg_pos)
+    also have "... \<le> (\<delta>_avg * q + (1-q)) powr n / (1-q) powr ((1-\<gamma>)*n)"
+      using q_range q_lt_1[OF True] by (intro divide_left_mono powr_mono_rev r_bound) auto
+    also have "... = (\<delta>_avg * q + (1-q)) powr n / ((1-q) powr (1-\<gamma>)) powr n"
+      unfolding powr_powr by simp
+    also have "... = ((\<delta>_avg * q + (1-q)) / (1-q) powr (1-\<gamma>)) powr n"
+      using assms(6) q_range by (subst powr_divide) auto
+    also have "... = exp (- KL_div \<gamma> \<delta>_avg) powr real n"
+      unfolding 5[OF True] by simp
+    also have "... = ?R1" 
+      unfolding exp_powr by simp
+    finally show ?thesis by simp
+  next
+    case False
+    hence \<gamma>_eq_1: "\<gamma>=1" using assms(5) by simp
+    have "?L1 = \<delta>_avg ^ n"
+      using \<gamma>_eq_1 r_def q_def by simp
+    also have "... = exp( - KL_div 1 \<delta>_avg) ^ n"
+      unfolding KL_div_def using assms(6) by (simp add:ln_div) 
+    also have "... = ?R1" 
+      using \<gamma>_eq_1 by (simp add: powr_realpow[symmetric] exp_powr)
+    finally show ?thesis by simp
+  qed
 
-  have "((1-q) powr (1-\<gamma>)) powr n * ?L = (1-q) powr (?n-\<gamma>*?n) * ?L"
-    by (subst powr_powr, simp add:algebra_simps)
-  also have "... = (1-q) powr (?n-\<gamma>*?n) * (\<integral>\<omega>. indicator {\<omega>. ?E \<omega>} \<omega> \<partial>p)"
-    unfolding f_def by simp
-  also have "... = (\<integral>\<omega>. indicator {\<omega>. ?E \<omega>} \<omega> * (1-q) powr (?n-\<gamma>*?n) \<partial>p)"
+  have 4: "(1 - q) ^ r > 0" 
+  proof (cases "\<gamma> < 1")
+    case True
+    then show ?thesis using q_lt_1[OF True] by simp
+  next
+    case False
+    hence "\<gamma>=1" using assms(5) by simp
+    hence "r=0" unfolding r_def by simp
+    then show ?thesis by simp
+  qed
+
+  have "(1-q) ^ r * ?L = (\<integral>\<omega>. indicator {\<omega>. ?E \<omega>} \<omega> * (1-q) ^ r \<partial>p)"
     by simp
   also have "... \<le> (\<integral>\<omega>. indicator {\<omega>. ?E \<omega>} \<omega> * (1-q) ^ g \<omega> \<partial>p)"
-    using q_range 1 2 f_ge_0 by (intro integral_mono_AE integrable_pmf_iff_bounded[where C="1"] 
-        abs_pos_le_1I mult_le_one powr_le1 power_le_one AE_pmfI) (simp_all split:split_indicator) 
+    using q_range 2 by (intro integral_mono_AE integrable_pmf_iff_bounded[where C="1"] 
+        abs_pos_le_1I mult_le_one power_le_one AE_pmfI) (simp_all split:split_indicator) 
   also have "... = (\<integral>\<omega>. indicator {\<omega>. ?E \<omega>} \<omega> * (\<Prod>i \<in> {i. i < n \<and> \<not>Y i \<omega>}. (1-q)) \<partial>p)"
     unfolding g_def using q_range
     by (intro integral_cong_AE AE_pmfI, simp_all add:powr_realpow)
@@ -140,21 +202,13 @@ proof -
     using assms(1) by (simp add:sum.distrib divide_simps mult.commute)
   also have "... = (\<delta>_avg * q + (1-q))^n"
     unfolding \<delta>_avg_def by (simp add: sum_distrib_right[symmetric])
-  also have "... \<le> (\<delta>_avg * q + (1-q)) powr n" 
-    using \<delta>_avg_ge_0 q_range by (subst powr_realpow) (auto intro:add_nonneg_pos) 
-  finally have "((1-q) powr (1-\<gamma>)) powr n * ?L \<le> (\<delta>_avg * q + (1-q)) powr n" by simp
-  hence "?L \<le> (\<delta>_avg * q + (1-q)) powr n / ((1-q) powr (1-\<gamma>)) powr n"
-    using q_range by (subst pos_le_divide_eq) (auto simp add:algebra_simps)
-  also have "... = ((\<delta>_avg * q + (1-q)) / (1-q) powr (1-\<gamma>)) powr n"
-    using q_range \<delta>_avg_ge_0 by (subst powr_divide) auto
-  also have "... \<le>  exp (- KL_div \<gamma> \<delta>_avg) powr n"
-    using assms(1) q_range \<delta>_avg_ge_0 by (intro powr_mono2 3) auto
-  also have "... = ?R"
-    unfolding exp_powr by (simp add:algebra_simps)
+  finally have "(1-q) ^ r * ?L \<le> (\<delta>_avg * q + (1-q)) ^ n" by simp
+  hence "?L \<le> (\<delta>_avg * q + (1-q)) ^ n / (1-q) ^ r"
+    using 4 by (subst pos_le_divide_eq) (auto simp add:algebra_simps)
+  also have "... \<le> ?R"
+    by (intro 3) 
   finally show ?thesis by simp
 qed
-
-
 
 text \<open>The distribution of a random variable with a countable range is discrete probability space, 
 i.e., induces a PMF. Using this it is possible to generalize the previous result to arbitrary
@@ -200,20 +254,9 @@ proof -
     using prob_space_distr rv by auto
 qed
 
-
-(*
-
-lemma establish_pmf_1:
-  assumes "sets M = UNIV" "space M = UNIV"
-  assumes "\<And>S. (\<forall>x. x \<in> S \<longrightarrow> measure M {x} = 0) \<Longrightarrow> emeasure M S = 0"
-  shows  "AE x in M. measure M {x} \<noteq> 0"
-  using assms assms(3)[of "{x. measure M {x} = 0}"]
-  by (subst AE_iff_measurable[where N="{x. measure M {x} = 0}"], auto)
-*)
 lemma singletons_image_eq:
   "(\<lambda>x. {x}) ` T \<subseteq> Pow T"
   by auto
-
 
 theorem (in prob_space) impagliazzo_kabanets:
   fixes Y :: "nat \<Rightarrow> 'a \<Rightarrow> bool"
@@ -221,8 +264,8 @@ theorem (in prob_space) impagliazzo_kabanets:
   assumes "\<And>i. i \<in> {..<n} \<Longrightarrow> random_variable discrete (Y i)"
   assumes "\<And>i. i \<in> {..<n} \<Longrightarrow> \<delta> i \<in> {0..1}"
   assumes "\<And>S. S \<subseteq> {..<n} \<Longrightarrow> \<P>(\<omega> in M. (\<forall>i \<in> S. Y i \<omega>)) \<le> (\<Prod>i \<in> S. \<delta> i)"
-  defines "\<delta>_avg \<equiv> (\<Sum>i\<in> {..<n}. \<delta> i)/n"
-  assumes "\<gamma> \<in> {\<delta>_avg..1}"
+  defines "\<delta>_avg \<equiv> (\<Sum>i\<in> {..<n}. \<delta> i)/n" 
+  assumes "\<gamma> \<in> {\<delta>_avg..1}" "\<delta>_avg > 0"
   shows "\<P>(\<omega> in M. real (card {i \<in> {..<n}. Y i \<omega>}) \<ge> \<gamma> * n) \<le> exp (-real n * KL_div \<gamma> \<delta>_avg)" 
     (is "?L \<le> ?R")
 proof -
@@ -302,8 +345,8 @@ proof -
   also have "... = measure_pmf.prob \<Omega> {\<omega>. real (card {i \<in> {..<n}. \<omega> i}) \<ge> \<gamma> * n}"
     unfolding \<Omega>_def a by simp
   also have "... \<le> ?R"
-    using assms(6) c unfolding \<delta>_avg_def
-    by (intro impagliazzo_kabanets_pmf assms(1,3)) auto
+    using assms(1,3,6,7) c unfolding \<delta>_avg_def
+    by (intro impagliazzo_kabanets_pmf) auto
   finally show ?thesis by simp
 qed
 

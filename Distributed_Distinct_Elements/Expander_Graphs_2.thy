@@ -5,6 +5,7 @@ theory Expander_Graphs_2
     "Expander_Graphs"
     "Frequency_Moments.Frequency_Moments_Preliminary_Results"
     "Balls_and_Bins"
+    "Constructive_Chernoff_Bound"
 begin
 
 lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
@@ -1054,13 +1055,32 @@ qed
 
 
 lemma kl_chernoff_property:
-  assumes "regular G d" "spectral_expansion G \<alpha>"
-  assumes "S \<subseteq> vertices G"
+  assumes "regular G d" "spectral_expansion G \<alpha>" "l > 0"
+  assumes "S \<subseteq> vertices G" 
   defines "\<mu> \<equiv> real (card S) / card (vertices G)"
-  shows "measure (pmf_of_multiset (walks G l)) {w. set w \<subseteq> S} \<le> (\<mu>+\<alpha>*(1-\<mu>))^(l+1)"
-  sorry
+  assumes "\<gamma> \<le> 1" "\<mu> + \<alpha> * (1-\<mu>) \<in> {0<..\<gamma>}"
+  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*real l} 
+    \<le> exp (- real l * KL_div \<gamma> (\<mu>+\<alpha>*(1-\<mu>)))" (is "?L \<le> ?R")
+proof -
+  let ?\<delta> = " ((\<Sum>i<l. \<mu>+\<alpha>*(1-\<mu>))/l)"
+  have graph: "graph G" using regularD[OF assms(1)] by simp
 
-
-
+  have a: "measure (pmf_of_multiset (walks G l)) {w. \<forall>i\<in>T. w ! i \<in> S} \<le> (\<mu> + \<alpha>*(1-\<mu>)) ^ card T"
+    (is "?L1 \<le> ?R1") if "T \<subseteq> {..<l}" for T 
+  proof -
+    have "?L1 = measure (pmf_of_multiset (walks G l)) {w. set (nths w T) \<subseteq> S}"
+      unfolding set_nths setcompr_eq_image 
+      using that set_walks_3[OF graph] walks_nonempty[OF assms(1)]
+      by (intro measure_eq_AE AE_pmfI) (auto simp add:image_subset_iff)
+    also have "... \<le> ?R1"
+      unfolding \<mu>_def by (intro  hitting_property_gen[OF assms(1,2,4) that])
+    finally show ?thesis by simp
+  qed
+ 
+  have "?L \<le> exp ( - real l * KL_div \<gamma> ?\<delta>)"
+    using assms(3,6,7) a by (intro impagliazzo_kabanets_pmf) simp_all
+  also have "... = ?R" by simp
+  finally show ?thesis by simp
+qed
 
 end
