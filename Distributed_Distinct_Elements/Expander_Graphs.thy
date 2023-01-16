@@ -807,7 +807,7 @@ next
   finally show ?thesis by simp
 qed
 
-lemma uniform_property_alg_2:
+lemma uniform_property_alg:
   fixes x :: "('n :: finite)" and l :: nat
   assumes "i < l"
   defines "P j \<equiv> (if j = i then diag (ind_vec {x}) else mat 1)"

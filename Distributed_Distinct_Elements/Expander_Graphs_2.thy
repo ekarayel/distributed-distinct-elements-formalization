@@ -1049,8 +1049,16 @@ lemma uniform_property_gen:
   defines "\<mu> \<equiv> real (card S) / card (vertices G)"
   shows "measure (pmf_of_multiset (walks G l)) {w. w ! i \<in> S} = \<mu>" (is "?L = ?R")
 proof -
+  have graph: "graph G" by (intro regularD[OF assms(1)])
 
-  show ?thesis sorry
+  have "?L = measure (map_pmf (\<lambda>w. w ! i) (pmf_of_multiset (walks G l))) S"
+    unfolding measure_map_pmf by (simp add:vimage_def)
+  also have "... = measure (pmf_of_set (vertices G)) S"
+    unfolding uniform_property[OF assms(1,3)] by simp
+  also have "... = ?R"
+    using graphD[OF graph] Int_absorb1[OF assms(2)] 
+    unfolding \<mu>_def by (subst measure_pmf_of_set) auto 
+  finally show ?thesis by simp
 qed
 
 
