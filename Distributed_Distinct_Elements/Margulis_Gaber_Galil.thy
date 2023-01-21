@@ -2,6 +2,7 @@ theory Margulis_Gaber_Galil
   imports 
     "Graph_Theory.Digraph"
     "HOL-Analysis.Complex_Transcendental"
+    "HOL-Decision_Procs.Approximation"
 begin
 
 definition "locally_finite_graph G = 
@@ -743,29 +744,584 @@ proof -
     using 0 FT_sheer_aux[OF 1, where d="0"] by (subst (1 2) FT_swap[symmetric], simp)
 qed
 
-definition S\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>2 x = (fst x, snd x - 2 * fst x)"
-definition S\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>1 x = (fst x - 2 * snd x, snd x)"
+definition T\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>1 x = ((fst x + 2 * snd x) mod n, snd x)"
+definition S\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>1 x = ((fst x - 2 * snd x) mod n, snd x)"
+definition T\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>2 x = (fst x, (snd x + 2 * fst x) mod n)"
+definition S\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>2 x = (fst x, (snd x - 2 * fst x) mod n)"
 
-lemma hoory_8_8':
-  fixes f :: "int \<times> int \<Rightarrow> real"
-  assumes "\<And>x. f x \<ge> 0"
-  assumes "f (0,0) = 0"
-  shows "g_inner f (\<lambda>x. f(S\<^sub>2 x)*\<bar>cos(pi*fst x/n)\<bar>+f(S\<^sub>1 x)*\<bar>cos(pi* snd x/n)\<bar>)\<le>1.25* sqrt 2*g_norm f^2"
-  sorry
+definition \<gamma>_aux :: "int \<times> int \<Rightarrow> real \<times> real" 
+    where "\<gamma>_aux x = (\<bar>fst x/n-1/2\<bar>,\<bar>snd x/n-1/2\<bar>)"
+
+definition compare :: "real \<times> real \<Rightarrow> real \<times> real \<Rightarrow> bool"
+  where "compare x y = (fst x \<le> fst y \<and> snd x \<le> snd y \<and> x \<noteq> y)"
+
+definition \<alpha> :: real where "\<alpha> = sqrt 2" 
+
+lemma \<alpha>_inv: "1/\<alpha> = \<alpha>/2" 
+  unfolding \<alpha>_def by (simp add: real_div_sqrt)
+
+definition \<gamma> :: "int \<times> int \<Rightarrow> int \<times> int \<Rightarrow> real" 
+  where "\<gamma> x y = (if compare (\<gamma>_aux x) (\<gamma>_aux y) then \<alpha> else (if compare  (\<gamma>_aux y) (\<gamma>_aux x) then (1 / \<alpha>) else 1))"
+
+lemma \<gamma>_sym: "\<gamma> x y * \<gamma> y x = 1" 
+  unfolding \<gamma>_def \<alpha>_def compare_def by (auto simp add:prod_eq_iff)
+
+lemma \<gamma>_nonneg: "\<gamma> x y \<ge> 0"
+  unfolding \<gamma>_def \<alpha>_def by auto
+
+definition \<tau> :: "int \<Rightarrow> real" where "\<tau> x = \<bar>cos(pi*x/n)\<bar>"
+
+definition \<gamma>' :: "real \<Rightarrow> real \<Rightarrow> real" 
+  where "\<gamma>' x y = (if abs (x - 1/2) < abs (y - 1/2) then \<alpha> else (if abs (x-1/2) > abs (y-1/2) then (1 / \<alpha>) else 1))"
+
+definition \<phi> :: "real \<Rightarrow> real \<Rightarrow> real"
+  where "\<phi> x y = \<gamma>' y (frac(y-2*x))+\<gamma>' y (frac (y+2*x))"
+
+lemma \<gamma>'_cases:
+  "abs (x-1/2) = abs (y-1/2) \<Longrightarrow> \<gamma>' x y = 1"
+  "abs (x-1/2) > abs (y-1/2) \<Longrightarrow> \<gamma>' x y = 1/\<alpha>"
+  "abs (x-1/2) < abs (y-1/2) \<Longrightarrow> \<gamma>' x y = \<alpha>"
+  unfolding \<gamma>'_def by auto
+
+lemma if_cong_direct:
+  assumes "a = b"
+  assumes "c = d"
+  assumes "e = f"
+  shows "(if a then c else e) = (if b then d else f)"
+  using assms by (intro if_cong) auto
+
+lemma \<gamma>'_cong:
+  assumes "abs (x-1/2) = abs (u-1/2)"
+  assumes "abs (y-1/2) = abs (v-1/2)"
+  shows "\<gamma>' x y = \<gamma>' u v"
+  unfolding \<gamma>'_def
+  using assms by (intro if_cong_direct refl) auto
+
+lemma add_swap_cong:
+  fixes x y u v :: "'a :: ab_semigroup_add"
+  assumes "x = y" "u = v"
+  shows "x + u = v + y"
+  using assms by (simp add:algebra_simps)
+
+lemma frac_cong:
+  fixes x y :: real
+  assumes "x - y \<in> \<int>"
+  shows "frac x = frac y"
+proof -
+  obtain k where x_eq: "x = y + of_int k"
+    using Ints_cases[OF assms] by (metis add_minus_cancel uminus_add_conv_diff)
+  thus ?thesis
+    unfolding x_eq  unfolding frac_def by simp
+qed
+
+lemma frac_expand:
+  fixes x :: real
+  shows "frac x = (if x < (-1) then (x-\<lfloor>x\<rfloor>) else (if x < 0 then (x+1) else (if x < 1 then x else (if x < 2 then (x-1) else  (x-\<lfloor>x\<rfloor>)))))"
+proof -
+  have "real_of_int y = -1 \<longleftrightarrow> y= -1" for y
+    by auto
+  thus ?thesis
+    unfolding frac_def  by (auto simp add:not_less floor_eq_iff) 
+qed
+
+lemma one_minus_frac:
+  fixes x :: real
+  shows "1 - frac x = (if x \<in> \<int> then 1 else frac (-x))"
+  unfolding frac_neg by simp
+
+lemma abs_rev_cong:
+  fixes x y :: real
+  assumes "x = - y"
+  shows "abs x = abs y"
+  using assms by simp
+
+lemma cos_pi_ge_0:
+  assumes "x \<in>{-1/2.. 1/2}"
+  shows "cos (pi * x) \<ge> 0"
+proof -
+  have "pi * x \<in> ((*) pi ` {-1/2..1/2})"
+    by (intro imageI assms)
+  also have "... =  {-pi/2..pi/2}" 
+    by (subst image_mult_atLeastAtMost[OF pi_gt_zero])  simp
+  finally have "pi * x \<in> {-pi/2..pi/2}" by simp
+  thus ?thesis
+    by (intro cos_ge_zero) auto 
+qed
+
+lemma fun_bound_real_3:
+  assumes "0 \<le> x"  "x \<le> y" "y \<le> 1/2" "(x,y) \<noteq> (0,0)"
+  shows "\<bar>cos(pi*x)\<bar>*\<phi> x y + \<bar>cos(pi*y)\<bar>*\<phi> y x \<le> 2.5 * sqrt 2" (is "?L \<le> ?R")
+proof -
+  have apx:"4 \<le> 5 * sqrt (2::real)" "8 * cos (pi / 4) \<le> 5 * sqrt (2::real)"
+    by (approximation 5)+
+
+  have "cos (pi * x) \<ge> 0" 
+    using assms(1,2,3)  by (intro cos_pi_ge_0) simp
+  moreover have "cos (pi * y) \<ge> 0" 
+    using assms(1,2,3)  by (intro cos_pi_ge_0) simp
+  ultimately have 0:"?L = cos(pi*x)*\<phi> x y + cos(pi*y)*\<phi> y x"  (is "_ = ?T")
+    by simp
+
+  consider (a) "x+y < 1/2" | (b) "y = 1/2- x" | (c) "x+y > 1/2" by argo
+  hence "?T \<le> 2.5 * sqrt 2" (is "?T \<le> ?R")
+  proof (cases)
+    case a
+    consider 
+      (1) "x < y" "x > 0" | 
+      (2) "x=0" "y < 1/2" | 
+      (3) "y=x" "x > 0" 
+      using assms(1,2,3,4) a by fastforce
+    thus ?thesis 
+    proof (cases)
+      case 1
+      have "\<phi> x y = \<alpha> + 1/\<alpha>"
+        unfolding \<phi>_def using 1 a
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      moreover have "\<phi> y x = 1/\<alpha> + 1/\<alpha>"
+        unfolding \<phi>_def using 1 a
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      ultimately have "?T = cos (pi * x) * (\<alpha> + 1/\<alpha>) + cos (pi * y) * (1/\<alpha> + 1/\<alpha>)"
+        by simp
+      also have "... \<le> 1 * (\<alpha> + 1/\<alpha>) + 1 * (1/\<alpha> + 1/\<alpha>)"
+        unfolding \<alpha>_def by (intro add_mono mult_right_mono) auto
+      also have "... = ?R"
+        unfolding \<alpha>_def by (simp add:divide_simps) 
+      finally show ?thesis by simp
+    next
+      case 2
+      have y_range: "y \<in> {0<..<1/2}" 
+        using assms 2 by simp
+      have "\<phi> 0 y = 1 + 1"
+        unfolding \<phi>_def using y_range
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      moreover 
+      have "\<bar>x\<bar> * 2 < 1 \<longleftrightarrow> x < 1/2 \<and> -x < 1/2" for x :: real by auto
+      hence "\<phi> y 0 = 1 / \<alpha> + 1/ \<alpha>"
+        unfolding \<phi>_def using y_range
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (simp_all add:frac_expand)
+      ultimately have "?T = 2 + cos (pi * y) * (2 / \<alpha>)"
+        unfolding 2 by simp
+      also have "... \<le> 2 + 1 * (2 / \<alpha>)"
+        unfolding \<alpha>_def by (intro add_mono mult_right_mono) auto
+      also have "... \<le> ?R" 
+        unfolding \<alpha>_def by (approximation 10)
+      finally show ?thesis by simp
+    next
+      case 3
+      have "\<phi> x y = 1 + 1/\<alpha>"
+        unfolding \<phi>_def using 3 a
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      moreover have "\<phi> y x = 1 + 1/\<alpha>"
+        unfolding \<phi>_def using 3 a
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      ultimately have "?T = cos (pi * x) * (2*(1+1/ \<alpha>))"
+        unfolding 3 by simp
+      also have "... \<le> 1 * (2*(1+1/ \<alpha>))"
+        unfolding \<alpha>_def by (intro mult_right_mono) auto
+      also have "... \<le> ?R"
+        unfolding \<alpha>_def by (approximation 10)
+      finally show ?thesis by simp
+    qed
+  next
+    case b
+    have x_range: "x \<in> {0..1/4}"
+      using assms b by simp
+    then consider (1) "x = 0" | (2) "x = 1/4" | (3) "x \<in> {0<..<1/4}" by fastforce
+    thus ?thesis 
+    proof (cases)
+      case 1
+      hence y_eq: "y = 1/2" using b by simp
+      show ?thesis using apx unfolding 1 y_eq \<phi>_def by (simp add:\<gamma>'_def \<alpha>_def frac_def) 
+    next
+      case 2
+      hence y_eq: "y = 1/4" using b by simp
+      show ?thesis using apx unfolding y_eq 2 \<phi>_def by (simp add:\<gamma>'_def frac_def)
+    next
+      case 3
+      have "\<phi> x y = \<alpha> + 1"
+        unfolding \<phi>_def b using 3
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      moreover have "\<phi> y x = 1/\<alpha> + 1"
+        unfolding \<phi>_def b using 3
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand) 
+      ultimately have "?T = cos (pi * x) * (\<alpha> + 1) + cos (pi * (1 / 2 - x)) * (1/\<alpha> + 1)"
+        unfolding b by simp
+      also have "... \<le> ?R"
+        unfolding \<alpha>_def using x_range
+        by (approximation 10 splitting: x=10)
+      finally show ?thesis by simp
+    qed
+  next
+    case c
+    consider 
+      (1) "x < y" "y < 1/2" | 
+      (2) "y=1/2" "x < 1/2" | 
+      (3) "y=x" "x < 1/2" | 
+      (4) "x=1/2" "y =1/2"
+      using assms(2,3) c  by fastforce
+    thus ?thesis
+    proof (cases)
+      case 1
+      define \<theta> :: real where "\<theta> = arcsin (6 / 10)"
+      have "cos \<theta> = sqrt (1-0.6^2)"
+        unfolding \<theta>_def by (intro cos_arcsin) auto
+      also have "... = sqrt ( 0.8^2)"
+        by (intro arg_cong[where f="sqrt"]) (simp add:power2_eq_square)
+      also have "... = 0.8" by simp
+      finally have cos_\<theta>: "cos \<theta> = 0.8" by simp
+      have sin_\<theta>: "sin \<theta> = 0.6"
+        unfolding \<theta>_def by simp
+
+      have "\<phi> x y = \<alpha> + \<alpha>"
+        unfolding \<phi>_def using c 1
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      moreover have "\<phi> y x = 1/\<alpha> + \<alpha>"
+        unfolding \<phi>_def using c 1
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      ultimately have "?T = cos (pi * x) * (2 * \<alpha>) + cos (pi * y) * (\<alpha> + 1 / \<alpha>)"
+        by simp
+      also have "... \<le> cos (pi * (1/2-y)) * (2*\<alpha>) + cos (pi * y) * (\<alpha>+1 / \<alpha>)"
+        unfolding \<alpha>_def using assms(1,2,3) c
+        by (intro add_mono mult_right_mono order.refl iffD2[OF cos_mono_le_eq]) auto
+      also have "... = (2.5*\<alpha>)* (sin (pi * y) * 0.8 + cos (pi * y) * 0.6)"
+        unfolding sin_cos_eq \<alpha>_inv by (simp add:algebra_simps)
+      also have "... = (2.5*\<alpha>)* sin(pi*y + \<theta>)"
+        unfolding sin_add cos_\<theta> sin_\<theta>
+        by (intro arg_cong2[where f="(*)"] arg_cong2[where f="(+)"] refl)
+      also have "... \<le> (?R) * 1"
+        unfolding \<alpha>_def by (intro mult_left_mono) auto
+      finally show ?thesis by simp
+    next
+      case 2
+      have x_range: "x > 0" "x < 1/2"
+        using c 2 by auto
+      have "\<phi> x y = \<alpha> + \<alpha>"
+        unfolding \<phi>_def 2 using x_range
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      moreover have "\<phi> y x = 1 + 1"
+        unfolding \<phi>_def 2 using x_range
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      ultimately have "?T = cos (pi * x) * (2*\<alpha>)"
+        unfolding 2 by simp
+      also have "... \<le> 1 * (2* sqrt 2)"
+        unfolding \<alpha>_def by (intro mult_right_mono) auto
+      also have "... \<le> ?R" 
+        by (approximation 5)
+      finally show ?thesis by simp
+    next
+      case 3
+      have x_range: "x \<in> {1/4..1/2}" using 3 c by simp
+      hence cos_bound: "cos (pi * x) \<le> 0.71"
+        by (approximation 10)
+      have "\<phi> x y = 1+\<alpha>"
+        unfolding \<phi>_def 3 using 3 c
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      moreover have "\<phi> y x = 1+\<alpha>"
+        unfolding \<phi>_def 3 using 3 c
+        by (intro arg_cong2[where f="(+)"] \<gamma>'_cases) (auto simp add:frac_expand)
+      ultimately have "?T = 2 * cos (pi * x) * (1+\<alpha>)"
+        unfolding 3 by simp
+      also have "... \<le> 2 * 0.71 * (1+sqrt 2)"
+        unfolding \<alpha>_def by (intro mult_right_mono mult_left_mono cos_bound) auto
+      also have "... \<le> ?R"
+        by (approximation 6)
+      finally show ?thesis by simp
+    next 
+      case 4
+      show ?thesis  unfolding 4 by simp
+    qed
+  qed
+  thus ?thesis using 0 by simp
+qed
+
+text \<open>Extend to square [0; 1/2]\<times>[0;1/2] using symmetry around x=y axis.\<close>
+
+lemma fun_bound_real_2:
+  assumes "x \<in> {0..1/2}" "y \<in> {0..1/2}" "(x,y) \<noteq> (0,0)"
+  shows "\<bar>cos(pi*x)\<bar>*\<phi> x y + \<bar>cos(pi*y)\<bar>*\<phi> y x \<le> 2.5 * sqrt 2"  (is "?L \<le> ?R")
+proof (cases "y < x")
+  case True
+  have "?L = \<bar>cos(pi*y)\<bar>*\<phi> y x + \<bar>cos(pi*x)\<bar>*\<phi> x y"
+    by simp
+  also have "... \<le> ?R"
+    using True assms
+    by (intro fun_bound_real_3)  auto
+  finally show ?thesis by simp
+next
+  case False
+  then show ?thesis using assms
+    by (intro fun_bound_real_3) auto
+qed
+
+text \<open>Extend to x > 1/2 using symmetry around x=1/2 axis.\<close>
+
+lemma fun_bound_real_1:
+  assumes "x \<in> {0..<1}" "y \<in> {0..1/2}" "(x,y) \<noteq> (0,0)"
+  shows "\<bar>cos(pi*x)\<bar>*\<phi> x y + \<bar>cos(pi*y)\<bar>*\<phi> y x \<le> 2.5 * sqrt 2" (is "?L \<le> ?R")
+proof (cases "x > 1/2")
+  case True
+  define x' where "x' = 1-x"
+
+  have "\<bar>frac (x - 2 * y) - 1 / 2\<bar> = \<bar>frac (1 - x + 2 * y) - 1 / 2\<bar>"
+  proof (cases "x - 2 * y \<in> \<int>")
+    case True
+    then obtain k where x_eq: "x = 2*y + of_int k" using Ints_cases[OF True] 
+      by (metis add_minus_cancel uminus_add_conv_diff)
+    show ?thesis unfolding x_eq frac_def by simp
+  next
+    case False
+    hence "1 - x + 2 * y \<notin> \<int>" 
+      using Ints_1 Ints_diff by fastforce
+    thus ?thesis 
+      by (intro abs_rev_cong) (auto intro:frac_cong simp:one_minus_frac)
+  qed
+
+  moreover have "\<bar>frac (x + 2 * y) - 1 / 2\<bar> = \<bar>frac (1 - x - 2 * y) - 1 / 2\<bar>" 
+  proof (cases "x + 2 * y \<in> \<int>")
+    case True
+    then obtain k where x_eq: "x = of_int k - 2*y" using Ints_cases[OF True] 
+      by (metis add.right_neutral add_diff_eq cancel_comm_monoid_add_class.diff_cancel)
+    show ?thesis unfolding x_eq frac_def by simp
+  next
+    case False
+    hence "1 - x - 2 * y \<notin> \<int>" 
+      using Ints_1 Ints_diff by fastforce
+    thus ?thesis 
+      by (intro abs_rev_cong) (auto intro:frac_cong simp:one_minus_frac)
+  qed
+  ultimately have "\<phi> y x = \<phi> y x'" 
+    unfolding \<phi>_def  x'_def by (intro \<gamma>'_cong add_swap_cong) simp_all 
+
+  moreover have "\<phi> x y = \<phi> x' y"
+    unfolding \<phi>_def x'_def  
+    by (intro \<gamma>'_cong add_swap_cong refl arg_cong[where f="(\<lambda>x. abs (x-1/2))"] frac_cong) 
+     (simp_all add:algebra_simps)
+
+  moreover have "\<bar>cos(pi*x)\<bar> = \<bar>cos(pi*x')\<bar>"
+    unfolding x'_def by (intro abs_rev_cong) (simp add:algebra_simps)
+
+  ultimately have "?L = \<bar>cos(pi*x')\<bar>*\<phi> x' y + \<bar>cos(pi*y)\<bar>*\<phi> y x'"
+    by simp
+  also have "... \<le> ?R"
+    using assms True by (intro fun_bound_real_2) (auto simp add:x'_def)
+  finally show ?thesis by simp
+next
+  case False
+  thus ?thesis using assms fun_bound_real_2 by simp 
+qed
+
+text \<open>Extend to y > 1/2 using symmetry around y=1/2 axis.\<close>
+
+lemma fun_bound_real:
+  assumes "x \<in> {0..<1}" "y \<in> {0..<1}" "(x,y) \<noteq> (0,0)"
+  shows "\<bar>cos(pi*x)\<bar>*\<phi> x y + \<bar>cos(pi*y)\<bar>*\<phi> y x \<le> 2.5 * sqrt 2"  (is "?L \<le> ?R")
+proof (cases "y > 1/2")
+  case True
+  define y' where "y' = 1-y"
+
+  have "\<bar>frac (y - 2 * x) - 1 / 2\<bar> = \<bar>frac (1 - y + 2 * x) - 1 / 2\<bar>"
+  proof (cases "y - 2 * x \<in> \<int>")
+    case True
+    then obtain k where y_eq: "y = 2*x + of_int k" using Ints_cases[OF True] 
+      by (metis add_minus_cancel uminus_add_conv_diff)
+    show ?thesis unfolding y_eq frac_def by simp
+  next
+    case False
+    hence "1 - y + 2 * x \<notin> \<int>" 
+      using Ints_1 Ints_diff by fastforce
+    thus ?thesis 
+      by (intro abs_rev_cong) (auto intro:frac_cong simp:one_minus_frac)
+  qed
+
+  moreover have "\<bar>frac (y + 2 * x) - 1 / 2\<bar> = \<bar>frac (1 - y - 2 * x) - 1 / 2\<bar>" 
+  proof (cases "y + 2 * x \<in> \<int>")
+    case True
+    then obtain k where y_eq: "y = of_int k - 2*x" using Ints_cases[OF True] 
+      by (metis add.right_neutral add_diff_eq cancel_comm_monoid_add_class.diff_cancel)
+    show ?thesis unfolding y_eq frac_def by simp
+  next
+    case False
+    hence "1 - y - 2 * x \<notin> \<int>" 
+      using Ints_1 Ints_diff by fastforce
+    thus ?thesis 
+      by (intro abs_rev_cong) (auto intro:frac_cong simp:one_minus_frac)
+  qed
+  ultimately have "\<phi> x y = \<phi> x y'" 
+    unfolding \<phi>_def  y'_def  by (intro \<gamma>'_cong add_swap_cong) simp_all
+
+  moreover have "\<phi> y x = \<phi> y' x"
+    unfolding \<phi>_def y'_def  
+    by (intro \<gamma>'_cong add_swap_cong refl arg_cong[where f="(\<lambda>x. abs (x-1/2))"] frac_cong) 
+     (simp_all add:algebra_simps)
+
+  moreover have "\<bar>cos(pi*y)\<bar> = \<bar>cos(pi*y')\<bar>"
+    unfolding y'_def by (intro abs_rev_cong) (simp add:algebra_simps)
+
+  ultimately have "?L = \<bar>cos(pi*x)\<bar>*\<phi> x y' + \<bar>cos(pi*y')\<bar>*\<phi> y' x"
+    by simp
+  also have "... \<le> ?R"
+    using assms True by (intro fun_bound_real_1) (auto simp add:y'_def)
+  finally show ?thesis by simp
+next
+  case False
+  thus ?thesis using assms fun_bound_real_1 by simp 
+qed
+
+lemma mod_to_frac: 
+  fixes x :: int
+  shows "real_of_int (x mod n) = n * frac (x/n)" (is "?L = ?R")
+proof -
+  obtain y where y_def: "x mod n = x + int n* y"
+    by (metis mod_eqE mod_mod_trivial) 
+
+  have 0: "x mod int n < n" "x mod int n \<ge> 0"
+    using n_gt_0 by auto
+
+  have "?L = real n * (of_int (x mod n) / n )"
+    using n_gt_0 by (simp add:algebra_simps)
+  also have "... = real n * frac (of_int (x mod n) / n)"
+    using 0 by (subst iffD2[OF frac_eq]) auto
+  also have "... = real n * frac (x / n + y)"
+    unfolding y_def using n_gt_0 by (simp add:divide_simps mult.commute)
+  also have "... = ?R" 
+    unfolding frac_def by simp
+  finally show ?thesis by simp
+qed
+
+lemma fun_bound:
+  assumes "v \<in> verts G" "v \<noteq> (0,0)"
+  shows "\<tau>(fst v)*(\<gamma> v (S\<^sub>2 v)+\<gamma> v (T\<^sub>2 v))+\<tau>(snd v)*(\<gamma> v (S\<^sub>1 v)+\<gamma> v (T\<^sub>1 v)) \<le> 2.5 * sqrt 2" 
+    (is "?L \<le> ?R")
+proof -
+  obtain x y where v_def: "v = (x,y)" by (cases v) auto
+  define x' where "x' = x/real n"
+  define y' where "y' = y/real n"
+
+  have 0:"\<gamma> v (S\<^sub>1 v) = \<gamma>' x' (frac(x'-2*y'))"
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def S\<^sub>1_def x'_def y'_def using n_gt_0
+    by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
+  have 1:"\<gamma> v (T\<^sub>1 v) = \<gamma>' x' (frac(x'+2*y'))"
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def x'_def y'_def using n_gt_0
+    by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
+  have 2:"\<gamma> v (S\<^sub>2 v) = \<gamma>' y' (frac(y'-2*x'))"
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def S\<^sub>2_def x'_def y'_def using n_gt_0
+    by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
+  have 3:"\<gamma> v (T\<^sub>2 v) = \<gamma>' y' (frac(y'+2*x'))"
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>2_def x'_def y'_def using n_gt_0
+    by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
+  have 4: "\<tau> (fst v)  = \<bar>cos(pi*x')\<bar>" "\<tau> (snd v)  = \<bar>cos(pi*y')\<bar>"
+    unfolding \<tau>_def v_def x'_def y'_def by auto
+
+  have "x \<in> {0..<int n}" "y \<in> {0..<int n}" "(x,y) \<noteq> (0,0)"
+    using assms  unfolding v_def mgg_graph_def by auto
+  hence 5:"x' \<in> {0..<1}" "y' \<in> {0..<1}" "(x',y') \<noteq> (0,0)" 
+    unfolding x'_def y'_def by auto
+
+  have "?L = \<bar>cos(pi*x')\<bar>*\<phi> x' y' + \<bar>cos(pi*y')\<bar>*\<phi> y' x'"
+    unfolding 0 1 2 3 4 \<phi>_def by simp
+  also have "... \<le> ?R"
+    by (intro fun_bound_real 5) 
+  finally show ?thesis by simp
+qed
+
+text \<open>Equation 15 in Proof of Theorem 8.8\<close>
 
 lemma hoory_8_8:
   fixes f :: "int \<times> int \<Rightarrow> real"
   assumes "\<And>x. f x \<ge> 0"
   assumes "f (0,0) = 0"
-  shows "g_inner f (\<lambda>(x,y). f(x,y-2*x)*\<bar>cos(pi*x/n)\<bar>+f(x-2*y,y)*\<bar>cos(pi*y/n)\<bar>)
-    \<le>1.25* sqrt 2*g_norm f^2"
-  sorry
+  assumes "periodic f"
+  shows "g_inner f (\<lambda>x. f(S\<^sub>2 x)*\<tau> (fst x)+f(S\<^sub>1 x)*\<tau> (snd x))\<le>1.25* sqrt 2*g_norm f^2"
+    (is "?L \<le> ?R")
+proof -
+  have 0: "2 * f x * f y \<le> \<gamma> x y * f x^2 + \<gamma> y x * f y^2" (is "?L1 \<le> ?R1") for x y
+  proof - 
+    have "0 \<le> ((sqrt (\<gamma> x y) * f x) - (sqrt (\<gamma> y x) * f y))^2"
+      by simp
+    also have "... = ?R1 - 2 * (sqrt (\<gamma> x y) * f x) * (sqrt (\<gamma> y x) * f y)"
+      unfolding power2_diff using \<gamma>_nonneg assms(1)
+      by (intro arg_cong2[where f="(-)"] arg_cong2[where f="(+)"]) (auto simp add: power2_eq_square)
+    also have "... = ?R1 -2 * sqrt (\<gamma> x y * \<gamma> y x) * f x * f y"
+      unfolding real_sqrt_mult by simp
+    also have "... = ?R1 - ?L1"
+      unfolding \<gamma>_sym by simp
+    finally have "0 \<le> ?R1 - ?L1" by simp
+    thus ?thesis by simp
+  qed
+
+  have [simp]: "fst (S\<^sub>2 x) = fst x"  "snd (S\<^sub>1 x) = snd x" for x
+    unfolding S\<^sub>1_def S\<^sub>2_def by auto
+
+  have S_2_inv [simp]: "T\<^sub>2 (S\<^sub>2 x) = x" if "x \<in> verts G" for x
+    using that unfolding T\<^sub>2_def S\<^sub>2_def mgg_graph_def 
+    by (cases x,simp add:mod_simps)
+  have S_1_inv [simp]: "T\<^sub>1 (S\<^sub>1 x) = x" if "x \<in> verts G" for x
+    using that unfolding T\<^sub>1_def S\<^sub>1_def mgg_graph_def 
+    by (cases x,simp add:mod_simps)
+
+  have S2_inj: "inj_on S\<^sub>2 (verts G)"
+    using S_2_inv by (intro inj_on_inverseI[where g="T\<^sub>2"])
+  have S1_inj: "inj_on S\<^sub>1 (verts G)"
+    using S_1_inv by (intro inj_on_inverseI[where g="T\<^sub>1"])
+
+  have "S\<^sub>2 ` verts G \<subseteq> verts G"
+    unfolding mgg_graph_def S\<^sub>2_def
+    by (intro image_subsetI)  auto
+  hence S2_ran: "S\<^sub>2 ` verts G = verts G" 
+    by (intro card_subset_eq card_image S2_inj) auto
+
+  have "S\<^sub>1 ` verts G \<subseteq> verts G"
+    unfolding mgg_graph_def S\<^sub>1_def
+    by (intro image_subsetI)  auto
+  hence S1_ran: "S\<^sub>1 ` verts G = verts G"
+    by (intro card_subset_eq card_image S1_inj) auto 
+
+  have 2: "g v * f v^2 \<le> 2.5 * sqrt 2 * f v^2" if "g v \<le> 2.5 * sqrt 2 \<or> v = (0,0)" for v g
+  proof (cases "v=(0,0)")
+    case True
+    then show ?thesis using assms(2) by simp
+  next
+    case False
+    then show ?thesis using that by (intro mult_right_mono) auto
+  qed
+
+  have "2*?L=(\<Sum>v\<in>verts G. \<tau>(fst v)*(2*f v *f(S\<^sub>2 v)))+(\<Sum>v\<in>verts G. \<tau>(snd v) * (2 * f v * f (S\<^sub>1 v)))"
+    unfolding g_inner_def by (simp add: algebra_simps sum_distrib_left sum.distrib)
+  also have "... \<le>
+    (\<Sum>v\<in>verts G. \<tau>(fst v)*(\<gamma> v (S\<^sub>2 v) * f v^2 + \<gamma> (S\<^sub>2 v) v * f(S\<^sub>2 v)^2))+
+    (\<Sum>v\<in>verts G. \<tau>(snd v)*(\<gamma> v (S\<^sub>1 v) * f v^2 + \<gamma> (S\<^sub>1 v) v * f(S\<^sub>1 v)^2))"
+    unfolding \<tau>_def by (intro add_mono sum_mono mult_left_mono 0) auto
+  also have "... = 
+    (\<Sum>v\<in>verts G. \<tau>(fst v)*\<gamma> v (S\<^sub>2 v)*f v^2)+(\<Sum>v\<in>verts G. \<tau>(fst v) * \<gamma> (S\<^sub>2 v) v * f(S\<^sub>2 v)^2)+
+    (\<Sum>v\<in>verts G. \<tau>(snd v)*\<gamma> v (S\<^sub>1 v)*f v^2)+(\<Sum>v\<in>verts G. \<tau>(snd v) * \<gamma> (S\<^sub>1 v) v * f(S\<^sub>1 v)^2)"
+    by (simp add:sum.distrib algebra_simps)
+  also have "... = 
+    (\<Sum>v\<in>verts G. \<tau>(fst v)*\<gamma> v (S\<^sub>2 v)*f v^2)+
+    (\<Sum>v\<in>verts G. \<tau>(fst (S\<^sub>2 v)) * \<gamma> (S\<^sub>2 v) (T\<^sub>2 (S\<^sub>2 v)) * f(S\<^sub>2 v)^2)+
+    (\<Sum>v\<in>verts G. \<tau>(snd v)*\<gamma> v (S\<^sub>1 v)*f v^2)+
+    (\<Sum>v\<in>verts G. \<tau>(snd (S\<^sub>1 v)) * \<gamma> (S\<^sub>1 v) (T\<^sub>1 (S\<^sub>1 v)) * f(S\<^sub>1 v)^2)"
+    by (intro arg_cong2[where f="(+)"] sum.cong refl) simp_all
+  also have "... =
+    (\<Sum>v\<in>verts G. \<tau>(fst v)*\<gamma> v (S\<^sub>2 v)*f v^2)+ (\<Sum>v\<in>S\<^sub>2 ` verts G. \<tau>(fst v) * \<gamma> v (T\<^sub>2 v) * f v^2)+
+    (\<Sum>v\<in>verts G. \<tau>(snd v)*\<gamma> v (S\<^sub>1 v)*f v^2)+ (\<Sum>v\<in>S\<^sub>1 ` verts G. \<tau>(snd v) * \<gamma> v (T\<^sub>1 v) * f v^2)"
+    using S1_inj S2_inj by (simp add:sum.reindex)
+  also have "... = 
+    (\<Sum>v\<in>verts G. (\<tau>(fst v)*(\<gamma> v (S\<^sub>2 v)+\<gamma> v (T\<^sub>2 v))+\<tau>(snd v)*(\<gamma> v (S\<^sub>1 v)+\<gamma> v (T\<^sub>1 v))) *f v^2)"
+    unfolding S1_ran S2_ran by (simp add:algebra_simps sum.distrib)
+  also have "... \<le> (\<Sum>v\<in>verts G. 2.5 * sqrt 2 * f v^2)"
+    using fun_bound by (intro sum_mono 2) auto
+  also have "... \<le>  2.5 * sqrt 2 * g_norm f^2" 
+    unfolding g_norm_sq g_inner_def 
+    by (simp add:algebra_simps power2_eq_square sum_distrib_left)
+  finally have "2 * ?L \<le> 2.5 * sqrt 2 * g_norm f^2" by simp
+  thus ?thesis by simp
+qed
 
 lemma hoory_8_7:
   fixes f :: "int\<times>int \<Rightarrow> complex"
   assumes "f (0,0) = 0"
   assumes "periodic f"
-  shows "norm(c_inner f (\<lambda>(x,y). f(x,y-2*x)*(1+\<omega>\<^sub>F x)+f(x-2*y,y)*(1+\<omega>\<^sub>F y)))
+  shows "norm(c_inner f (\<lambda>x. f (S\<^sub>2 x) * (1+\<omega>\<^sub>F (fst x)) + f (S\<^sub>1 x) * (1+\<omega>\<^sub>F (snd x))))
     \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (f v)^2)" (is "?L \<le> ?R")
 proof -
   define g :: "int\<times>int \<Rightarrow> real" where "g x = norm (f x)" for x
@@ -774,8 +1330,10 @@ proof -
     using assms(1) unfolding g_def by simp
   have g_nonneg: "g x \<ge> 0" for x
     unfolding g_def by simp
+  have g_periodic: "periodic g"
+    unfolding g_def by (intro periodic_comp[OF assms(2)])
 
-  have 0: "norm(1+\<omega>\<^sub>F x) = 2*\<bar>cos(pi*x/n)\<bar>" for x :: real
+  have 0: "norm(1+\<omega>\<^sub>F x) = 2*\<tau> x" for x :: int
   proof -
     have "norm(1+\<omega>\<^sub>F x) = norm(\<omega>\<^sub>F (-x/2)*(\<omega>\<^sub>F 0 + \<omega>\<^sub>F x))"
       unfolding \<omega>\<^sub>F_def norm_mult by simp
@@ -787,26 +1345,23 @@ proof -
       unfolding complex_add_cnj norm_of_real by simp
     also have "... =  2*\<bar>cos(pi*x/n)\<bar>"
       unfolding \<omega>\<^sub>F_def cis.simps by simp
+    also have "... = 2*\<tau> x" unfolding \<tau>_def by simp
     finally show ?thesis by simp
   qed
 
-  have "?L\<le>norm(\<Sum>v\<in>verts G. f v *
-    cnj(f(fst v,snd v-2*fst v)*(1+\<omega>\<^sub>F (fst v))+f(fst v-2* snd v,snd v)*(1+\<omega>\<^sub>F (snd v))))"
+  have "?L\<le>norm(\<Sum>v\<in>verts G. f v * cnj(f(S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v))+f(S\<^sub>1 v )*(1+\<omega>\<^sub>F (snd v))))"
     unfolding c_inner_def by (simp add:case_prod_beta)
-  also have "...\<le>(\<Sum>v\<in>verts G. norm(f v *
-    cnj(f(fst v,snd v-2*fst v)*(1+\<omega>\<^sub>F (fst v))+f(fst v-2* snd v,snd v)*(1+\<omega>\<^sub>F (snd v)))))"
+  also have "...\<le>(\<Sum>v\<in>verts G. norm(f v * cnj(f (S\<^sub>2 v) *(1+\<omega>\<^sub>F (fst v))+f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v)))))"
     by (intro norm_sum)
-  also have "...=(\<Sum>v\<in>verts G. g v *
-    norm(f(fst v,snd v-2*fst v)*(1+\<omega>\<^sub>F (fst v))+f(fst v-2* snd v,snd v)*(1+\<omega>\<^sub>F (snd v))))"
+  also have "...=(\<Sum>v\<in>verts G. g v * norm(f (S\<^sub>2 v) *(1+\<omega>\<^sub>F (fst v))+f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v))))"
     unfolding norm_mult g_def complex_mod_cnj by simp
-  also have "...\<le>(\<Sum>v\<in>verts G. g v *
-    (norm (f(fst v,snd v-2*fst v) *(1+\<omega>\<^sub>F (fst v)))+norm ( f(fst v-2* snd v,snd v)*(1+\<omega>\<^sub>F(snd v)))))"
+  also have "...\<le>(\<Sum>v\<in>verts G. g v * (norm (f(S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v)))+norm(f(S\<^sub>1 v)*(1+\<omega>\<^sub>F(snd v)))))"
     by (intro sum_mono norm_triangle_ineq mult_left_mono g_nonneg)
-  also have "...=2*g_inner g (\<lambda>(x,y). g(x,y-2*x)*\<bar>cos(pi*x/n)\<bar>+g(x-2*y,y)*\<bar>cos(pi*y/n)\<bar>)"
+  also have "...=2*g_inner g (\<lambda>x. g (S\<^sub>2 x)*\<tau> (fst x)+g(S\<^sub>1 x)*\<tau> (snd x))"
     unfolding g_def g_inner_def norm_mult 0 
     by (simp add:sum_distrib_left algebra_simps case_prod_beta)
   also have "... \<le>2*(1.25* sqrt 2*g_norm g^2)"
-    by (intro mult_left_mono hoory_8_8 g_nonneg g_zero) auto
+    by (intro mult_left_mono hoory_8_8 g_nonneg g_zero g_periodic) auto
   also have "... = ?R"
     unfolding g_norm_sq g_def g_inner_def by (simp add:power2_eq_square)
   finally show ?thesis by simp
@@ -823,9 +1378,19 @@ proof -
   have p: "periodic (\<lambda>x. complex_of_real (f x))" 
     by (intro periodic_comp[OF assms(2)])
 
-  have 0: "(\<Sum>T\<leftarrow>Ts. FT (f\<circ>T) (x,y))= FT f (x,y-2*x)*(1+\<omega>\<^sub>F x)+FT f (x-2*y,y)*(1+\<omega>\<^sub>F y)" 
-    (is "?L1 = ?R1") for x y :: int
-    unfolding Ts_def by (simp add:case_prod_beta FT_sheer[OF p]) (simp add:algebra_simps)
+  have 0: "(\<Sum>T\<leftarrow>Ts. FT (f\<circ>T) v) = FT f (S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v))+FT f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v))" 
+    (is "?L1 = ?R1") for v :: "int \<times> int"
+  proof -
+    obtain x y where v_def: "v = (x,y)" by (cases v, auto)
+    have "?L1 = (\<Sum>T\<leftarrow>Ts. FT (f\<circ>T) (x,y))"
+      unfolding v_def by simp
+    also have "... = FT f (x,y-2*x)*(1+\<omega>\<^sub>F x) + FT f (x-2*y,y)*(1+\<omega>\<^sub>F y)"
+      unfolding Ts_def by (simp add:FT_sheer[OF p] case_prod_beta) (simp add:algebra_simps)
+    also have "... = ?R1"
+      unfolding v_def S\<^sub>2_def S\<^sub>1_def
+      by (intro arg_cong2[where f="(+)"] arg_cong2[where f="(*)"] periodic_cong[OF periodic_FT]) auto
+    finally show ?thesis by simp
+  qed
 
   have "cmod ((of_nat n)^2) = cmod (of_real (of_nat n^2))" by simp
   also have "... = abs (of_nat n^2)" by (intro norm_of_real)
@@ -847,9 +1412,7 @@ proof -
     by (subst parseval) simp
   also have "... = norm (c_inner (FT f) (\<lambda>x. (\<Sum>T \<leftarrow> Ts. (FT (f \<circ> T) x)))/n^2)"
     unfolding Ts_def by (simp add:c_inner_simps case_prod_beta add_divide_distrib)
-  also have "... = norm (c_inner (FT f) (\<lambda>(x,y). (\<Sum>T \<leftarrow> Ts. (FT (f \<circ> T) (x,y))))/n^2)"
-    by (simp add: cond_case_prod_eta) 
-  also have "...=norm(c_inner(FT f)(\<lambda>(x,y).(FT f(x,y-2*x)*(1+\<omega>\<^sub>F x)+FT f (x-2*y,y)*(1+\<omega>\<^sub>F y))))/n^2"
+  also have "...=norm(c_inner(FT f)(\<lambda>x.(FT f(S\<^sub>2 x)*(1+\<omega>\<^sub>F (fst x))+FT f(S\<^sub>1 x)*(1+\<omega>\<^sub>F (snd x)))))/n^2"
     by (subst 0) (simp add:norm_divide 1)
   also have "... \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (FT f v)^2) / n^2"
     by (intro divide_right_mono hoory_8_7[where f="FT f"] 2 periodic_FT) auto 
@@ -861,7 +1424,6 @@ proof -
     using g_norm_sq by auto
   finally show ?thesis by simp
 qed
-
 
 text \<open>Inequality stated before Theorem 8.3 in Hoory.\<close> 
 
