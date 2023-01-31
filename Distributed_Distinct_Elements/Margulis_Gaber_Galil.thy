@@ -640,7 +640,6 @@ proof -
     by (subst c_inner_reindex[OF 0]) (simp add:algebra_simps)
 qed
 
-
 lemma mod_add_mult_eq:
   fixes a x y :: int
   shows "(a + x * (y mod n)) mod n = (a+x*y) mod n"

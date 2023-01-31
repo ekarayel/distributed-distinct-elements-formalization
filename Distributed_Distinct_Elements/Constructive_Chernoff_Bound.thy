@@ -1,6 +1,10 @@
 theory Constructive_Chernoff_Bound
-  imports Main "HOL-Probability.Probability_Measure" "Frequency_Moments.Product_PMF_Ext"
-    DDE_Transcendental_Extras DDE_Preliminary "Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean"
+  imports 
+    "HOL-Probability.Probability_Measure" 
+    "Frequency_Moments.Product_PMF_Ext"
+    DDE_Transcendental_Extras 
+    DDE_Preliminary 
+    "Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean"
 begin
 
 definition KL_div :: "real \<Rightarrow> real \<Rightarrow> real" 
