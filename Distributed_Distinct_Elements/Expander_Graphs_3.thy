@@ -409,7 +409,6 @@ proof -
   finally show ?thesis by simp
 qed
 
-
 locale regular_graph = fin_digraph +
   assumes sym: "symmetric_multi_graph G"
   assumes verts_non_empty: "verts G \<noteq> {}"
@@ -1433,11 +1432,28 @@ end
 
 lemma regular_graphI:
   assumes "symmetric_multi_graph G"
-  assumes "verts G \<noteq> {}" "arcs G \<noteq> {}"
+  assumes "verts G \<noteq> {}" "d > 0"
   assumes "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
   shows "regular_graph G"
-  using assms symmetric_multi_graphD2[OF assms(1)]
-  unfolding regular_graph_def regular_graph_axioms_def
-  by simp
+proof -
+  obtain v where v_def: "v \<in> verts G"
+    using assms(2) by auto
+  have "arcs G \<noteq> {}" 
+  proof (rule ccontr)
+    assume "\<not>arcs G \<noteq> {}"
+    hence "arcs G = {}" by simp
+    hence "out_degree G v = 0"
+      unfolding out_degree_def out_arcs_def by simp
+    hence "d = 0"
+      using v_def assms(4) by simp
+    thus False
+      using assms(3) by simp
+  qed
+
+  thus ?thesis
+    using assms symmetric_multi_graphD2[OF assms(1)]
+    unfolding regular_graph_def regular_graph_axioms_def
+    by simp
+qed
 
 end

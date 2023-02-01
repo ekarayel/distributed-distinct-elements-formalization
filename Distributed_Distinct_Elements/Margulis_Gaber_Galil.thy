@@ -3,245 +3,8 @@ theory Margulis_Gaber_Galil
     "Graph_Theory.Digraph"
     "HOL-Analysis.Complex_Transcendental"
     "HOL-Decision_Procs.Approximation"
+    "Expander_Graphs_3"
 begin
-
-definition "locally_finite_graph G = 
-  (wf_digraph G \<and> (\<forall>v \<in> verts G. finite (in_arcs G v) \<and> finite (out_arcs G v)))"
-
-lemma locally_finite_graphD:
-  assumes "locally_finite_graph G"
-  assumes "v \<in> verts G" 
-  shows "finite (in_arcs G v)" " finite (out_arcs G v)"
-  using assms unfolding locally_finite_graph_def by auto
-
-lemma finite_imp_locally_finite:
-  assumes "fin_digraph G"
-  shows "locally_finite_graph G"
-proof -
-  have a:"finite (arcs G)" "wf_digraph G" 
-    using assms unfolding fin_digraph_def fin_digraph_axioms_def by auto
-  have "finite (in_arcs G v)" "finite (out_arcs G v)" for v
-    using a(1) unfolding in_arcs_def out_arcs_def finite_subset by auto
-  thus ?thesis
-    using a(2) unfolding locally_finite_graph_def by auto
-qed
-
-text \<open>The following is a stronger notion than classic symmetry for multi-graphs, where the number
-of edges from @{term "v"} to @{term "w"} must be equal to the number of edges from @{term "w"} to 
-@{term "v"} for any pair of vertices @{term "v"} @{term "w \<in> verts G"}.\<close>
-
-definition "symmetric_multi_graph G =
-  (locally_finite_graph G \<and> (\<forall>v w. {v, w} \<subseteq> verts G \<longrightarrow> 
-    card {e \<in> arcs G. head G e=v \<and> tail G e=w} = card {e \<in> arcs G. head G e=w \<and> tail G e=v}))"
-
-lemma symmetric_multi_graphI:
-  assumes "locally_finite_graph G"
-  assumes "bij_betw f (arcs G) (arcs G)"
-  assumes "\<And>e. e \<in> arcs G \<Longrightarrow> head G (f e) = tail G e \<and> tail G (f e) = head G e"
-  shows "symmetric_multi_graph G"
-proof -
-  have "card {e \<in> arcs G. head G e=v \<and> tail G e=w} = card {e \<in> arcs G. head G e=w \<and> tail G e=v}"
-    (is "?L = ?R") if "v \<in> verts G" "w \<in> verts G" for v w
-  proof -
-    have a:"f x \<in> arcs G" if "x \<in> arcs G" for x
-      using assms(2) that unfolding bij_betw_def by auto
-    have b:"\<exists>y. y \<in> arcs G \<and> f y = x" if "x \<in> arcs G" for x
-      using bij_betw_imp_surj_on[OF assms(2)] that by force
-
-    have "inj_on f (arcs G)" 
-      using assms(2) unfolding bij_betw_def by simp
-    hence "inj_on f {e \<in> arcs G. head G e = v \<and> tail G e = w}"
-      by (rule inj_on_subset, auto)
-    hence "?L = card (f ` {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-      by (intro card_image[symmetric])
-    also have "... = ?R"
-      using a b assms(3)
-      by (intro arg_cong[where f="card"] order_antisym image_subsetI subsetI) fastforce+ 
-    finally show ?thesis by simp
-  qed
-  thus ?thesis 
-    using assms(1) unfolding symmetric_multi_graph_def by simp
-qed
-
-lemma symmetric_multi_graphD:
-  assumes "symmetric_multi_graph G" "v \<in> verts G" "w \<in> verts G"
-  shows "card {e \<in> arcs G. head G e=v \<and> tail G e=w} = card {e \<in> arcs G. head G e=w \<and> tail G e=v}"
-  using assms unfolding symmetric_multi_graph_def by simp 
-
-locale regular_graph = wf_digraph +
-  fixes d :: nat
-  assumes lf: "locally_finite_graph G"
-  assumes reg: "\<And>v. v \<in> verts G \<Longrightarrow> in_degree G v = d \<and> out_degree G v = d"
-begin
-
-lemma regD: 
-  assumes "v \<in> verts G"
-  shows "out_degree G v = d" "in_degree G v = d"
-  using reg assms by auto
-
-definition g_inner :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real) \<Rightarrow> real" 
-  where "g_inner f g = (\<Sum>x \<in> verts G. (f x) * (g x))"
-
-definition "g_norm f = sqrt (g_inner f f)"
-
-
-lemma g_inner_cong:
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> f1 x = f2 x"
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> g1 x = g2 x"
-  shows "g_inner f1 g1 = g_inner f2 g2"
-  unfolding g_inner_def using assms
-  by (intro sum.cong refl) auto
-
-lemma g_norm_cong:
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> f x = g x"
-  shows "g_norm f = g_norm g"
-  unfolding g_norm_def 
-  by (intro arg_cong[where f="sqrt"] g_inner_cong assms)
-
-lemma g_norm_nonneg: "g_norm f \<ge> 0" 
-  unfolding g_norm_def g_inner_def
-  by (intro real_sqrt_ge_zero sum_nonneg) auto
-
-lemma g_norm_sq:
-  "g_norm f^2 = g_inner f f" 
-  using g_norm_nonneg g_norm_def by simp
-
-
-definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real)"
-  where "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real (out_degree G (tail G x)))"
-
-text \<open>Numerical radius - maximum absolute value of the rayleigh quotient of vectors orthogonal
-to the one vector (corresponding to the stationary distribution).\<close>
-
-definition 
-  "numerical_rad = (Sup {\<bar>g_inner x (g_step x)\<bar> | x. g_norm x \<le> 1 \<and> g_inner x (\<lambda>_. 1) = 0})"
-
-text \<open>Spectral radius - maximum norm of  value of the rayleigh quotient\<close>
-
-definition 
-  "spectral_rad = (Sup {\<bar>g_norm (g_step x)\<bar> | x. g_norm x \<le> 1 \<and> g_inner x (\<lambda>_. 1) = 0})"
-
-text \<open>For finite symmetric multi-graphs the concepts of spectral and numerical radius are equivalent.\<close>
-
-lemma inner_step_eq:
-  assumes "fin_digraph G"
-  shows "g_inner f (g_step f) = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)) / d" (is "?L = ?R")
-proof -
-  have "?L = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / out_degree G (tail G a)))"
-    unfolding g_inner_def g_step_def by simp
-  also have "... = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / d))"
-    unfolding in_arcs_def using regD 
-    by (intro sum.cong arg_cong2[where f="(*)"] wellformed refl) simp
-  also have "... = (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f v * f (tail G a) / d))"
-    by (subst sum_distrib_left) simp
-  also have "... =  (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f (head G a) * f (tail G a) / d))"
-    unfolding in_arcs_def by (intro sum.cong refl) simp
-  also have "... = (\<Sum>a \<in> (\<Union> (in_arcs G ` verts G)). f (head G a) * f (tail G a) / d)"
-    using fin_digraph.finite_verts[OF assms]
-    by (intro sum.UNION_disjoint[symmetric] ballI locally_finite_graphD lf) 
-      (auto simp add:in_arcs_def)
-  also have "... = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a) / d)"
-    unfolding in_arcs_def using wellformed by (intro sum.cong) auto
-  also have "... = ?R"
-    by (intro sum_divide_distrib[symmetric])
-  finally show ?thesis by simp
-qed
-
-lemma numerical_radI:
-  assumes "fin_digraph G" "C \<ge> 0"
-  assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> \<le> C*g_norm f^2" 
-  shows "numerical_rad \<le> C/d"
-proof -
-  have "\<exists>x. g_norm x \<le> 1 \<and> g_inner x (\<lambda>_. 1) = 0"
-    unfolding g_norm_def g_inner_def
-    by (intro exI[where x="\<lambda>_. 0"], simp)
-  moreover have "\<bar>g_inner f (g_step f)\<bar> \<le> C /d" if "g_norm f \<le> 1" "g_inner f (\<lambda>_. 1) = 0" for f 
-  proof -
-    have "\<bar>g_inner f (g_step f)\<bar> = \<bar>(\<Sum>a \<in> arcs G. f (head G a) * f (tail G a))\<bar>/d"
-      unfolding inner_step_eq[OF assms(1)] by simp
-    also have "... \<le> C * g_norm f^2 /d"
-      by (intro divide_right_mono assms(3) that(2)) simp
-    also have "... \<le> C * 1^2 / d"
-      by (intro divide_right_mono mult_left_mono power_mono that(1) g_norm_nonneg assms(2)) simp
-    also have "... = C/d" by simp
-    finally show ?thesis by simp
-  qed
-  ultimately show ?thesis
-    unfolding numerical_rad_def
-    by (intro cSup_least) auto
-qed
-
-lemma spectral_eq_numerical_radius:
-  assumes "symmetric_multi_graph G" "fin_digraph G"
-  shows "spectral_rad = numerical_rad"
-  sorry
-
-
-end
-
-lemma symmetric_degree_eq:
-  assumes "symmetric_multi_graph G"
-  assumes "v \<in> verts G"
-  shows "out_degree G v = in_degree G v" (is "?L = ?R")
-proof -
-  have lf: "locally_finite_graph G" 
-    using assms(1) unfolding symmetric_multi_graph_def by simp
-
-  interpret wf_digraph "G" 
-    using lf locally_finite_graph_def by auto
-
-  have a: "finite {e \<in> arcs G. head G e = v \<and> tail G e = w}" (is "finite ?X") for v w 
-  proof (cases "v \<in> verts G")
-    case True
-    hence "?X \<subseteq> in_arcs G v"
-      unfolding in_arcs_def by auto
-    then show ?thesis 
-      using finite_subset locally_finite_graphD(1)[OF lf True] by blast
-  next
-    case False
-    hence "?X \<subseteq> {}"
-      using wellformed by (intro subsetI) auto
-    then show ?thesis 
-      using finite_subset by blast
-  qed
-
-  let ?N = "tail G ` in_arcs G v \<union> head G ` out_arcs G v"
-
-  have b:"finite ?N" 
-    using lf assms(2) unfolding locally_finite_graph_def
-    by (intro finite_UnI finite_imageI) auto
-
-  have c: "?N \<subseteq> verts G"
-    by (intro Un_least image_subsetI wellformed)
-    (auto simp add:in_arcs_def out_arcs_def)
-
-  have "?L = card {e \<in> arcs G. tail G e = v}"
-    unfolding out_degree_def out_arcs_def by simp
-  also have "... = card (\<Union>w \<in> ?N. {e \<in> arcs G. head G e = w \<and> tail G e = v})"
-    using wellformed 
-    by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff)
-  also have "... = (\<Sum>w \<in> ?N. card {e \<in> arcs G. head G e = w \<and> tail G e = v})"
-    by (intro card_UN_disjoint ballI b a) auto
-  also have "... = (\<Sum>w \<in> ?N. card {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-    using c by (intro sum.cong refl symmetric_multi_graphD[symmetric] assms(1,2)) auto
-  also have "... = card (\<Union>w \<in> ?N. {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-    by (intro card_UN_disjoint[symmetric] ballI a b) auto
-  also have "... = card (in_arcs G v)"
-    using wellformed 
-    by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff) 
-  also have "... = ?R" 
-    unfolding in_degree_def by simp
-  finally show ?thesis by simp
-qed
-
-
-lemma regular_symmetric_graphI:
-  assumes "symmetric_multi_graph G"
-  assumes "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
-  shows "regular_graph G d"
-  using symmetric_degree_eq[OF assms(1)] assms
-  unfolding regular_graph_def regular_graph_axioms_def symmetric_multi_graph_def
-    locally_finite_graph_def by simp
 
 (*
   MGG
@@ -263,29 +26,29 @@ definition mgg_graph :: "nat \<Rightarrow> (int \<times> int, (int \<times> int,
 
 
 locale margulis_gaber_galil =
-  fixes n :: nat
-  assumes n_gt_0: "n > 0"
+  fixes m :: nat
+  assumes m_gt_0: "m > 0"
 begin
 
-abbreviation G where "G \<equiv> mgg_graph n"
+abbreviation G where "G \<equiv> mgg_graph m"
 
-lemma wf_digraph: "wf_digraph (mgg_graph n)"
+lemma wf_digraph: "wf_digraph (mgg_graph m)"
 proof -
   have 
-    "tail (mgg_graph n) e \<in> verts (mgg_graph n)" (is "?A") 
-    "head (mgg_graph n) e \<in> verts (mgg_graph n)" (is "?B")
-    if a:"e \<in> arcs (mgg_graph n)" for e
+    "tail (mgg_graph m) e \<in> verts (mgg_graph m)" (is "?A") 
+    "head (mgg_graph m) e \<in> verts (mgg_graph m)" (is "?B")
+    if a:"e \<in> arcs (mgg_graph m)" for e
   proof -
     obtain t l \<sigma> where tl_def: 
-      "t \<in> {0..<int n} \<times> {0..<int n}" "l \<in> {..<4}" "\<sigma> \<in> {-1,1}" 
-      "e = Arc t (mgg_graph_step n t (l,\<sigma>)) (l,\<sigma>)"
+      "t \<in> {0..<int m} \<times> {0..<int m}" "l \<in> {..<4}" "\<sigma> \<in> {-1,1}" 
+      "e = Arc t (mgg_graph_step m t (l,\<sigma>)) (l,\<sigma>)"
       using a mgg_graph_def by auto 
     thus ?A
       unfolding mgg_graph_def by auto
-    have "mgg_graph_step n (fst t, snd t) (l,\<sigma>) \<in> {0..<int n} \<times> {0..<int n}" 
-      unfolding mgg_graph_step.simps using tl_def(1,2) n_gt_0
+    have "mgg_graph_step m (fst t, snd t) (l,\<sigma>) \<in> {0..<int m} \<times> {0..<int m}" 
+      unfolding mgg_graph_step.simps using tl_def(1,2) m_gt_0
       by (intro set_mp[OF _ nth_mem])  auto
-    hence "arc_head e \<in> {0..<int n} \<times> {0..<int n}" 
+    hence "arc_head e \<in> {0..<int m} \<times> {0..<int m}" 
       unfolding tl_def(4) by simp
     thus ?B
       unfolding mgg_graph_def by simp
@@ -294,25 +57,22 @@ proof -
     by unfold_locales auto
 qed
 
-lemma mgg_finite: "fin_digraph (mgg_graph n)"
+lemma mgg_finite: "fin_digraph (mgg_graph m)"
 proof -
-  have "finite (verts (mgg_graph n))" "finite (arcs (mgg_graph n))"
+  have "finite (verts (mgg_graph m))" "finite (arcs (mgg_graph m))"
     unfolding mgg_graph_def by auto
   thus ?thesis
     using wf_digraph
     unfolding fin_digraph_def fin_digraph_axioms_def by auto
 qed
 
-interpretation fin_digraph "mgg_graph n"
+interpretation fin_digraph "mgg_graph m"
   using mgg_finite by simp
 
-lemma locally_finite: "locally_finite_graph (mgg_graph n)" 
-  by (intro finite_imp_locally_finite mgg_finite)
-
 definition arcs_pos :: "(int \<times> int, nat \<times> int) arc set" 
-    where "arcs_pos = (\<lambda>(t,l). (Arc t (mgg_graph_step n t (l,1)) (l, 1)))`(verts G\<times>{..<4})"
+    where "arcs_pos = (\<lambda>(t,l). (Arc t (mgg_graph_step m t (l,1)) (l, 1)))`(verts G\<times>{..<4})"
 definition arcs_neg :: "(int \<times> int, nat \<times> int) arc set" 
-    where "arcs_neg = (\<lambda>(h,l). (Arc (mgg_graph_step n h (l,1)) h (l,-1)))`(verts G\<times>{..<4})"
+    where "arcs_neg = (\<lambda>(h,l). (Arc (mgg_graph_step m h (l,1)) h (l,-1)))`(verts G\<times>{..<4})"
 
 lemma arcs_sym:
   "arcs G = arcs_pos \<union> arcs_neg"
@@ -321,25 +81,25 @@ proof -
     using that unfolding arcs_pos_def mgg_graph_def by auto 
   have 1: "a \<in> arcs G" if t:"a \<in> arcs_neg" for a 
   proof -
-    obtain h l where hl_def: "h \<in> verts G" "l \<in> {..<4}" "a = Arc (mgg_graph_step n h (l,1)) h (l,-1)"
+    obtain h l where hl_def: "h \<in> verts G" "l \<in> {..<4}" "a = Arc (mgg_graph_step m h (l,1)) h (l,-1)"
       using t unfolding arcs_neg_def by auto
 
-    define t where "t = mgg_graph_step n h (l,1)"
+    define t where "t = mgg_graph_step m h (l,1)"
 
-    have h_ran: "h \<in> {0..<int n} \<times> {0..<int n}" 
+    have h_ran: "h \<in> {0..<int m} \<times> {0..<int m}" 
       using hl_def(1) unfolding mgg_graph_def by simp
     have l_ran: "l \<in> set [0,1,2,3]" 
       using hl_def(2) by auto
 
-    have "t \<in> {0..<int n} \<times> {0..<int n}" 
+    have "t \<in> {0..<int m} \<times> {0..<int m}" 
       using h_ran l_ran
       unfolding t_def by (cases h, auto simp add:mod_simps)
     hence t_ran: "t \<in> verts G" 
       unfolding mgg_graph_def by simp
 
-    have "h = mgg_graph_step n t (l,-1)" 
+    have "h = mgg_graph_step m t (l,-1)" 
       using h_ran l_ran unfolding t_def by (cases h, auto simp add:mod_simps)
-    hence "a = Arc t (mgg_graph_step n t (l,-1)) (l,-1)"
+    hence "a = Arc t (mgg_graph_step m t (l,-1)) (l,-1)"
       unfolding t_def hl_def(3) by simp
     thus ?thesis 
       using t_ran hl_def(2) mgg_graph_def by (simp add:image_iff)
@@ -352,7 +112,7 @@ proof -
     by (intro arg_cong2[where f="(+)"] card_image inj_onI) auto
   also have "... = card (verts G\<times>{..<4::nat}\<times>{-1,1::int})"
     by simp
-  also have "... = card ((\<lambda>(t, l). Arc t (mgg_graph_step n t l) l) ` (verts G \<times>{..<4}\<times>{-1,1}))"
+  also have "... = card ((\<lambda>(t, l). Arc t (mgg_graph_step m t l) l) ` (verts G \<times>{..<4}\<times>{-1,1}))"
     by (intro card_image[symmetric] inj_onI) auto
   also have "... = card (arcs G)"
     unfolding mgg_graph_def by simp
@@ -363,7 +123,7 @@ proof -
   thus ?thesis by simp
 qed
 
-lemma sym: "symmetric_multi_graph (mgg_graph n)"
+lemma sym: "symmetric_multi_graph (mgg_graph m)"
 proof -
   define f :: "(int \<times> int, nat \<times> int) arc \<Rightarrow> (int \<times> int, nat \<times> int) arc"  
     where "f a = Arc (arc_head a) (arc_tail a) (apsnd (\<lambda>x. (-1) * x) (arc_label a))" for a 
@@ -382,30 +142,46 @@ proof -
   hence c:"bij_betw f (arcs G) (arcs G)"
     unfolding arcs_sym by (subst (2) sup_commute, simp)
   show ?thesis
-    by (intro symmetric_multi_graphI[where f="f"] c locally_finite) 
-      (simp add:f_def mgg_graph_def)
+    by (intro symmetric_multi_graphI[where f="f"] fin_digraph_axioms c) 
+     (simp add:f_def mgg_graph_def)
 qed
 
-sublocale regular_graph "mgg_graph n" "8"
+lemma out_deg:
+  assumes "v \<in> verts G"
+  shows "out_degree G v = 8"
 proof -
-  have "out_degree (mgg_graph n) v = 8" if "v \<in> verts (mgg_graph n)" for v
-  proof -
-    have "out_degree (mgg_graph n) v = card (out_arcs (mgg_graph n) v)"
-      unfolding out_degree_def by simp
-    also have "... = card {e. (\<exists>w \<in> verts (mgg_graph n). \<exists>l \<in> {..<4} \<times> {-1,1}. 
-      e = Arc w (mgg_graph_step n w l) l \<and> arc_tail e = v)}" 
-      unfolding mgg_graph_def out_arcs_def by (simp add:image_iff)
-    also have "... = card {e. (\<exists>l \<in> {..<4} \<times> {-1,1}. e = Arc v (mgg_graph_step n v l) l)}"
-      using that by (intro arg_cong[where f="card"] iffD2[OF set_eq_iff] allI)  auto
-    also have "... = card ((\<lambda>l. Arc v (mgg_graph_step n v l) l) ` ({..<4} \<times> {-1,1}))"
-      by (intro arg_cong[where f="card"]) (auto simp add:image_iff)
-    also have "... = card ({..<4::nat} \<times> {-1,1::int})"
-      by (intro card_image inj_onI) simp
-    also have "... = 8" by simp
-    finally show ?thesis by simp
-  qed
-  thus "regular_graph (mgg_graph n) 8"
-    by (intro regular_symmetric_graphI sym)
+  have "out_degree (mgg_graph m) v = card (out_arcs (mgg_graph m) v)"
+    unfolding out_degree_def by simp
+  also have "... = card {e. (\<exists>w \<in> verts (mgg_graph m). \<exists>l \<in> {..<4} \<times> {-1,1}. 
+    e = Arc w (mgg_graph_step m w l) l \<and> arc_tail e = v)}" 
+    unfolding mgg_graph_def out_arcs_def by (simp add:image_iff)
+  also have "... = card {e. (\<exists>l \<in> {..<4} \<times> {-1,1}. e = Arc v (mgg_graph_step m v l) l)}"
+    using assms by (intro arg_cong[where f="card"] iffD2[OF set_eq_iff] allI)  auto
+  also have "... = card ((\<lambda>l. Arc v (mgg_graph_step m v l) l) ` ({..<4} \<times> {-1,1}))"
+    by (intro arg_cong[where f="card"]) (auto simp add:image_iff)
+  also have "... = card ({..<4::nat} \<times> {-1,1::int})"
+    by (intro card_image inj_onI) simp
+  also have "... = 8" by simp
+  finally show ?thesis by simp
+qed
+
+lemma verts_ne:
+  "verts G \<noteq> {}" 
+  using m_gt_0 unfolding mgg_graph_def by simp
+
+sublocale regular_graph "mgg_graph m"
+  using out_deg verts_ne
+  by (intro regular_graphI[where d="8"] sym) auto
+
+lemma d_eq_8: "d = 8"
+proof -
+  obtain v where v_def: "v \<in> verts G"
+    using verts_ne by auto
+  hence 0:"(SOME v. v \<in> verts G) \<in> verts G"
+    by (rule someI[where x="v"])
+  show ?thesis
+    using out_deg[OF 0]
+    unfolding d_def by simp
 qed
 
 definition c_inner :: "(int \<times> int \<Rightarrow> complex) \<Rightarrow> (int \<times> int \<Rightarrow> complex) \<Rightarrow> complex"
@@ -449,7 +225,7 @@ lemma c_inner_cong:
   shows "c_inner f1 g1 = c_inner f2 g2"
   unfolding c_inner_def using assms by (intro sum.cong) auto
 
-definition \<omega>\<^sub>F :: "real \<Rightarrow> complex" where "\<omega>\<^sub>F x = cis (2*pi*x/n)"
+definition \<omega>\<^sub>F :: "real \<Rightarrow> complex" where "\<omega>\<^sub>F x = cis (2*pi*x/m)"
 
 lemma \<omega>\<^sub>F_simps:
   "\<omega>\<^sub>F (x + y) = \<omega>\<^sub>F x * \<omega>\<^sub>F y"
@@ -460,16 +236,16 @@ lemma \<omega>\<^sub>F_simps:
 
 lemma \<omega>\<^sub>F_cong:
   fixes x y :: int
-  assumes "x mod n = y mod n" 
+  assumes "x mod m = y mod m" 
   shows "\<omega>\<^sub>F (of_int x) = \<omega>\<^sub>F (of_int y)"
 proof -
-  obtain z :: int where "y = x + n*z" using mod_eqE[OF assms] by auto
-  hence "\<omega>\<^sub>F (of_int y) = \<omega>\<^sub>F (of_int x + of_int (n*z))"
+  obtain z :: int where "y = x + m*z" using mod_eqE[OF assms] by auto
+  hence "\<omega>\<^sub>F (of_int y) = \<omega>\<^sub>F (of_int x + of_int (m*z))"
     by simp
-  also have "... = \<omega>\<^sub>F (of_int x) * \<omega>\<^sub>F (of_int (n*z))"
+  also have "... = \<omega>\<^sub>F (of_int x) * \<omega>\<^sub>F (of_int (m*z))"
     by (simp add:\<omega>\<^sub>F_simps)
   also have "... = \<omega>\<^sub>F (of_int x) * cis (2 * pi * of_int (z))"
-    unfolding \<omega>\<^sub>F_def  using n_gt_0 
+    unfolding \<omega>\<^sub>F_def  using m_gt_0 
     by (intro arg_cong2[where f="(*)"] arg_cong[where f="cis"]) auto
   also have "... = \<omega>\<^sub>F (of_int x) * 1"
     by (intro arg_cong2[where f="(*)"] cis_multiple_2pi) auto
@@ -493,21 +269,21 @@ qed
 
 lemma \<omega>\<^sub>F_eq_1_iff:
   fixes x :: int
-  shows "\<omega>\<^sub>F x = 1 \<longleftrightarrow> x mod n = 0"
+  shows "\<omega>\<^sub>F x = 1 \<longleftrightarrow> x mod m = 0"
 proof
   assume "\<omega>\<^sub>F (real_of_int x) = 1"
-  hence "cis (2 * pi * real_of_int x / real n) = 1"
+  hence "cis (2 * pi * real_of_int x / real m) = 1"
     unfolding \<omega>\<^sub>F_def by simp
-  hence "real_of_int x / real n \<in> \<int>"
+  hence "real_of_int x / real m \<in> \<int>"
     using cis_eq_1_imp by simp
-  then obtain z :: int where "of_int x / real n = z"
+  then obtain z :: int where "of_int x / real m = z"
     using Ints_cases by auto
-  hence "x = z * real n"
-    using n_gt_0 by (simp add: nonzero_divide_eq_eq)
-  hence "x = z * n" using of_int_eq_iff by fastforce
-  thus "x mod n = 0" by simp
+  hence "x = z * real m"
+    using m_gt_0 by (simp add: nonzero_divide_eq_eq)
+  hence "x = z * m" using of_int_eq_iff by fastforce
+  thus "x mod m = 0" by simp
 next
-  assume "x mod n = 0"
+  assume "x mod m = 0"
   hence "\<omega>\<^sub>F x = \<omega>\<^sub>F (of_int 0)"
     by (intro \<omega>\<^sub>F_cong) auto
   also have "... = 1" unfolding \<omega>\<^sub>F_def by simp
@@ -540,29 +316,29 @@ lemma FT_cong:
   unfolding FT_def by (intro ext c_inner_cong assms refl)
 
 lemma parseval:
-  "c_inner f g = c_inner (FT f) (FT g)/n^2" (is "?L = ?R")
+  "c_inner f g = c_inner (FT f) (FT g)/m^2" (is "?L = ?R")
 proof -
   define \<delta> :: "(int \<times> int) \<Rightarrow> (int \<times> int) \<Rightarrow> complex" where "\<delta> x y = of_bool (x = y)" for x y
 
   have FT_\<delta>: "FT (\<delta> v) x = \<omega>\<^sub>F (-(fst v *fst x +snd v * snd x))" if "v \<in> verts G" for v x
     using that by (simp add:FT_def c_inner_def \<delta>_def \<omega>\<^sub>F_simps)
 
-  have 1: "(\<Sum>x=0..<int n. \<omega>\<^sub>F (z*x)) = n * of_bool(z mod n = 0)" (is "?L1 = ?R1") for z :: int
-  proof (cases "z mod n = 0")
+  have 1: "(\<Sum>x=0..<int m. \<omega>\<^sub>F (z*x)) = m * of_bool(z mod m = 0)" (is "?L1 = ?R1") for z :: int
+  proof (cases "z mod m = 0")
     case True
-    have "(\<Sum>x=0..<int n. \<omega>\<^sub>F (z*x)) = (\<Sum>x=0..<int n. \<omega>\<^sub>F (of_int 0))"
+    have "(\<Sum>x=0..<int m. \<omega>\<^sub>F (z*x)) = (\<Sum>x=0..<int m. \<omega>\<^sub>F (of_int 0))"
       using True by (intro sum.cong \<omega>\<^sub>F_cong refl) auto
-    also have "... = n * of_bool(z mod n = 0)"
+    also have "... = m * of_bool(z mod m = 0)"
       unfolding \<omega>\<^sub>F_def True by simp
     finally show ?thesis by simp
   next
     case False
-    have "(1-\<omega>\<^sub>F z) * ?L1 = (1-\<omega>\<^sub>F z) * (\<Sum>x \<in> int ` {..<n}. \<omega>\<^sub>F(z*x))"
+    have "(1-\<omega>\<^sub>F z) * ?L1 = (1-\<omega>\<^sub>F z) * (\<Sum>x \<in> int ` {..<m}. \<omega>\<^sub>F(z*x))"
       by (intro arg_cong2[where f="(*)"] sum.cong refl)
        (simp add: image_atLeastZeroLessThan_int)
-    also have "... = (\<Sum>x<n. \<omega>\<^sub>F(z*real x) - \<omega>\<^sub>F(z*(real (Suc x))))"
+    also have "... = (\<Sum>x<m. \<omega>\<^sub>F(z*real x) - \<omega>\<^sub>F(z*(real (Suc x))))"
       by (subst sum.reindex, auto simp add:algebra_simps sum_distrib_left \<omega>\<^sub>F_simps)
-    also have "... = \<omega>\<^sub>F(z * 0) -\<omega>\<^sub>F (z*n)"
+    also have "... = \<omega>\<^sub>F (z * 0) - \<omega>\<^sub>F (z * m)"
       by (subst sum_lessThan_telescope') simp
     also have "... = \<omega>\<^sub>F (of_int 0) - \<omega>\<^sub>F (of_int 0)"
       by (intro arg_cong2[where f="(-)"] \<omega>\<^sub>F_cong) auto
@@ -575,52 +351,52 @@ proof -
     then show ?thesis using False by simp
   qed
 
-  have 0:"c_inner (\<delta> v) (\<delta> w) = c_inner (FT (\<delta> v)) (FT (\<delta> w))/n^2" (is "?L1 = ?R1/_")
+  have 0:"c_inner (\<delta> v) (\<delta> w) = c_inner (FT (\<delta> v)) (FT (\<delta> w))/m^2" (is "?L1 = ?R1/_")
     if "v \<in> verts G" "w \<in> verts G" for v w
   proof -
     have "?R1=c_inner(\<lambda>x. \<omega>\<^sub>F(-(fst v *fst x +snd v * snd x)))(\<lambda>x. \<omega>\<^sub>F(-(fst w *fst x +snd w * snd x)))"
       using that by (intro c_inner_cong, auto simp add:FT_\<delta>)
-    also have "...=(\<Sum>(x,y)\<in>{0..<int n}\<times>{0..<int n}. \<omega>\<^sub>F((fst w-fst v)*x)*\<omega>\<^sub>F((snd w - snd v)* y))"
+    also have "...=(\<Sum>(x,y)\<in>{0..<int m}\<times>{0..<int m}. \<omega>\<^sub>F((fst w-fst v)*x)*\<omega>\<^sub>F((snd w - snd v)* y))"
       unfolding mgg_graph_def c_inner_def by (simp add:\<omega>\<^sub>F_simps algebra_simps case_prod_beta)
-    also have "...=(\<Sum>x=0..<int n. \<Sum>y = 0..<int n. \<omega>\<^sub>F((fst w - fst v)*x)*\<omega>\<^sub>F((snd w - snd v) * y))"
+    also have "...=(\<Sum>x=0..<int m. \<Sum>y = 0..<int m. \<omega>\<^sub>F((fst w - fst v)*x)*\<omega>\<^sub>F((snd w - snd v) * y))"
       by (subst sum.cartesian_product[symmetric]) simp
-    also have "...=(\<Sum>x=0..<int n. \<omega>\<^sub>F((fst w - fst v)*x))*(\<Sum>y = 0..<int n. \<omega>\<^sub>F((snd w - snd v) * y))"
+    also have "...=(\<Sum>x=0..<int m. \<omega>\<^sub>F((fst w - fst v)*x))*(\<Sum>y = 0..<int m. \<omega>\<^sub>F((snd w - snd v) * y))"
       by (subst sum.swap) (simp add:sum_distrib_left sum_distrib_right)
-    also have "... = 
-      of_nat (n* of_bool(fst v mod n = fst w mod n)) * 
-      of_nat (n * of_bool(snd v mod n = snd w mod n))"
-      unfolding 1 by (intro arg_cong2[where f="(*)"] arg_cong[where f="of_bool"] 
-          arg_cong[where f="of_nat"] iffI refl) (algebra)+
-    also have "... = n^2 * of_bool(v = w)"
+    also have "... = of_nat (m * of_bool(fst v mod m = fst w mod m)) * 
+      of_nat (m * of_bool(snd v mod m = snd w mod m))"
+      using m_gt_0 unfolding 1 
+      by (intro arg_cong2[where f="(*)"] arg_cong[where f="of_bool"] 
+          arg_cong[where f="of_nat"] refl) (auto simp add:algebra_simps cong:mod_diff_cong)
+    also have "... = m^2 * of_bool(v = w)"
       using that by (auto simp add:prod_eq_iff mgg_graph_def power2_eq_square)
-    also have "... = n^2 * ?L1" 
+    also have "... = m^2 * ?L1" 
       using that unfolding c_inner_def \<delta>_def by simp
-    finally have "?R1 = n^2 * ?L1" by simp
-    thus ?thesis using n_gt_0 by simp
+    finally have "?R1 = m^2 * ?L1" by simp
+    thus ?thesis using m_gt_0 by simp
   qed
 
   have "?L = c_inner (\<lambda>x. (\<Sum>v \<in> verts G. (f v) * \<delta> v x)) (\<lambda>x. (\<Sum>v \<in> verts G. (g v) * \<delta> v x))"
     unfolding \<delta>_def by (intro c_inner_cong) auto
   also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * c_inner (\<delta> v) (\<delta> w)))"
     by (simp add:c_inner_simps c_inner_sum_left c_inner_sum_right)
-  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * c_inner(FT (\<delta> v)) (FT (\<delta> w))))/n^2"
+  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * c_inner(FT (\<delta> v)) (FT (\<delta> w))))/m^2"
     by (simp add:0 sum_divide_distrib sum_distrib_left algebra_simps)
-  also have "...=c_inner(\<lambda>x.(\<Sum>v\<in>verts G. (f v)*FT (\<delta> v) x))(\<lambda>x.(\<Sum>v\<in>verts G. (g v)*FT (\<delta> v) x))/n\<^sup>2"
+  also have "...=c_inner(\<lambda>x.(\<Sum>v\<in>verts G. (f v)*FT (\<delta> v) x))(\<lambda>x.(\<Sum>v\<in>verts G. (g v)*FT (\<delta> v) x))/m\<^sup>2"
     by (simp add:c_inner_simps c_inner_sum_left c_inner_sum_right)
-  also have "...=c_inner(FT(\<lambda>x.(\<Sum>v\<in>verts G.(f v)*\<delta> v x)))(FT(\<lambda>x.(\<Sum>v\<in>verts G.(g v)*\<delta> v x)))/n\<^sup>2"
+  also have "...=c_inner(FT(\<lambda>x.(\<Sum>v\<in>verts G.(f v)*\<delta> v x)))(FT(\<lambda>x.(\<Sum>v\<in>verts G.(g v)*\<delta> v x)))/m\<^sup>2"
     by (intro c_inner_cong arg_cong2[where f="(/)"]) (simp_all add: FT_sum FT_scale)
-  also have "... = c_inner (FT f) (FT g)/n^2 "
+  also have "... = c_inner (FT f) (FT g)/m^2 "
     unfolding \<delta>_def comp_def
     by (intro c_inner_cong arg_cong2[where f="(/)"] fun_cong[OF FT_cong]) auto
   finally show ?thesis by simp
 qed
 
 lemma plancharel:
-  "(\<Sum>v \<in> verts G. norm (f v)^2) = (\<Sum>v \<in> verts G. norm (FT f v)^2)/n^2" (is "?L = ?R")
+  "(\<Sum>v \<in> verts G. norm (f v)^2) = (\<Sum>v \<in> verts G. norm (FT f v)^2)/m^2" (is "?L = ?R")
 proof -
   have "complex_of_real ?L = c_inner f f"
     by (simp flip:of_real_power add:complex_norm_square c_inner_def algebra_simps)
-  also have "... = c_inner (FT f) (FT f) / n^2"
+  also have "... = c_inner (FT f) (FT f) / m^2"
     by (subst parseval) simp
   also have "... = complex_of_real ?R"
     by (simp flip:of_real_power add:complex_norm_square c_inner_def algebra_simps) simp
@@ -642,14 +418,14 @@ qed
 
 lemma mod_add_mult_eq:
   fixes a x y :: int
-  shows "(a + x * (y mod n)) mod n = (a+x*y) mod n"
+  shows "(a + x * (y mod m)) mod m = (a+x*y) mod m"
   using mod_add_cong mod_mult_right_eq by blast
 
-definition periodic where "periodic f = (\<forall>x y. f (x,y) = f (x mod int n, y mod int n))"
+definition periodic where "periodic f = (\<forall>x y. f (x,y) = f (x mod int m, y mod int m))"
 
 lemma periodicD:
   assumes "periodic f"
-  shows "f (x,y) = f (x mod n, y mod n)"
+  shows "f (x,y) = f (x mod m, y mod m)"
   using assms unfolding periodic_def by simp
 
 lemma periodic_comp:
@@ -660,13 +436,13 @@ lemma periodic_comp:
 lemma periodic_cong:
   fixes x y u v :: int
   assumes "periodic f"
-  assumes "x mod n = u mod n" "y mod n = v mod n" 
+  assumes "x mod m = u mod m" "y mod m = v mod m" 
   shows "f (x,y) = f (u, v)"
   using periodicD[OF assms(1)] assms(2,3) by metis
 
 lemma periodic_FT: "periodic (FT f)"
 proof -
-  have "FT f (x,y) = FT f (x mod n,y mod n)" for x y
+  have "FT f (x,y) = FT f (x mod m,y mod m)" for x y
     unfolding FT_altdef by (intro  arg_cong2[where f="c_inner"] \<omega>\<^sub>F_cong ext) 
      (auto simp add:mod_simps cong:mod_add_cong)
   thus ?thesis 
@@ -679,34 +455,34 @@ lemma FT_sheer_aux:
   shows  "FT (\<lambda>x. f (fst x,snd x+c*fst x+d)) (u,v) = \<omega>\<^sub>F (d* v) * FT f (u-c* v,v)" 
     (is "?L = ?R")
 proof -
-  define s where "s = (\<lambda>(x,y). (x, (y - c * x-d) mod n))"
-  define s0 where "s0 = (\<lambda>(x,y). (x, (y-c*x) mod n))"
-  define s1 where "s1 = (\<lambda>(x::int,y). (x, (y-d) mod n))"
+  define s where "s = (\<lambda>(x,y). (x, (y - c * x-d) mod m))"
+  define s0 where "s0 = (\<lambda>(x,y). (x, (y-c*x) mod m))"
+  define s1 where "s1 = (\<lambda>(x::int,y). (x, (y-d) mod m))"
 
   have 0:"bij_betw s0 (verts G) (verts G)"
-    by (intro bij_betwI[where g="\<lambda>(x,y). (x,(y+c*x) mod n)"])
+    by (intro bij_betwI[where g="\<lambda>(x,y). (x,(y+c*x) mod m)"])
      (auto simp add:mgg_graph_def s0_def Pi_def mod_simps)
   have 1:"bij_betw s1 (verts G) (verts G)"
-    by (intro bij_betwI[where g="\<lambda>(x,y). (x,(y+d) mod n)"])
+    by (intro bij_betwI[where g="\<lambda>(x,y). (x,(y+d) mod m)"])
      (auto simp add:mgg_graph_def s1_def Pi_def mod_simps)
   have 2: "s = (s1 \<circ> s0)"
     by (simp add:s1_def s0_def s_def comp_def mod_simps case_prod_beta ext)
   have 3:"bij_betw s (verts G) (verts G)"
     unfolding 2 using bij_betw_trans[OF 0 1] by simp
 
-  have 4:"(snd (s x) + c * fst x + d) mod int n = snd x mod n" for x
+  have 4:"(snd (s x) + c * fst x + d) mod int m = snd x mod m" for x
     unfolding s_def by (simp add:case_prod_beta cong:mod_add_cong) (simp add:algebra_simps)
   have 5: "fst (s x) = fst x" for x
     unfolding s_def by (cases x, simp)
 
   have "?L = c_inner (\<lambda>x. f (fst x, snd x + c*fst x+d)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
     unfolding FT_altdef by simp
-  also have "... = c_inner (\<lambda>x. f (fst x, (snd x + c*fst x+d) mod n)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
+  also have "... = c_inner (\<lambda>x. f (fst x, (snd x + c*fst x+d) mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
     by (intro c_inner_cong  periodic_cong[OF assms]) (auto simp add:algebra_simps)
-  also have "... = c_inner (\<lambda>x. f (fst x, snd x mod n)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ snd (s x)* v))"
+  also have "... = c_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ snd (s x)* v))"
     by (subst c_inner_reindex[OF 3]) (simp add:4 5)
   also have "... =
-    c_inner (\<lambda>x. f (fst x, snd x mod n)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ ((snd x-c*fst x-d) mod n)* v))"
+    c_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ ((snd x-c*fst x-d) mod m)* v))"
     by (simp add:s_def case_prod_beta)
   also have "... = c_inner f (\<lambda>x. \<omega>\<^sub>F (fst x* (u-c * v) + snd x * v-d * v))"
     by (intro c_inner_cong \<omega>\<^sub>F_cong) (auto simp add:mgg_graph_def algebra_simps mod_add_mult_eq) 
@@ -743,13 +519,13 @@ proof -
     using 0 FT_sheer_aux[OF 1, where d="0"] by (subst (1 2) FT_swap[symmetric], simp)
 qed
 
-definition T\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>1 x = ((fst x + 2 * snd x) mod n, snd x)"
-definition S\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>1 x = ((fst x - 2 * snd x) mod n, snd x)"
-definition T\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>2 x = (fst x, (snd x + 2 * fst x) mod n)"
-definition S\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>2 x = (fst x, (snd x - 2 * fst x) mod n)"
+definition T\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>1 x = ((fst x + 2 * snd x) mod m, snd x)"
+definition S\<^sub>1 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>1 x = ((fst x - 2 * snd x) mod m, snd x)"
+definition T\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "T\<^sub>2 x = (fst x, (snd x + 2 * fst x) mod m)"
+definition S\<^sub>2 :: "int \<times> int \<Rightarrow> int \<times> int" where "S\<^sub>2 x = (fst x, (snd x - 2 * fst x) mod m)"
 
 definition \<gamma>_aux :: "int \<times> int \<Rightarrow> real \<times> real" 
-    where "\<gamma>_aux x = (\<bar>fst x/n-1/2\<bar>,\<bar>snd x/n-1/2\<bar>)"
+    where "\<gamma>_aux x = (\<bar>fst x/m-1/2\<bar>,\<bar>snd x/m-1/2\<bar>)"
 
 definition compare :: "real \<times> real \<Rightarrow> real \<times> real \<Rightarrow> bool"
   where "compare x y = (fst x \<le> fst y \<and> snd x \<le> snd y \<and> x \<noteq> y)"
@@ -768,7 +544,7 @@ lemma \<gamma>_sym: "\<gamma> x y * \<gamma> y x = 1"
 lemma \<gamma>_nonneg: "\<gamma> x y \<ge> 0"
   unfolding \<gamma>_def \<alpha>_def by auto
 
-definition \<tau> :: "int \<Rightarrow> real" where "\<tau> x = \<bar>cos(pi*x/n)\<bar>"
+definition \<tau> :: "int \<Rightarrow> real" where "\<tau> x = \<bar>cos(pi*x/m)\<bar>"
 
 definition \<gamma>' :: "real \<Rightarrow> real \<Rightarrow> real" 
   where "\<gamma>' x y = (if abs (x - 1/2) < abs (y - 1/2) then \<alpha> else (if abs (x-1/2) > abs (y-1/2) then (1 / \<alpha>) else 1))"
@@ -784,9 +560,9 @@ lemma \<gamma>'_cases:
 
 lemma if_cong_direct:
   assumes "a = b"
-  assumes "c = d"
+  assumes "c = d'"
   assumes "e = f"
-  shows "(if a then c else e) = (if b then d else f)"
+  shows "(if a then c else e) = (if b then d' else f)"
   using assms by (intro if_cong) auto
 
 lemma \<gamma>'_cong:
@@ -1168,20 +944,20 @@ qed
 
 lemma mod_to_frac: 
   fixes x :: int
-  shows "real_of_int (x mod n) = n * frac (x/n)" (is "?L = ?R")
+  shows "real_of_int (x mod m) = m * frac (x/m)" (is "?L = ?R")
 proof -
-  obtain y where y_def: "x mod n = x + int n* y"
+  obtain y where y_def: "x mod m = x + int m* y"
     by (metis mod_eqE mod_mod_trivial) 
 
-  have 0: "x mod int n < n" "x mod int n \<ge> 0"
-    using n_gt_0 by auto
+  have 0: "x mod int m < m" "x mod int m \<ge> 0"
+    using m_gt_0 by auto
 
-  have "?L = real n * (of_int (x mod n) / n )"
-    using n_gt_0 by (simp add:algebra_simps)
-  also have "... = real n * frac (of_int (x mod n) / n)"
+  have "?L = real m * (of_int (x mod m) / m )"
+    using m_gt_0 by (simp add:algebra_simps)
+  also have "... = real m * frac (of_int (x mod m) / m)"
     using 0 by (subst iffD2[OF frac_eq]) auto
-  also have "... = real n * frac (x / n + y)"
-    unfolding y_def using n_gt_0 by (simp add:divide_simps mult.commute)
+  also have "... = real m * frac (x / m + y)"
+    unfolding y_def using m_gt_0 by (simp add:divide_simps mult.commute)
   also have "... = ?R" 
     unfolding frac_def by simp
   finally show ?thesis by simp
@@ -1193,25 +969,25 @@ lemma fun_bound:
     (is "?L \<le> ?R")
 proof -
   obtain x y where v_def: "v = (x,y)" by (cases v) auto
-  define x' where "x' = x/real n"
-  define y' where "y' = y/real n"
+  define x' where "x' = x/real m"
+  define y' where "y' = y/real m"
 
   have 0:"\<gamma> v (S\<^sub>1 v) = \<gamma>' x' (frac(x'-2*y'))"
-    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def S\<^sub>1_def x'_def y'_def using n_gt_0
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def S\<^sub>1_def x'_def y'_def using m_gt_0
     by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
   have 1:"\<gamma> v (T\<^sub>1 v) = \<gamma>' x' (frac(x'+2*y'))"
-    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def x'_def y'_def using n_gt_0
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>1_def x'_def y'_def using m_gt_0
     by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
   have 2:"\<gamma> v (S\<^sub>2 v) = \<gamma>' y' (frac(y'-2*x'))"
-    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def S\<^sub>2_def x'_def y'_def using n_gt_0
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def S\<^sub>2_def x'_def y'_def using m_gt_0
     by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
   have 3:"\<gamma> v (T\<^sub>2 v) = \<gamma>' y' (frac(y'+2*x'))"
-    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>2_def x'_def y'_def using n_gt_0
+    unfolding \<gamma>_def \<gamma>'_def compare_def v_def \<gamma>_aux_def T\<^sub>2_def x'_def y'_def using m_gt_0
     by (intro if_cong_direct refl) (auto simp add:case_prod_beta mod_to_frac divide_simps) 
   have 4: "\<tau> (fst v)  = \<bar>cos(pi*x')\<bar>" "\<tau> (snd v)  = \<bar>cos(pi*y')\<bar>"
     unfolding \<tau>_def v_def x'_def y'_def by auto
 
-  have "x \<in> {0..<int n}" "y \<in> {0..<int n}" "(x,y) \<noteq> (0,0)"
+  have "x \<in> {0..<int m}" "y \<in> {0..<int m}" "(x,y) \<noteq> (0,0)"
     using assms  unfolding v_def mgg_graph_def by auto
   hence 5:"x' \<in> {0..<1}" "y' \<in> {0..<1}" "(x',y') \<noteq> (0,0)" 
     unfolding x'_def y'_def by auto
@@ -1342,7 +1118,7 @@ proof -
       unfolding \<omega>\<^sub>F_simps(3) by (simp add:algebra_simps)
     also have "... = \<bar>2*Re (\<omega>\<^sub>F (x/2))\<bar>"
       unfolding complex_add_cnj norm_of_real by simp
-    also have "... =  2*\<bar>cos(pi*x/n)\<bar>"
+    also have "... =  2*\<bar>cos(pi*x/m)\<bar>"
       unfolding \<omega>\<^sub>F_def cis.simps by simp
     also have "... = 2*\<tau> x" unfolding \<tau>_def by simp
     finally show ?thesis by simp
@@ -1391,10 +1167,10 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have "cmod ((of_nat n)^2) = cmod (of_real (of_nat n^2))" by simp
-  also have "... = abs (of_nat n^2)" by (intro norm_of_real)
-  also have "... = real n^2" by simp
-  finally have 1: "cmod ((of_nat n)\<^sup>2) = (real n)\<^sup>2" by simp
+  have "cmod ((of_nat m)^2) = cmod (of_real (of_nat m^2))" by simp
+  also have "... = abs (of_nat m^2)" by (intro norm_of_real)
+  also have "... = real m^2" by simp
+  finally have 1: "cmod ((of_nat m)\<^sup>2) = (real m)\<^sup>2" by simp
 
   have "FT (\<lambda>x. complex_of_real (f x)) (0, 0) = complex_of_real (g_inner f (\<lambda>_ . 1))"
     unfolding FT_def g_inner_def c_inner_def \<omega>\<^sub>F_def by simp
@@ -1407,13 +1183,13 @@ proof -
     unfolding norm_of_real by simp
   also have "... = norm (\<Sum>T \<leftarrow> Ts. (c_inner f (f \<circ> T)))"
     unfolding Ts_def by (simp add:algebra_simps c_inner_def sum.distrib comp_def case_prod_beta)
-  also have "... = norm (\<Sum>T \<leftarrow> Ts. (c_inner (FT f) (FT (f \<circ> T)))/n^2)" 
+  also have "... = norm (\<Sum>T \<leftarrow> Ts. (c_inner (FT f) (FT (f \<circ> T)))/m^2)" 
     by (subst parseval) simp
-  also have "... = norm (c_inner (FT f) (\<lambda>x. (\<Sum>T \<leftarrow> Ts. (FT (f \<circ> T) x)))/n^2)"
+  also have "... = norm (c_inner (FT f) (\<lambda>x. (\<Sum>T \<leftarrow> Ts. (FT (f \<circ> T) x)))/m^2)"
     unfolding Ts_def by (simp add:c_inner_simps case_prod_beta add_divide_distrib)
-  also have "...=norm(c_inner(FT f)(\<lambda>x.(FT f(S\<^sub>2 x)*(1+\<omega>\<^sub>F (fst x))+FT f(S\<^sub>1 x)*(1+\<omega>\<^sub>F (snd x)))))/n^2"
+  also have "...=norm(c_inner(FT f)(\<lambda>x.(FT f(S\<^sub>2 x)*(1+\<omega>\<^sub>F (fst x))+FT f(S\<^sub>1 x)*(1+\<omega>\<^sub>F (snd x)))))/m^2"
     by (subst 0) (simp add:norm_divide 1)
-  also have "... \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (FT f v)^2) / n^2"
+  also have "... \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (FT f v)^2) / m^2"
     by (intro divide_right_mono hoory_8_7[where f="FT f"] 2 periodic_FT) auto 
   also have "... = (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. cmod (f v)^2)"
     by (subst (2) plancharel) simp
@@ -1430,12 +1206,12 @@ lemma mgg_numerical_radius_aux:
   assumes "g_inner f (\<lambda>_. 1) = 0"
   shows "\<bar>(\<Sum>a \<in> arcs G. f (head G a) * f (tail G a))\<bar> \<le> (5 * sqrt 2) * g_norm f^2"  (is "?L \<le> ?R")
 proof -
-  define g where "g x = f (fst x mod n, snd x mod n)" for x :: "int \<times> int"
+  define g where "g x = f (fst x mod m, snd x mod m)" for x :: "int \<times> int"
   have 0:"g x = f x" if "x \<in> verts G" for x 
     unfolding g_def using that
     by (auto simp add:mgg_graph_def mem_Times_iff)
 
-  have g_mod_simps[simp]: "g (x, y mod n) = g (x, y)" "g (x mod n, y) = g (x, y)" for x y :: int
+  have g_mod_simps[simp]: "g (x, y mod m) = g (x, y)" "g (x mod m, y) = g (x, y)" for x y :: int
     unfolding g_def by auto
 
   have periodic_g: "periodic g"
@@ -1456,12 +1232,12 @@ proof -
   also have "...=\<bar>(\<Sum>a\<in>arcs_pos. g(head G a)*g(tail G a))+(\<Sum>a\<in>arcs_neg. g(head G a)*g(tail G a))\<bar>"
     unfolding arcs_sym arcs_pos_def arcs_neg_def
     by (intro arg_cong[where f="abs"] sum.union_disjoint) auto
-  also have "... = \<bar>2 * (\<Sum>(v,l)\<in>verts G \<times> {..<4}. g v * g (mgg_graph_step n v (l, 1)))\<bar>"
+  also have "... = \<bar>2 * (\<Sum>(v,l)\<in>verts G \<times> {..<4}. g v * g (mgg_graph_step m v (l, 1)))\<bar>"
     unfolding arcs_pos_def arcs_neg_def
     by (simp add:inj_on_def sum.reindex case_prod_beta mgg_graph_def algebra_simps)
-  also have "... = 2 * \<bar>(\<Sum>v \<in> verts G. (\<Sum>l \<in> {..<4}. g v * g (mgg_graph_step n v (l, 1))))\<bar>"
+  also have "... = 2 * \<bar>(\<Sum>v \<in> verts G. (\<Sum>l \<in> {..<4}. g v * g (mgg_graph_step m v (l, 1))))\<bar>"
     by (subst sum.cartesian_product)  (simp add:abs_mult)
-  also have "... = 2*\<bar>(\<Sum>(x,y)\<in>verts G. (\<Sum>l\<leftarrow>[0..<4]. g(x,y)* g (mgg_graph_step n (x,y) (l,1))))\<bar>"
+  also have "... = 2*\<bar>(\<Sum>(x,y)\<in>verts G. (\<Sum>l\<leftarrow>[0..<4]. g(x,y)* g (mgg_graph_step m (x,y) (l,1))))\<bar>"
     by (subst interv_sum_list_conv_sum_set_nat)
       (auto simp add:atLeast0LessThan case_prod_beta simp del:mgg_graph_step.simps) 
   also have "... =2*\<bar>\<Sum>(x,y)\<in>verts G. g (x,y)* (g(x+2*y,y)+g(x+2*y+1,y)+g(x,y+2*x)+g(x,y+2*x+1))\<bar>"
@@ -1476,15 +1252,14 @@ definition MGG_bound :: real where "MGG_bound = 5 * sqrt 2 / 8"
 
 text \<open>Main result: Theorem 8.2 in Hoory.\<close> 
 
-lemma mgg_numerical_radius: "numerical_rad \<le> MGG_bound"
+lemma mgg_numerical_radius: "\<gamma>\<^sub>2 \<le> MGG_bound"
 proof -
-  have "numerical_rad \<le> (5 * sqrt 2)/real 8"
-    by (intro numerical_radI[OF mgg_finite] mgg_numerical_radius_aux) auto
+  have "\<gamma>\<^sub>2 \<le> (5 * sqrt 2)/real d"
+    by (intro expander_intro_2 mgg_numerical_radius_aux) auto
   also have "... = MGG_bound"
-    unfolding MGG_bound_def by simp
+    unfolding MGG_bound_def d_eq_8 by simp 
   finally show ?thesis by simp
 qed
-
 
 end
 

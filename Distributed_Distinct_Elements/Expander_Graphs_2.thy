@@ -3,8 +3,7 @@ theory Expander_Graphs_2
     "HOL-Library.Multiset" 
     "HOL-Probability.Probability_Mass_Function"
     "Expander_Graphs"
-    "Frequency_Moments.Frequency_Moments_Preliminary_Results"
-    "Balls_and_Bins"
+    "HOL-Types_To_Sets.Types_To_Sets"
     "Constructive_Chernoff_Bound"
 begin
 
@@ -221,7 +220,6 @@ proof -
     by (intro sum.cong, auto)
   finally show ?thesis by simp
 qed
-
 
 record 'a multi_graph =
   vertices :: "'a set"
@@ -644,6 +642,7 @@ end
 
 definition map_graph :: "('a \<Rightarrow> 'b) \<Rightarrow> 'a multi_graph \<Rightarrow> 'b multi_graph"
   where "map_graph f G = \<lparr> vertices = f ` vertices G, edges = image_mset (map_prod f f) (edges G) \<rparr>"
+
 
 locale graph_iso =
   fixes G :: "'a multi_graph"

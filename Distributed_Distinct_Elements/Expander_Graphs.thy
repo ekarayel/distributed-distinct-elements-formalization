@@ -1,11 +1,7 @@
 theory Expander_Graphs
   imports Main 
-    "HOL-Library.FuncSet" 
-    "HOL-Library.Multiset" 
     "HOL-Library.Monad_Syntax"
-    "HOL-Types_To_Sets.Types_To_Sets"
     "HOL-Analysis.Finite_Cartesian_Product"
-    "Smooth_Manifolds.Analysis_More"
     "HOL-Analysis.Cartesian_Space"
 begin
 
@@ -13,7 +9,7 @@ section "Missing Finite Cartesian Product"
 
 lemma pythagoras: 
   fixes v w :: "'a::real_inner"
-  assumes "inner v w  = 0"
+  assumes "v \<bullet> w  = 0"
   shows "norm (v+w)^2 = norm v^2 + norm w^2"  
   using assms by (simp add:power2_norm_eq_inner algebra_simps inner_commute)
 
@@ -29,7 +25,7 @@ lemma diag_mult_eq: "diag x ** diag y = diag (x * y)"
    (auto simp add:if_distrib if_distribR sum.If_cases)
 
 definition matrix_norm_bound :: "real^'n^'m \<Rightarrow> real \<Rightarrow> bool"
-  where "matrix_norm_bound A l = (\<forall>x. norm (A *v x ) \<le> l * norm x)"
+  where "matrix_norm_bound A l = (\<forall>x. norm (A *v x) \<le> l * norm x)"
 
 lemma  matrix_norm_boundI:
   assumes "\<And>x. norm (A *v x) \<le> l * norm x"
