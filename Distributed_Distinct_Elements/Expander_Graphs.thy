@@ -1,7 +1,6 @@
 theory Expander_Graphs
   imports Main 
     "HOL-Library.Monad_Syntax"
-    "HOL-Analysis.Finite_Cartesian_Product"
     "HOL-Analysis.Cartesian_Space"
 begin
 
@@ -91,11 +90,6 @@ lemma vector_scaleR_matrix_ac_2: "b *\<^sub>R (A::real^'n^'m) *v x = b *\<^sub>R
   unfolding vector_transpose_matrix[symmetric]  transpose_scalar
   by (intro vector_scaleR_matrix_ac)
 
-lemma matrix_vector_mul_assoc_2: 
-  fixes x :: "('a::comm_semiring_1)^_"
-  shows "(x v* A) v* B= x v* (A ** B)"
-  unfolding transpose_matrix_vector[symmetric] matrix_transpose_mul matrix_vector_mul_assoc by simp
-
 lemma  matrix_norm_bound_scale: 
   assumes "matrix_norm_bound A l"
   shows "matrix_norm_bound (b *\<^sub>R A) (\<bar>b\<bar> * l)"
@@ -114,7 +108,7 @@ qed
 section \<open>Expander Graphs - Algebra\<close>
 
 definition spec_bound :: "real^'n^'n \<Rightarrow> real \<Rightarrow> bool"
-  where "spec_bound A l = (l \<ge> 0 \<and> (\<forall>v. inner v 1 = 0 \<longrightarrow> norm (A *v v) \<le> l * norm v))"
+  where "spec_bound A l = (l \<ge> 0 \<and> (\<forall>v. v \<bullet> 1 = 0 \<longrightarrow> norm (A *v v) \<le> l * norm v))"
 
 lemma spec_boundD1:
   assumes "spec_bound A l"
@@ -123,7 +117,7 @@ lemma spec_boundD1:
 
 lemma spec_boundD2:
   assumes "spec_bound A l"
-  assumes "inner v 1 = 0 "
+  assumes "v \<bullet> 1 = 0 "
   shows "norm (A *v v) \<le> l * norm v" 
   using assms unfolding spec_bound_def by simp
 
@@ -166,13 +160,25 @@ lemma nonneg_mat_transpose:
 definition markov :: "real^'n^'n \<Rightarrow> bool"
   where "markov A = (nonneg_mat A \<and> A *v 1  = 1 \<and> 1 v* A = 1)"
 
+lemma markov_symI:
+  assumes "nonneg_mat A" "transpose A = A" "A *v 1 = 1"
+  shows "markov A"
+proof -
+  have "1 v* A = transpose A *v 1"
+    unfolding vector_transpose_matrix[symmetric] by simp
+  also have "... = 1" unfolding assms(2,3) by simp
+  finally have "1 v* A = 1" by simp
+  thus ?thesis
+    unfolding markov_def using assms by auto
+qed
+
 definition stat :: "real^'n"
   where "stat = (1 / real CARD('n)) *\<^sub>R 1"
 
 definition J :: "real^'n^'n"
   where "J = (\<chi> i j. 1 / real CARD('n))"
 
-lemma inner_1_1: "inner 1 (1::real^'n) = CARD('n)"
+lemma inner_1_1: "1 \<bullet> (1::real^'n) = CARD('n)"
   unfolding inner_vec_def by simp
 
 lemma markov_apply:
@@ -185,12 +191,12 @@ lemma markov_transpose:
   unfolding markov_def nonneg_mat_transpose by auto
 
 definition proj_unit :: "real^'n \<Rightarrow> real^'n"
-  where "proj_unit v = (inner 1 v) *\<^sub>R stat"
+  where "proj_unit v = (1 \<bullet> v) *\<^sub>R stat"
 
 definition proj_rem :: "real^'n \<Rightarrow> real^'n" 
   where "proj_rem v = v - proj_unit v"
 
-lemma proj_rem_orth: "inner 1 (proj_rem v) = 0"
+lemma proj_rem_orth: "1 \<bullet> (proj_rem v) = 0"
   unfolding proj_rem_def proj_unit_def inner_diff_right stat_def
   by (simp add:inner_1_1)
 
@@ -239,7 +245,7 @@ proof -
     unfolding matrix_vector_mul_assoc[symmetric] by simp
   moreover have "1 v* (A ** B) = 1" 
     using assms unfolding markov_def
-    unfolding matrix_vector_mul_assoc_2[symmetric] by simp
+    unfolding vector_matrix_mul_assoc[symmetric] by simp
   ultimately show ?thesis
     unfolding markov_def by simp
 qed
@@ -448,7 +454,7 @@ lemma hitting_property_alg:
   defines "P \<equiv> diag (ind_vec S)"
   defines "\<mu> \<equiv> card S / CARD('n)"
   assumes "\<And>M. M \<in> set Ms \<Longrightarrow> spec_bound M l \<and> markov M"
-  shows "inner (foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms) 1 \<le> (\<mu> + l * (1-\<mu>))^(length Ms+1)"
+  shows "foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms \<bullet> 1 \<le> (\<mu> + l * (1-\<mu>))^(length Ms+1)"
 proof -
   define t :: "real^'n" where "t = (\<chi> i. of_bool (i \<in> S))"
   define r where "r = foldl (\<lambda>x M. P *v (M *v x)) (P *v stat) Ms"
@@ -506,10 +512,10 @@ proof -
     also have "... = (1 - l) * norm (P *v (J *v y)) + l * norm (P *v (E *v y))"
       using l_range
       by (simp add:vector_scaleR_matrix_ac_2 matrix_vector_mult_scaleR)
-    also have "... = (1-l) * \<bar>inner 1 (P *v y)/real CARD('n)\<bar> * norm t + l * norm (P *v (E *v y))"
+    also have "... = (1-l) * \<bar>1 \<bullet> (P *v y)/real CARD('n)\<bar> * norm t + l * norm (P *v (E *v y))"
       by (subst a[symmetric]) 
         (simp add:apply_J proj_unit_def stat_def P_1_right matrix_vector_mult_scaleR)
-    also have "... = (1-l) * \<bar>inner t y\<bar>/real CARD('n) * norm t + l * norm (P *v (E *v y))"
+    also have "... = (1-l) * \<bar>t \<bullet> y\<bar>/real CARD('n) * norm t + l * norm (P *v (E *v y))"
       by (subst dot_lmul_matrix[symmetric]) (simp add:P_1_left)
     also have "... \<le> (1-l) * (norm t * norm y) / real CARD('n) * norm t + l * (1 * norm (E *v y))"
       using P_norm Cauchy_Schwarz_ineq2 l_range
@@ -757,7 +763,7 @@ proof (cases "I \<noteq> {}")
     unfolding ys_split by simp
   also have "... = foldl (\<lambda>x N. M *v (N *v x)) stat ([Q]@(yt \<bind>(\<lambda>x. ?rep x @ [Q]))) \<bullet> 1"
     by (simp add:b)
-  also have "... = foldl (\<lambda>x N. N *v x) stat ((intersperse M (Q#(yt \<bind>(\<lambda>x.?rep x@[Q]))))@[M])\<bullet>1"
+  also have "... = foldl (\<lambda>x N. N *v x) stat (intersperse M (Q#(yt \<bind>(\<lambda>x.?rep x@[Q])))@[M])\<bullet>1"
     by (subst foldl_intersperse, auto)
   also have "... = foldl (\<lambda>x N. N *v x) stat (intersperse M (Q#(yt \<bind>(\<lambda>x.?rep x@[Q])))) \<bullet> 1"
     by (simp add:markov_orth_inv[OF assms(6)]) 
@@ -849,7 +855,7 @@ proof -
     unfolding map_append foldl_append P_def by (subst 1) auto
   also have "... = (diag (ind_vec {x}) *v stat) \<bullet> 1" 
     by (simp add:markov_orth_inv[OF assms(3)]) 
-  also have "... = ((1/CARD('n)) *\<^sub>R ind_vec{x}) \<bullet> 1" 
+  also have "... = ((1/CARD('n)) *\<^sub>R ind_vec {x}) \<bullet> 1" 
     unfolding diag_def ind_vec_def  stat_def matrix_vector_mult_def 
     by (intro arg_cong2[where f="(\<bullet>)"] refl) 
       (vector of_bool_def sum.If_cases if_distrib if_distribR)
@@ -860,5 +866,84 @@ proof -
     by (intro arg_cong2[where f="(*)"] refl) (simp)
   finally show ?thesis by simp
 qed
+
+lemma foldl_matrix_mult_expand:
+  fixes Ms :: "(('r::{semiring_1,comm_monoid_mult})^'a^'a) list"
+  shows "(foldl (\<lambda>x M. M *v x) a Ms) $ k = (\<Sum>x | length x = length Ms+1 \<and> x! length Ms = k. 
+  (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
+proof (induction Ms arbitrary: k rule:rev_induct)
+  case Nil
+  have "length x = Suc 0 \<Longrightarrow> x = [x!0]" for x :: "'a list"
+    by (cases x, auto)
+  hence "{x. length x = Suc 0 \<and> x ! 0 = k} = {[k]}" 
+    by auto 
+  thus ?case by auto
+next
+  case (snoc M Ms)
+  let ?l = "length Ms"
+
+  have 0: "finite {w. length w = Suc (length Ms) \<and> w ! length Ms = i}" for i :: 'a
+    using finite_lists_length_eq[where A="UNIV::'a set" and n="?l +1"] by simp
+
+  have "take (?l+1) x @ [x ! (?l+1)] = x" if "length x = ?l+2" for x :: "'a list"
+  proof -
+    have "take (?l+1) x @ [x ! (?l+1)] = take (Suc (?l+1)) x"
+      using that by (intro take_Suc_conv_app_nth[symmetric], simp)
+    also have "... = x" 
+      using that by simp
+    finally show ?thesis by simp
+  qed
+  hence 1: "bij_betw  (take (?l+1)) {w. length w=?l+2 \<and> w!(?l+1) =k} {w. length w = ?l+1}"
+    by (intro bij_betwI[where g="\<lambda>x. x@[k]"]) (auto simp add:nth_append)
+
+  have "foldl (\<lambda>x M. M *v x) a (Ms @ [M]) $ k = (\<Sum>j\<in>UNIV. M$k$j *(foldl (\<lambda>x M. M *v x) a Ms $ j))"
+    by (simp add:matrix_vector_mult_def)
+  also have "... = 
+    (\<Sum>j\<in>UNIV. M$k$j * (\<Sum>w|length w=?l+1\<and>w!?l=j. (\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0))"
+    unfolding snoc by simp
+  also have "... = 
+    (\<Sum>j\<in>UNIV. (\<Sum>w|length w=?l+1\<and>w!?l=j. M$k$w!?l * (\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0))"
+    by (intro sum.cong refl) (simp add: sum_distrib_left algebra_simps)
+  also have "... = (\<Sum>w\<in> (\<Union>j \<in> UNIV. {w. length w=?l+1 \<and> w!?l =j}). 
+    M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
+    using 0 by (subst sum.UNION_disjoint, simp, simp) auto 
+  also have "... = (\<Sum>w | length w=?l+1. M$k$(w!?l)*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
+    by (intro sum.cong arg_cong2[where f="(*)"] refl) auto
+  also have "... = (\<Sum>w \<in> take (?l+1) ` {w. length w=?l+2 \<and> w!(?l+1) =k}. 
+    M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
+    using 1 unfolding bij_betw_def by (intro sum.cong refl, auto) 
+  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i)* a$w!0)"
+    using 1 unfolding bij_betw_def by (subst sum.reindex, auto)
+  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. 
+    (Ms@[M])!?l$k$w!?l*(\<Prod>i<?l. (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
+    by (intro sum.cong arg_cong2[where f="(*)"] prod.cong refl) (auto simp add:nth_append)
+  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. (\<Prod>i<(?l+1). (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
+    by (intro sum.cong, auto simp add:algebra_simps)
+  finally have "foldl (\<lambda>x M. M *v x) a (Ms @ [M]) $ k = 
+    (\<Sum> w | length w = ?l+2 \<and> w ! (?l+1) = k. (\<Prod>i<(?l+1). (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
+    by simp
+  then show ?case by simp
+qed
+
+lemma foldl_matrix_mult_expand_2:
+  fixes Ms :: "(real^'a^'a) list"
+  shows "(foldl (\<lambda>x M. M *v x) a Ms) \<bullet> 1 = (\<Sum>x | length x = length Ms+1. 
+          (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
+  (is "?L = ?R")
+proof -
+  let ?l = "length Ms"
+  have "?L = (\<Sum>j \<in> UNIV. (foldl (\<lambda>x M. M *v x) a Ms) $ j)"
+    by (simp add:inner_vec_def)
+  also have "... = (\<Sum>j\<in>UNIV. \<Sum>x|length x=?l+1 \<and> x!?l=j.(\<Prod>i<?l. Ms!i $ x!(i+1) $ x!i) * a $ x!0)"
+    unfolding foldl_matrix_mult_expand by simp
+  also have "... = (\<Sum>x \<in> (\<Union>j\<in> UNIV.{w. length w = length Ms+1 \<and> w ! length Ms = j}).
+          (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
+    using finite_lists_length_eq[where A="UNIV::'a set" and n="?l +1"]
+    by (intro sum.UNION_disjoint[symmetric]) auto
+  also have "... = ?R"
+    by (intro sum.cong, auto)
+  finally show ?thesis by simp
+qed
+
 
 end

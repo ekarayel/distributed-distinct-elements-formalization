@@ -1,9 +1,8 @@
 theory Margulis_Gaber_Galil
   imports 
-    "Graph_Theory.Digraph"
     "HOL-Analysis.Complex_Transcendental"
     "HOL-Decision_Procs.Approximation"
-    "Expander_Graphs_3"
+    "Expander_Graphs_Base"
 begin
 
 (*
@@ -169,9 +168,9 @@ lemma verts_ne:
   "verts G \<noteq> {}" 
   using m_gt_0 unfolding mgg_graph_def by simp
 
-sublocale regular_graph "mgg_graph m"
+sublocale pre_expander_graph "mgg_graph m"
   using out_deg verts_ne
-  by (intro regular_graphI[where d="8"] sym) auto
+  by (intro pre_expander_graphI[where d="8"] sym) auto
 
 lemma d_eq_8: "d = 8"
 proof -
@@ -1252,10 +1251,10 @@ definition MGG_bound :: real where "MGG_bound = 5 * sqrt 2 / 8"
 
 text \<open>Main result: Theorem 8.2 in Hoory.\<close> 
 
-lemma mgg_numerical_radius: "\<gamma>\<^sub>2 \<le> MGG_bound"
+lemma mgg_numerical_radius: "\<Lambda> \<le> MGG_bound"
 proof -
-  have "\<gamma>\<^sub>2 \<le> (5 * sqrt 2)/real d"
-    by (intro expander_intro_2 mgg_numerical_radius_aux) auto
+  have "\<Lambda> \<le> (5 * sqrt 2)/real d"
+    by (intro expander_intro mgg_numerical_radius_aux) auto
   also have "... = MGG_bound"
     unfolding MGG_bound_def d_eq_8 by simp 
   finally show ?thesis by simp

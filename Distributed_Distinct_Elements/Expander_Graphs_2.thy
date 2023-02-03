@@ -91,7 +91,6 @@ lemma size_filter_mset_conv:
   "size (filter_mset f A) = sum_mset (image_mset (\<lambda>x. of_bool (f x) :: nat) A)"
   by (induction A, auto)
 
-
 definition concat_mset :: "('a multiset) multiset \<Rightarrow> 'a multiset"
   where "concat_mset xss = fold_mset (\<lambda>xs ys. xs + ys) {#} xss"
 
@@ -143,83 +142,6 @@ lemma pmf_of_multiset_image_mset:
   using assms by (intro pmf_eqI) (simp add:pmf_map measure_pmf_of_multiset count_mset_exp 
       image_mset_filter_mset_swap[symmetric])
 
-lemma foldl_matrix_mult_expand:
-  fixes Ms :: "(('r::{semiring_1,comm_monoid_mult})^'a^'a) list"
-  shows "(foldl (\<lambda>x M. M *v x) a Ms) $ k = (\<Sum>x | length x = length Ms+1 \<and> x! length Ms = k. 
-  (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
-proof (induction Ms arbitrary: k rule:rev_induct)
-  case Nil
-  have "length x = Suc 0 \<Longrightarrow> x = [x!0]" for x :: "'a list"
-    by (cases x, auto)
-  hence "{x. length x = Suc 0 \<and> x ! 0 = k} = {[k]}" 
-    by auto 
-  thus ?case by auto
-next
-  case (snoc M Ms)
-  let ?l = "length Ms"
-
-  have 0: "finite {w. length w = Suc (length Ms) \<and> w ! length Ms = i}" for i :: 'a
-    using finite_lists_length_eq[where A="UNIV::'a set" and n="?l +1"] by simp
-
-  have "take (?l+1) x @ [x ! (?l+1)] = x" if "length x = ?l+2" for x :: "'a list"
-  proof -
-    have "take (?l+1) x @ [x ! (?l+1)] = take (Suc (?l+1)) x"
-      using that by (intro take_Suc_conv_app_nth[symmetric], simp)
-    also have "... = x" 
-      using that by simp
-    finally show ?thesis by simp
-  qed
-  hence 1: "bij_betw  (take (?l+1)) {w. length w=?l+2 \<and> w!(?l+1) =k} {w. length w = ?l+1}"
-    by (intro bij_betwI[where g="\<lambda>x. x@[k]"]) (auto simp add:nth_append)
-
-  have "foldl (\<lambda>x M. M *v x) a (Ms @ [M]) $ k = (\<Sum>j\<in>UNIV. M$k$j *(foldl (\<lambda>x M. M *v x) a Ms $ j))"
-    by (simp add:matrix_vector_mult_def)
-  also have "... = 
-    (\<Sum>j\<in>UNIV. M$k$j * (\<Sum>w|length w=?l+1\<and>w!?l=j. (\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0))"
-    unfolding snoc by simp
-  also have "... = 
-    (\<Sum>j\<in>UNIV. (\<Sum>w|length w=?l+1\<and>w!?l=j. M$k$w!?l * (\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0))"
-    by (intro sum.cong refl) (simp add: sum_distrib_left algebra_simps)
-  also have "... = (\<Sum>w\<in> (\<Union>j \<in> UNIV. {w. length w=?l+1 \<and> w!?l =j}). 
-    M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
-    using 0 by (subst sum.UNION_disjoint, simp, simp) auto 
-  also have "... = (\<Sum>w | length w=?l+1. M$k$(w!?l)*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
-    by (intro sum.cong arg_cong2[where f="(*)"] refl) auto
-  also have "... = (\<Sum>w \<in> take (?l+1) ` {w. length w=?l+2 \<and> w!(?l+1) =k}. 
-    M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i) * a $ w!0)"
-    using 1 unfolding bij_betw_def by (intro sum.cong refl, auto) 
-  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. M$k$w!?l*(\<Prod>i<?l. Ms!i $ w!(i+1) $ w!i)* a$w!0)"
-    using 1 unfolding bij_betw_def by (subst sum.reindex, auto)
-  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. 
-    (Ms@[M])!?l$k$w!?l*(\<Prod>i<?l. (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
-    by (intro sum.cong arg_cong2[where f="(*)"] prod.cong refl) (auto simp add:nth_append)
-  also have "... = (\<Sum>w|length w=?l+2\<and>w!(?l+1)=k. (\<Prod>i<(?l+1). (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
-    by (intro sum.cong, auto simp add:algebra_simps)
-  finally have "foldl (\<lambda>x M. M *v x) a (Ms @ [M]) $ k = 
-    (\<Sum> w | length w = ?l+2 \<and> w ! (?l+1) = k. (\<Prod>i<(?l+1). (Ms@[M])!i $ w!(i+1) $ w!i)* a$w!0)"
-    by simp
-  then show ?case by simp
-qed
-
-lemma foldl_matrix_mult_expand_2:
-  fixes Ms :: "(real^'a^'a) list"
-  shows "(foldl (\<lambda>x M. M *v x) a Ms) \<bullet> 1 = (\<Sum>x | length x = length Ms+1. 
-          (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
-  (is "?L = ?R")
-proof -
-  let ?l = "length Ms"
-  have "?L = (\<Sum>j \<in> UNIV. (foldl (\<lambda>x M. M *v x) a Ms) $ j)"
-    by (simp add:inner_vec_def)
-  also have "... = (\<Sum>j\<in>UNIV. \<Sum>x|length x=?l+1 \<and> x!?l=j.(\<Prod>i<?l. Ms!i $ x!(i+1) $ x!i) * a $ x!0)"
-    unfolding foldl_matrix_mult_expand by simp
-  also have "... = (\<Sum>x \<in> (\<Union>j\<in> UNIV.{w. length w = length Ms+1 \<and> w ! length Ms = j}).
-          (\<Prod> i< length Ms. (Ms ! i) $ (x ! (i+1)) $ (x ! i)) * a $ (x ! 0))"
-    using finite_lists_length_eq[where A="UNIV::'a set" and n="?l +1"]
-    by (intro sum.UNION_disjoint[symmetric]) auto
-  also have "... = ?R"
-    by (intro sum.cong, auto)
-  finally show ?thesis by simp
-qed
 
 record 'a multi_graph =
   vertices :: "'a set"
@@ -279,7 +201,6 @@ lemma distr_onI: "(\<And>x. x \<notin> vertices G \<Longrightarrow> f x = 0) \<L
 definition spectral_expansion :: "'a multi_graph \<Rightarrow> real \<Rightarrow> bool" where 
   "spectral_expansion G \<alpha> = (\<alpha> \<in> {0..1} \<and> 
   (\<forall>f \<in> distr_on G. sum_distr G f = 0 \<longrightarrow> norm_distr G (step_distr G f) \<le> \<alpha> * norm_distr G f))"
-
 
 fun walks' :: "'a multi_graph \<Rightarrow> nat \<Rightarrow> ('a list) multiset"
   where 
@@ -383,7 +304,7 @@ lemma count_walks':
   assumes "graph G"
   assumes "set xs \<subseteq> vertices G"
   assumes "length xs = l+1"
-  shows "count (walks' G l) xs = (\<Prod>i \<in> {..<l}. count (edges G)  (xs ! i, xs ! (i+1)))"
+  shows "count (walks' G l) xs = (\<Prod>i \<in> {..<l}. count (edges G) (xs ! i, xs ! (i+1)))"
 proof -
   have a:"xs \<noteq> []" using assms(3) by auto
 
@@ -406,8 +327,8 @@ proof -
     have "count (walks' G (length (xs @ [x]) - 1)) (xs @ [x]) =
       (\<Sum>ys\<in>#walks' G l. count {#ys @ [z]. z \<in># vertices_from G (last ys)#} (xs @ [x]))"
       by (simp add:l_xs count_concat_mset image_mset.compositionality comp_def)
-    also have "... = 
-      (\<Sum>ys\<in>#walks' G l. (if ys = xs then count {#xs @ [z]. z \<in># vertices_from G (last xs)#} (xs @ [x]) else 0))"
+    also have "... = (\<Sum>ys\<in>#walks' G l. 
+      (if ys = xs then count {#xs @ [z]. z \<in># vertices_from G (last xs)#} (xs @ [x]) else 0))"
       by (intro arg_cong[where f="sum_mset"] image_mset_cong) (auto intro!: count_image_mset_0_triv) 
     also have "... = (\<Sum>ys\<in>#walks' G l.(if ys=xs then count (vertices_from G (last xs)) x else 0))"
       by (subst count_image_mset_inj, auto simp add:inj_def)
@@ -435,8 +356,6 @@ lemma count_walks:
   assumes "length xs = l" "l > 0"
   shows "count (walks G l) xs = (\<Prod>i \<in> {..<l-1}. count (edges G)  (xs ! i, xs ! (i+1)))"
   using assms unfolding walks_def by (cases l, auto simp add:count_walks')
-
-
 
 locale univ_regular_graph = 
   fixes G :: "('a :: finite) multi_graph" 
@@ -594,11 +513,11 @@ proof (cases "l > 0")
   also have "... = (\<Sum>w\<in>?W. real (count (walks G l) w) * of_bool (\<forall>i<l. w!i \<in> S i))/(?n*?d^(l-1))"
     unfolding size_filter_mset_conv sum_mset_conv_2[OF a b] by simp
   also have "... = (\<Sum>w\<in>?W. (\<Prod>i<l-1. real (count (edges G) (w!i,w!(i+1)))) * 
-                            (\<Prod>i<l. of_bool(w!i \<in> S i)))/(?n*?d^(l-1))"
+                            (\<Prod>i<l. of_bool (w!i \<in> S i)))/(?n*?d^(l-1))"
     using True vertices_univ by (intro sum.cong arg_cong2[where f="(/)"]) 
       (auto simp add: count_walks[OF graph])
   also have "... = (\<Sum>w\<in>?W. (\<Prod>i<l-1. real (count (edges G) (w!i,w!(i+1))) / ?d) * 
-                            (\<Prod>i<l. of_bool(w!i \<in> S i)))/?n"
+                            (\<Prod>i<l. of_bool (w!i \<in> S i)))/?n"
     using True unfolding prod_dividef by (simp add:sum_divide_distrib algebra_simps)
   also have "... = (\<Sum>w\<in>?W. (\<Prod>i<lp. A $ w!(i+1) $ w!i) * (\<Prod>i<Suc lp. of_bool(w!i \<in> S i)))/?n"
     unfolding A_def lp_def using True by simp
@@ -744,7 +663,7 @@ proof -
   thus ?thesis
     using the_inv_into_f_f[OF inj_f]  f_the_inv_into_f[OF inj_f] 
       the_inv_into_into[OF inj_f _ order.refl] vertices_H
-    by (intro bij_betwI[where g="?inv"]) (auto intro!:ext distr_onI simp add:distr_onD cong:if_cong)
+    by (intro bij_betwI[where g="?inv"]) (auto intro!:distr_onI simp add:distr_onD cong:if_cong)
 qed
 
 lemma distr_G_eq: 
@@ -1080,7 +999,7 @@ proof -
       using that set_walks_3[OF graph] walks_nonempty[OF assms(1)]
       by (intro measure_eq_AE AE_pmfI) (auto simp add:image_subset_iff)
     also have "... \<le> ?R1"
-      unfolding \<mu>_def by (intro  hitting_property_gen[OF assms(1,2,4) that])
+      unfolding \<mu>_def by (intro hitting_property_gen[OF assms(1,2,4) that])
     finally show ?thesis by simp
   qed
  

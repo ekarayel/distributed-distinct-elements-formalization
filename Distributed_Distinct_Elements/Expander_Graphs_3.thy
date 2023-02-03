@@ -1,6 +1,6 @@
 theory Expander_Graphs_3
   imports 
-    "Graph_Theory.Digraph"
+    "Expander_Graphs_Base"
     "Commuting_Hermitian.Commuting_Hermitian"
 begin
 
@@ -271,6 +271,8 @@ proof -
     by (intro poly_prod_inj) simp
 qed
 
+(* A = U B U^{-1} *)
+
 lemma similar_mat_eigvals:
   fixes A B :: "complex Matrix.mat"
   assumes  "similar_mat A B"
@@ -316,155 +318,8 @@ proof -
     by simp
 qed
 
-text \<open>The following is a stronger notion than the notion of symmetry defined in 
-@{theory "Graph_Theory.Digraph"}, it requires that the number of edges from @{term "v"} to 
-@{term "w"} must be equal to the number of edges from @{term "w"} to @{term "v"} for any pair of 
-vertices @{term "v"} @{term "w \<in> verts G"}.\<close>
-
-definition arcs_betw where "arcs_betw G u v = {a. a \<in> arcs G \<and> head G a = v \<and> tail G a = u}"
-
-definition "symmetric_multi_graph G =
-  (fin_digraph G \<and> (\<forall>v w. {v, w} \<subseteq> verts G \<longrightarrow> card (arcs_betw G w v) = card (arcs_betw G v w)))"
-
-lemma symmetric_multi_graphI:
-  assumes "fin_digraph G"
-  assumes "bij_betw f (arcs G) (arcs G)"
-  assumes "\<And>e. e \<in> arcs G \<Longrightarrow> head G (f e) = tail G e \<and> tail G (f e) = head G e"
-  shows "symmetric_multi_graph G"
-proof -
-  have "card (arcs_betw G w v) = card (arcs_betw G v w)"
-    (is "?L = ?R") if "v \<in> verts G" "w \<in> verts G" for v w
-  proof -
-    have a:"f x \<in> arcs G" if "x \<in> arcs G" for x
-      using assms(2) that unfolding bij_betw_def by auto
-    have b:"\<exists>y. y \<in> arcs G \<and> f y = x" if "x \<in> arcs G" for x
-      using bij_betw_imp_surj_on[OF assms(2)] that by force
-
-    have "inj_on f (arcs G)" 
-      using assms(2) unfolding bij_betw_def by simp
-    hence "inj_on f {e \<in> arcs G. head G e = v \<and> tail G e = w}"
-      by (rule inj_on_subset, auto)
-    hence "?L = card (f ` {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-      unfolding arcs_betw_def
-      by (intro card_image[symmetric])
-    also have "... = ?R"
-      unfolding arcs_betw_def using a b assms(3)
-      by (intro arg_cong[where f="card"] order_antisym image_subsetI subsetI) fastforce+ 
-    finally show ?thesis by simp
-  qed
-  thus ?thesis 
-    using assms(1) unfolding symmetric_multi_graph_def by simp
-qed
-
-lemma symmetric_multi_graphD2:
-  assumes "symmetric_multi_graph G"
-  shows "fin_digraph G"
-  using assms unfolding symmetric_multi_graph_def by simp 
-
-lemma symmetric_multi_graphD:
-  assumes "symmetric_multi_graph G"
-  shows "card {e \<in> arcs G. head G e=v \<and> tail G e=w} = card {e \<in> arcs G. head G e=w \<and> tail G e=v}" 
-    (is "card ?L = card ?R")
-proof (cases "v \<in> verts G \<and> w \<in> verts G")
-  case True
-  then show ?thesis 
-  using assms unfolding symmetric_multi_graph_def arcs_betw_def by simp 
-next
-  case False
-  interpret fin_digraph G
-    using symmetric_multi_graphD2[OF assms(1)] by simp
-  have 0:"?L = {}" "?R = {}"
-    using False wellformed by auto
-  show ?thesis unfolding 0 by simp
-qed
-
-lemma symmetric_multi_graphD3:
-  assumes "symmetric_multi_graph G"
-  shows "card {e \<in> arcs G. tail G e=v \<and> head G e=w} = card {e \<in> arcs G. tail G e=w \<and> head G e=v}" 
-  using symmetric_multi_graphD[OF assms] by (simp add:conj.commute)
-
-lemma symmetric_degree_eq:
-  assumes "symmetric_multi_graph G"
-  assumes "v \<in> verts G"
-  shows "out_degree G v = in_degree G v" (is "?L = ?R")
-proof -
-  interpret fin_digraph "G" 
-    using assms(1) symmetric_multi_graph_def by auto
-
-  have "?L = card {e \<in> arcs G. tail G e = v}"
-    unfolding out_degree_def out_arcs_def by simp
-  also have "... = card (\<Union>w \<in> verts G. {e \<in> arcs G. head G e = w \<and> tail G e = v})"
-    using wellformed 
-    by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff)
-  also have "... = (\<Sum>w \<in> verts G. card {e \<in> arcs G. head G e = w \<and> tail G e = v})"
-    by (intro card_UN_disjoint) auto
-  also have "... = (\<Sum>w \<in> verts G. card {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-    by (intro sum.cong refl symmetric_multi_graphD assms)
-  also have "... = card (\<Union>w \<in> verts G. {e \<in> arcs G. head G e = v \<and> tail G e = w})"
-    by (intro card_UN_disjoint[symmetric]) auto
-  also have "... = card (in_arcs G v)"
-    using wellformed by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff) 
-  also have "... = ?R" 
-    unfolding in_degree_def by simp
-  finally show ?thesis by simp
-qed
-
-locale regular_graph = fin_digraph +
-  assumes sym: "symmetric_multi_graph G"
-  assumes verts_non_empty: "verts G \<noteq> {}"
-  assumes arcs_non_empty: "arcs G \<noteq> {}"
-  assumes reg': "\<And>v w. v \<in> verts G \<Longrightarrow> w \<in> verts G \<Longrightarrow> out_degree G v = out_degree G w"
+locale pre_expander_graph_spectral = pre_expander_graph
 begin
-
-definition d where "d = out_degree G (SOME v. v \<in> verts G)"
-
-definition edges where "edges = image_mset (arc_to_ends G) (mset_set (arcs G))"
-
-lemma count_edges:
-  "count edges (u,v) = card (arcs_betw G u v)" (is "?L = ?R")
-proof -
-  have "?L = card {x \<in> arcs G. arc_to_ends G x = (u, v)}"
-    unfolding edges_def count_mset_exp image_mset_filter_mset_swap[symmetric] by simp
-  also have "... = ?R"
-    unfolding arcs_betw_def arc_to_ends_def
-    by (intro arg_cong[where f="card"]) auto
-  finally show ?thesis by simp
-qed
-
-lemma reg: 
-  assumes "v \<in> verts G"
-  shows "out_degree G v = d" "in_degree G v = d"
-proof -
-  define w where "w = (SOME v. v \<in> verts G)"
-  have "w \<in> verts G"
-    unfolding w_def using assms(1) by (rule someI)
-  hence "out_degree G v = out_degree G w"
-    by (intro reg' assms(1))
-  also have "... = d"
-    unfolding d_def w_def by simp
-  finally show a:"out_degree G v = d" by simp
-
-  show "in_degree G v = d"
-    using a symmetric_degree_eq[OF sym assms(1)] by simp
-qed
-
-definition n where "n = card (verts G)"
-
-lemma n_gt_0: "n > 0"
-  unfolding n_def using verts_non_empty by auto
-
-lemma d_gt_0: "d > 0"
-proof -
-  obtain a where a:"a \<in> arcs G"
-    using arcs_non_empty by auto
-  hence "a \<in> in_arcs G (head G a) "
-    unfolding in_arcs_def by simp
-  hence "0 < in_degree G (head G a)"
-    unfolding in_degree_def card_gt_0_iff by blast
-  also have "... = d"
-    using a by (intro reg) simp
-  finally show ?thesis by simp
-qed
 
 definition enum_verts :: "nat \<Rightarrow> 'a" 
   where "enum_verts = from_nat_into (verts G)"
@@ -475,7 +330,7 @@ lemma enum_verts:
   using bij_betw_from_nat_into_finite[OF finite_verts] by blast
 
 definition A :: "('c :: field)  Matrix.mat" where 
-  "A = Matrix.mat n n (\<lambda> (i, j). of_nat (count edges (enum_verts j,enum_verts i)) / (of_nat d))"
+  "A = Matrix.mat n n (\<lambda> (i, j). of_nat (count (edges G) (enum_verts j,enum_verts i)) / (of_nat d))"
 
 lemma A_mat: "A \<in> carrier_mat n n"
   unfolding A_def by simp
@@ -484,7 +339,7 @@ lemma A_dim[simp]: "dim_row A = n" "dim_col A = n"
   using A_mat by auto
 
 lemma count_sym:
-  "count edges (u,v) = count edges (v,u)"
+  "count (edges G) (u,v) = count (edges G) (v,u)"
   unfolding count_mset_exp edges_def image_mset_filter_mset_swap[symmetric] arc_to_ends_def
   using symmetric_multi_graphD3[OF sym] by simp
 
@@ -512,11 +367,11 @@ lemma A_row_unit:
   assumes "i < n"
   shows  "(Matrix.row A i) \<bullet> unit = (1::complex)/of_nat n" (is "?L = ?R")
 proof -
-  have "?L = (\<Sum>j<n. of_nat (count edges(enum_verts j, enum_verts i))/(of_nat d * of_nat n))"
+  have "?L = (\<Sum>j<n. of_nat (count (edges G)(enum_verts j, enum_verts i))/(of_nat d * of_nat n))"
     using assms unfolding A_def unit_def by (simp add:scalar_prod_def atLeast0LessThan)
-  also have "...=(\<Sum>j\<in>enum_verts`{..<n}. of_nat(count edges(j,enum_verts i))/(of_nat d* of_nat n))"
+  also have "...=(\<Sum>j\<in>enum_verts`{..<n}. of_nat(count (edges G)(j,enum_verts i))/(of_nat d* of_nat n))"
     using bij_betw_imp_inj_on[OF enum_verts] by (subst sum.reindex, simp_all add:comp_def)
-  also have "... = of_nat (\<Sum>v\<in>verts G. count edges(v,enum_verts i))/(of_nat d* of_nat n)"
+  also have "... = of_nat (\<Sum>v\<in>verts G. count (edges G) (v,enum_verts i))/(of_nat d* of_nat n)"
     using bij_betw_imp_surj_on[OF enum_verts]
     by (simp add:sum_divide_distrib)
   also have "...= of_nat(\<Sum>v\<in>verts G. card {a \<in> arcs G. tail G a=v \<and> head G a = enum_verts i}) 
@@ -1199,7 +1054,7 @@ proof -
     by (intro bexI[where x="v"] exI[where x="\<alpha>"] conjI v_vec 1 2 3 4)
 qed
 
-lemma expander_intro:
+lemma \<gamma>\<^sub>2_bound_1:
   assumes "c \<ge> (0::real)"
   assumes "\<And>v. v \<in> carrier_vec n \<Longrightarrow> v \<bullet> unit = 0 \<Longrightarrow> \<bar>v \<bullet> (A *\<^sub>v v)\<bar> \<le> c * (v \<bullet> v)" 
   shows "\<gamma>\<^sub>2 \<le> c"
@@ -1230,7 +1085,7 @@ next
     using \<gamma>\<^sub>2_eq_0 assms(1) n_gt_0 by linarith
 qed
 
-lemma expander_bound:
+lemma \<gamma>\<^sub>2_bound_2:
   assumes "v \<in> carrier_vec n"
   assumes "scalar_prod v unit = (0::real)"
   shows "r_norm_vec (A *\<^sub>v v) \<le> \<gamma>\<^sub>2 * r_norm_vec v"
@@ -1280,35 +1135,6 @@ qed
 
 subsection \<open>Correspondence between n-dim vectors and functions defined on the vertices.\<close>
 
-definition g_inner :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real) \<Rightarrow> real" 
-  where "g_inner f g = (\<Sum>x \<in> verts G. (f x) * (g x))"
-
-definition "g_norm f = sqrt (g_inner f f)"
-
-lemma g_inner_cong:
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> f1 x = f2 x"
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> g1 x = g2 x"
-  shows "g_inner f1 g1 = g_inner f2 g2"
-  unfolding g_inner_def using assms
-  by (intro sum.cong refl) auto
-
-lemma g_norm_cong:
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> f x = g x"
-  shows "g_norm f = g_norm g"
-  unfolding g_norm_def 
-  by (intro arg_cong[where f="sqrt"] g_inner_cong assms)
-
-lemma g_norm_nonneg: "g_norm f \<ge> 0" 
-  unfolding g_norm_def g_inner_def
-  by (intro real_sqrt_ge_zero sum_nonneg) auto
-
-lemma g_norm_sq:
-  "g_norm f^2 = g_inner f f" 
-  using g_norm_nonneg g_norm_def by simp
-
-definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real)"
-  where "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real (out_degree G (tail G x)))"
-
 lemma g_inner_conv: 
   "g_inner f g = (vec n (f \<circ> enum_verts)) \<bullet> (vec n (g \<circ> enum_verts))" (is "?L = ?R")
 proof -
@@ -1319,6 +1145,15 @@ proof -
   also have "... = ?R"
     unfolding scalar_prod_def using atLeast0LessThan by simp
   finally show ?thesis by simp
+qed
+
+lemma g_norm_conv:
+  "g_norm f  = r_norm_vec (vec n (f \<circ> enum_verts))"
+proof -
+  have 0:"g_norm f^2 = r_norm_vec (vec n (f \<circ> enum_verts))^2"
+    unfolding g_norm_sq g_inner_conv by (subst norm_vec_sq_real) auto
+  show ?thesis
+    by (intro power2_eq_imp_eq[OF 0] g_norm_nonneg r_norm_vec_nonneg)
 qed
 
 lemma g_step_conv: 
@@ -1335,9 +1170,9 @@ proof -
       unfolding arcs_betw_def by (intro sum.UNION_disjoint) auto
     also have "...= (\<Sum>v \<in> verts G. (\<Sum>a\<in>arcs_betw G v (enum_verts i). f v / real d))"
       unfolding arcs_betw_def by (intro sum.cong) auto
-    also have "...= (\<Sum>v \<in> verts G. count edges (v,enum_verts i) * f v / real d)" 
+    also have "...= (\<Sum>v \<in> verts G. count (edges G) (v,enum_verts i) * f v / real d)" 
       unfolding count_edges by (intro sum.cong) auto
-    also have "... = (\<Sum>j=0..<n. count edges(enum_verts j,enum_verts i)* f (enum_verts j) / real d)"
+    also have "... = (\<Sum>j=0..<n. count(edges G)(enum_verts j,enum_verts i)*f(enum_verts j)/real d)"
       using enum_verts atLeast0LessThan
       by (intro sum.reindex_bij_betw[symmetric]) auto
     also have "... = ?R"
@@ -1346,28 +1181,6 @@ proof -
   qed
   thus ?thesis
     using  A_mat by (intro eq_vecI) auto
-qed
-
-lemma g_inner_step_eq:
-  "g_inner f (g_step f) = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)) / d" (is "?L = ?R")
-proof -
-  have "?L = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / out_degree G (tail G a)))"
-    unfolding g_inner_def g_step_def by simp
-  also have "... = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / d))"
-    unfolding in_arcs_def using reg
-    by (intro sum.cong arg_cong2[where f="(*)"] wellformed refl) simp
-  also have "... = (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f v * f (tail G a) / d))"
-    by (subst sum_distrib_left) simp
-  also have "... =  (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f (head G a) * f (tail G a) / d))"
-    unfolding in_arcs_def by (intro sum.cong refl) simp
-  also have "... = (\<Sum>a \<in> (\<Union> (in_arcs G ` verts G)). f (head G a) * f (tail G a) / d)"
-    using finite_verts by (intro sum.UNION_disjoint[symmetric] ballI) 
-      (auto simp add:in_arcs_def)
-  also have "... = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a) / d)"
-    unfolding in_arcs_def using wellformed by (intro sum.cong) auto
-  also have "... = ?R"
-    by (intro sum_divide_distrib[symmetric])
-  finally show ?thesis by simp
 qed
 
 definition fun_of_vec 
@@ -1388,72 +1201,129 @@ proof -
     by (intro eq_vecI) auto
 qed
 
-lemma expander_intro_2:
-  assumes "C \<ge> 0"
-  assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> \<le> C*g_norm f^2" 
-  shows "\<gamma>\<^sub>2 \<le> C/d"
-proof -
-  have 0:"\<bar>v \<bullet> (A *\<^sub>v v)\<bar> \<le> C / real d * (v \<bullet> v)" 
-    if "v \<in> carrier_vec n" "v \<bullet> unit = (0::real)" for v
+lemma \<Lambda>_eq_\<gamma>\<^sub>2: "\<Lambda> = \<gamma>\<^sub>2"
+proof (rule order_antisym)
+  have "\<bar>\<Sum>a\<in>arcs G. f (head G a) * f (tail G a)\<bar> \<le> \<gamma>\<^sub>2 * real d * (g_norm f)\<^sup>2" (is "?L \<le> ?R")
+    if "g_inner f (\<lambda>_. 1) = 0" for f
   proof -
-    let ?f = "fun_of_vec v" 
+    have "vec n (f \<circ> enum_verts) \<bullet> unit =vec n (f \<circ> enum_verts) \<bullet> ((1/real n) \<cdot>\<^sub>v vec n (\<lambda>_. 1))"
+      unfolding unit_def by (intro arg_cong2[where f="(\<bullet>)"] eq_vecI) auto 
+    also have "... = (1/real n) * (vec n (f \<circ> enum_verts) \<bullet> vec n ((\<lambda>_. 1) \<circ> enum_verts))"
+      by simp
+    also have "... = (1/real n) * g_inner f (\<lambda>_. 1)"
+      unfolding g_inner_conv by simp
+    also have "... = 0" 
+      using that by simp
+    finally have 0: "vec n (f \<circ> enum_verts) \<bullet> unit = 0" by simp
 
-    have "g_inner (fun_of_vec v) (\<lambda>_. 1) = v \<bullet> vec n (\<lambda>_. 1)"
-      unfolding g_inner_conv fun_of_vec[OF that(1), symmetric] by simp
-    also have "... = n * (v \<bullet> ((1/real n) \<cdot>\<^sub>v vec n (\<lambda>_. 1)))"
-      using that(1) by simp
-    also have "... = n * (v \<bullet> unit)"
-      unfolding unit_def by (intro arg_cong2[where f="(*)"] arg_cong2[where f="(\<bullet>)"]) auto
-    also have "... = 0"
-      unfolding that(2) by simp
-    finally have 1: "g_inner (fun_of_vec v) (\<lambda>_. 1) = 0" by simp
-
-    have "\<bar>v \<bullet> (A *\<^sub>v v)\<bar> = \<bar>g_inner ?f (g_step ?f)\<bar>"
-      unfolding g_inner_conv g_step_conv fun_of_vec[OF that(1), symmetric] by simp
-    also have "... = \<bar>(\<Sum>a \<in> arcs G. ?f(head G a) * ?f(tail G a))/d\<bar>"
-      unfolding g_inner_step_eq by simp
-    also have "... = \<bar>\<Sum>a \<in> arcs G. ?f(head G a) * ?f(tail G a)\<bar>/d"
-      using d_gt_0 by simp
-    also have "... \<le> C*g_norm ?f^2 / d"
-      by (intro divide_right_mono assms(2) 1) auto
-    also have "... = C / real d * g_inner ?f ?f"
-      unfolding g_norm_sq by simp
-    also have "... = C / real d * (v \<bullet> v)"
-      unfolding g_inner_conv fun_of_vec[OF that(1), symmetric] by simp
-    finally show ?thesis by simp
+    have "?L = d * \<bar>g_inner f (g_step f)\<bar>"
+      unfolding g_inner_step_eq using d_gt_0 by simp
+    also have "... \<le> d * (g_norm f * g_norm (g_step f))"
+      by (intro mult_left_mono g_inner_cauchy_schwartz) auto
+    also have "... = (d * g_norm f) * r_norm_vec (A *\<^sub>v vec n (f \<circ> enum_verts))"
+      unfolding g_norm_conv g_step_conv by simp
+    also have "... \<le> (d * g_norm f) * (\<gamma>\<^sub>2 * r_norm_vec (vec n (f \<circ> enum_verts)))"
+      using g_norm_nonneg 0 by (intro mult_left_mono \<gamma>\<^sub>2_bound_2) auto
+    also have "... = ?R"
+      unfolding g_norm_conv by (simp add:algebra_simps power2_eq_square)
+    finally show ?thesis
+      by simp
   qed
 
-  show ?thesis
-    using d_gt_0 assms(1)
-    by (intro expander_intro 0) auto
+  hence "\<Lambda> \<le> \<gamma>\<^sub>2 * d / real d"
+    using \<gamma>\<^sub>2_nonneg by (intro expander_intro) auto
+  thus "\<Lambda> \<le> \<gamma>\<^sub>2"
+    using d_gt_0 by simp
+next
+  show "\<Lambda> \<ge> \<gamma>\<^sub>2"
+  proof (cases "n > 1")
+    case True
+    obtain v :: "real Matrix.vec" and \<alpha> :: real where v_def: 
+      "v \<in> carrier_vec n"
+      "\<bar>\<alpha>\<bar> = \<gamma>\<^sub>2"  "v \<bullet> unit = 0"  "v \<noteq> 0\<^sub>v n" "A *\<^sub>v v = \<alpha> \<cdot>\<^sub>v v"
+      using \<gamma>\<^sub>2_real_ev[OF True] by auto
+    define f where "f = fun_of_vec v"
+  
+    have "g_inner f (\<lambda>_. 1) = v \<bullet> vec n (\<lambda>_. 1)"
+      unfolding g_inner_conv f_def fun_of_vec[OF v_def(1), symmetric] by simp
+    also have "... = v \<bullet> (n \<cdot>\<^sub>v unit)"
+      using n_gt_0 unfolding unit_def
+      by (intro arg_cong2[where f="(\<bullet>)"] refl eq_vecI) auto
+    also have "... = n * (v \<bullet> unit)"
+      using v_def(1) unit_vec scalar_prod_smult_distrib by auto
+    also have "... = 0"
+      using v_def(3) by simp
+    finally have 0: "g_inner f (\<lambda>_. 1) = 0" by simp 
+  
+    have "\<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> = d * \<bar>g_inner f (g_step f)\<bar>"
+      unfolding g_inner_step_eq using d_gt_0 by simp
+    also have "... = d * \<bar>vec n (f \<circ> enum_verts) \<bullet> (A *\<^sub>v vec n (f \<circ> enum_verts))\<bar>"
+      unfolding g_inner_conv g_step_conv by simp
+    also have "... = d * \<bar>v \<bullet> (A *\<^sub>v v)\<bar>"
+      unfolding f_def fun_of_vec[OF v_def(1), symmetric] by simp
+    also have "... = d * \<bar>\<alpha>\<bar> * \<bar>(v \<bullet> v)\<bar>"
+      unfolding v_def(5) using v_def(1) by (simp add:abs_mult)
+    also have "... = d * \<gamma>\<^sub>2 * r_norm_vec v^2"
+      unfolding norm_vec_sq_real[OF v_def(1),symmetric] v_def(2) by simp
+    also have "... = d * \<gamma>\<^sub>2 * g_norm f^2"
+      unfolding f_def g_norm_conv fun_of_vec[OF v_def(1), symmetric] by simp
+    finally have 1: "\<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> = d * \<gamma>\<^sub>2 * g_norm f^2" by simp
+  
+    have "r_norm_vec v \<noteq> 0" 
+      using r_norm_vec_0_iff[OF v_def(1)] v_def(4) by auto
+    hence "g_norm f \<noteq> 0"
+      unfolding g_norm_conv f_def fun_of_vec[OF v_def(1), symmetric] by simp
+    hence 2: "g_norm f^2 > 0" by simp
+  
+    have "d * \<gamma>\<^sub>2 * g_norm f^2 \<le> d * \<Lambda> * g_norm f^2"
+      unfolding 1[symmetric] by (intro expansionD 0)
+    thus ?thesis
+      using d_gt_0 2 by simp
+  next
+    case False
+    hence "n = 1" using n_gt_0
+      by simp
+    hence "\<gamma>\<^sub>2 = 0" using \<gamma>\<^sub>2_eq_0 by simp
+  
+    then show ?thesis using \<Lambda>_ge_0 by simp
+  qed
+qed
+
+lemma expansionD2:
+  assumes "g_inner f (\<lambda>_. 1) = 0"
+  shows "g_norm (g_step f) \<le> \<Lambda> * g_norm f" (is "?L \<le> ?R")
+proof -
+  have "vec n (f \<circ> enum_verts) \<bullet> unit =vec n (f \<circ> enum_verts) \<bullet> ((1/real n) \<cdot>\<^sub>v vec n (\<lambda>_. 1))"
+    unfolding unit_def by (intro arg_cong2[where f="(\<bullet>)"] eq_vecI) auto 
+  also have "... = (1/real n) * (vec n (f \<circ> enum_verts) \<bullet> vec n ((\<lambda>_. 1) \<circ> enum_verts))"
+    by simp
+  also have "... = (1/real n) * g_inner f (\<lambda>_. 1)"
+    unfolding g_inner_conv by simp
+  also have "... = 0" 
+    using assms by simp
+  finally have 0: "vec n (f \<circ> enum_verts) \<bullet> unit = 0" by simp
+
+  have "?L = r_norm_vec (A *\<^sub>v vec n (f \<circ> enum_verts))"
+    unfolding g_norm_conv g_step_conv by simp
+  also have "... \<le> \<Lambda> * r_norm_vec (vec n (f \<circ> enum_verts))"
+    unfolding \<Lambda>_eq_\<gamma>\<^sub>2 by (intro \<gamma>\<^sub>2_bound_2 0) auto
+  also have "... = ?R"
+    unfolding g_norm_conv by simp
+  finally show ?thesis by simp
 qed
 
 end
 
-lemma regular_graphI:
-  assumes "symmetric_multi_graph G"
-  assumes "verts G \<noteq> {}" "d > 0"
-  assumes "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
-  shows "regular_graph G"
-proof -
-  obtain v where v_def: "v \<in> verts G"
-    using assms(2) by auto
-  have "arcs G \<noteq> {}" 
-  proof (rule ccontr)
-    assume "\<not>arcs G \<noteq> {}"
-    hence "arcs G = {}" by simp
-    hence "out_degree G v = 0"
-      unfolding out_degree_def out_arcs_def by simp
-    hence "d = 0"
-      using v_def assms(4) by simp
-    thus False
-      using assms(3) by simp
-  qed
+text \<open>Lift expansionD2 from pre_expander_graph to pre_expander_graph_spectral.\<close>
 
-  thus ?thesis
-    using assms symmetric_multi_graphD2[OF assms(1)]
-    unfolding regular_graph_def regular_graph_axioms_def
-    by simp
+lemma (in pre_expander_graph) expansionD2:
+  assumes "g_inner f (\<lambda>_. 1) = 0"
+  shows "g_norm (g_step f) \<le> \<Lambda> * g_norm f" (is "?L \<le> ?R")
+proof -
+  interpret "pre_expander_graph_spectral" "G"
+    by unfold_locales
+  show ?thesis
+    using expansionD2[OF assms] by simp
 qed
 
 end
