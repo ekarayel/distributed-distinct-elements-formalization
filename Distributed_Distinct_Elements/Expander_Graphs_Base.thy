@@ -1,6 +1,8 @@
 theory Expander_Graphs_Base
-  imports Graph_Theory.Digraph "HOL-Library.Multiset" "HOL-Analysis.L2_Norm"
+  imports Graph_Theory.Digraph "HOL-Library.Multiset" "HOL-Analysis.L2_Norm" "Extra_Congruence_Rules"
 begin
+
+unbundle intro_cong_syntax
 
 lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
   by (induction A, simp, simp)
@@ -72,6 +74,11 @@ lemma symmetric_multi_graphD3:
   shows "card {e \<in> arcs G. tail G e=v \<and> head G e=w} = card {e \<in> arcs G. tail G e=w \<and> head G e=v}" 
   using symmetric_multi_graphD[OF assms] by (simp add:conj.commute)
 
+lemma symmetric_multi_graphD4:
+  assumes "symmetric_multi_graph G"
+  shows "card (arcs_betw G v w) = card (arcs_betw G w v)" 
+  using symmetric_multi_graphD[OF assms] unfolding arcs_betw_def by simp
+
 lemma symmetric_degree_eq:
   assumes "symmetric_multi_graph G"
   assumes "v \<in> verts G"
@@ -100,16 +107,7 @@ qed
 
 definition edges where "edges G = image_mset (arc_to_ends G) (mset_set (arcs G))"
 
-locale pre_expander_graph = fin_digraph +
-  assumes sym: "symmetric_multi_graph G"
-  assumes verts_non_empty: "verts G \<noteq> {}"
-  assumes arcs_non_empty: "arcs G \<noteq> {}"
-  assumes reg': "\<And>v w. v \<in> verts G \<Longrightarrow> w \<in> verts G \<Longrightarrow> out_degree G v = out_degree G w"
-begin
-
-definition d where "d = out_degree G (SOME v. v \<in> verts G)"
-
-lemma count_edges:
+lemma (in fin_digraph) count_edges:
   "count (edges G) (u,v) = card (arcs_betw G u v)" (is "?L = ?R")
 proof -
   have "?L = card {x \<in> arcs G. arc_to_ends G x = (u, v)}"
@@ -119,6 +117,20 @@ proof -
     by (intro arg_cong[where f="card"]) auto
   finally show ?thesis by simp
 qed
+
+lemma (in fin_digraph) count_edges_sym:
+  assumes "symmetric_multi_graph G"
+  shows "count (edges G) (v, w) = count (edges G) (w, v)" 
+  unfolding count_edges using symmetric_multi_graphD4[OF assms]  by simp
+
+locale pre_expander_graph = fin_digraph +
+  assumes sym: "symmetric_multi_graph G"
+  assumes verts_non_empty: "verts G \<noteq> {}"
+  assumes arcs_non_empty: "arcs G \<noteq> {}"
+  assumes reg': "\<And>v w. v \<in> verts G \<Longrightarrow> w \<in> verts G \<Longrightarrow> out_degree G v = out_degree G w"
+begin
+
+definition d where "d = out_degree G (SOME v. v \<in> verts G)"
 
 lemma reg: 
   assumes "v \<in> verts G"
@@ -212,14 +224,15 @@ lemma g_norm_sq:
 definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real)"
   where "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real (out_degree G (tail G x)))"
 
+lemma g_step_altdef:
+  "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real d)"
+  unfolding g_step_def by (intro_cong "[\<sigma>\<^sub>2 (/), \<sigma>\<^sub>1 real]" more: sum.cong reg) auto
+
 lemma g_inner_step_eq:
   "g_inner f (g_step f) = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)) / d" (is "?L = ?R")
 proof -
-  have "?L = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / out_degree G (tail G a)))"
-    unfolding g_inner_def g_step_def by simp
-  also have "... = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / d))"
-    unfolding in_arcs_def using reg
-    by (intro sum.cong arg_cong2[where f="(*)"] wellformed refl) simp
+  have "?L = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / d))"
+    unfolding g_inner_def g_step_altdef by simp
   also have "... = (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f v * f (tail G a) / d))"
     by (subst sum_distrib_left) simp
   also have "... =  (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f (head G a) * f (tail G a) / d))"
@@ -323,6 +336,31 @@ proof -
     by (intro cSup_upper bdd_above_\<Lambda> image_eqI[OF _ 0]) auto
 qed
 
+lemma expander_intro_1:
+  assumes "C \<ge> 0"
+  assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>g_inner f (g_step f)\<bar> \<le> C*g_norm f^2" 
+  shows "\<Lambda> \<le> C"
+proof -
+  have "\<bar>\<Sum>a\<in>arcs G. f (head G a) * f (tail G a)\<bar>/d \<le> C" (is "?L \<le> ?R") if "f \<in> \<Lambda>_test" for f
+  proof -
+    have "?L = \<bar>(\<Sum>a\<in>arcs G. f (head G a) * f (tail G a))/d\<bar>"
+      using d_gt_0 by simp
+    also have "... = \<bar>g_inner f (g_step f)\<bar> "
+      unfolding g_inner_step_eq by simp
+    also have "... \<le> C*g_norm f^2"
+      using that unfolding \<Lambda>_test_def 
+      by (intro divide_right_mono assms(2)) auto
+    also have "... \<le> C * 1"
+      using that assms(1) unfolding \<Lambda>_test_def
+      by (intro mult_left_mono) auto
+    also have "... = ?R" by simp
+    finally show ?thesis by simp
+  qed
+  thus ?thesis
+    unfolding \<Lambda>_def using \<Lambda>_test_ne
+    by (intro cSup_least) auto
+qed
+
 lemma expander_intro:
   assumes "C \<ge> 0"
   assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> \<le> C*g_norm f^2" 
@@ -420,5 +458,7 @@ proof -
     unfolding pre_expander_graph_def pre_expander_graph_axioms_def
     by simp
 qed
+
+unbundle no_intro_cong_syntax
 
 end

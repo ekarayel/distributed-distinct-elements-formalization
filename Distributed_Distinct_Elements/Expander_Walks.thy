@@ -1,6 +1,6 @@
 theory Expander_Walks
-  imports 
-    Expander_Graphs 
+  imports
+    Expander_Graphs
     Expander_Graphs_3
     "HOL-Types_To_Sets.Types_To_Sets"
     Constructive_Chernoff_Bound
@@ -99,6 +99,10 @@ lemma size_concat_mset:
   "size (concat_mset xss) = sum_mset (image_mset size xss)"
   unfolding concat_mset_def by (induction xss, auto)
 
+lemma filter_concat_mset:
+  "filter_mset P (concat_mset xss) = concat_mset (image_mset (filter_mset P) xss)"
+  unfolding concat_mset_def by (induction xss, auto)
+
 lemma count_concat_mset:
   "count (concat_mset xss) xs = sum_mset (image_mset (\<lambda>x. count x xs) xss)"
   unfolding concat_mset_def by (induction xss, auto)
@@ -106,6 +110,34 @@ lemma count_concat_mset:
 lemma set_mset_concat_mset:
   "set_mset (concat_mset xss) = \<Union> (set_mset ` (set_mset xss))"
   unfolding concat_mset_def by (induction xss, auto)
+
+lemma concat_mset_empty: "concat_mset {#} = {#}"
+  unfolding concat_mset_def by simp
+unbundle  intro_cong_syntax
+
+lemma concat_disjoint_union_mset:
+  assumes "finite I"
+  assumes "\<And>i. i \<in> I \<Longrightarrow> finite (A i)"
+  assumes "\<And>i j. i \<in> I \<Longrightarrow> j \<in> I \<Longrightarrow> i \<noteq> j \<Longrightarrow> A i \<inter> A j = {}"
+  shows  "mset_set (\<Union> (A ` I)) = concat_mset (image_mset (mset_set \<circ> A) (mset_set I))"
+  using assms
+proof (induction I rule:finite_induct)
+  case empty
+  then show ?case by (simp add:concat_mset_empty)
+next
+  case (insert x F)
+  have "mset_set (\<Union> (A ` insert x F)) = mset_set (A x \<union> (\<Union> (A ` F)))"
+    by simp
+  also have "... = mset_set (A x) + mset_set (\<Union> (A ` F))"
+    using insert by (intro mset_set_Union) auto
+  also have "... = mset_set (A x) + concat_mset (image_mset (mset_set \<circ> A) (mset_set F))"
+    using insert by (intro arg_cong2[where f="(+)"] insert(3)) auto
+  also have "... = concat_mset (image_mset (mset_set \<circ> A) ({#x#} + mset_set F))"
+    by (simp add:concat_mset_def)
+  also have "... = concat_mset (image_mset (mset_set \<circ> A) (mset_set (insert x F)))"
+    using insert by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]") auto
+  finally show ?case by blast
+qed
 
 lemma size_filter_mset_conv:
   "size (filter_mset f A) = sum_mset (image_mset (\<lambda>x. of_bool (f x) :: nat) A)"
@@ -146,7 +178,6 @@ proof -
     unfolding vertices_to_def in_arcs_def edges_def arc_to_ends_def
     by (simp add:image_mset.compositionality image_mset_filter_mset_swap[symmetric] comp_def)
 qed
-
 
 lemma count_walks':
   assumes "set xs \<subseteq> verts G"
@@ -439,6 +470,20 @@ proof -
     using g_norm_nonneg norm_ge_zero by simp
 qed
 
+lemma g_step_remains_orth_1:
+  assumes "g_inner f (\<lambda>_. 1) = 0"
+  shows "g_inner (g_step f) (\<lambda>_. 1) = 0" (is "?L = ?R")
+proof -
+  have "?L = (A *v (\<chi> i. f (enum_verts i))) \<bullet> 1"
+    unfolding g_inner_conv g_step_conv one_vec_def by simp
+  also have "... = (\<chi> i. f (enum_verts i)) \<bullet> 1"
+    by (intro markov_orth_inv markov)
+  also have "... = g_inner f (\<lambda>_. 1)"
+    unfolding g_inner_conv one_vec_def by simp
+  also have "... = 0" using assms by simp
+  finally show ?thesis by simp
+qed
+
 lemma spec_bound:
   "spec_bound A \<Lambda>"
 proof -
@@ -674,6 +719,11 @@ next
     using l by auto
 qed
 
+lemmas g_step_remains_orth =  
+  pre_expander_graph.g_step_remains_orth_1[
+    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+    unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
+
 lemmas hitting_property =  
   pre_expander_graph.hitting_property_1[
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
@@ -731,7 +781,7 @@ qed
 
 lemma kl_chernoff_property:
   assumes "l > 0"
-  assumes "S \<subseteq> verts G" 
+  assumes "S \<subseteq> verts G"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
   assumes "\<gamma> \<le> 1" "\<mu> + \<Lambda> * (1-\<mu>) \<in> {0<..\<gamma>}"
   shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*real l} 

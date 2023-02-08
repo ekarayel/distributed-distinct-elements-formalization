@@ -12,6 +12,7 @@ hide_fact "Henstock_Kurzweil_Integration.integral_sum"
 hide_fact "Henstock_Kurzweil_Integration.integral_mult_right"
 hide_fact "Henstock_Kurzweil_Integration.integral_nonneg"
 hide_fact "Henstock_Kurzweil_Integration.integral_cong"
+unbundle intro_cong_syntax
 
 lemma sum_power_distrib:
   fixes f :: "'a \<Rightarrow> real"
@@ -189,7 +190,7 @@ proof (cases "s \<le> n")
     (\<Sum>k\<le>n-s. fact (n-s) / (fact ((n-s)-k) * fact k) * \<alpha>^k*(1-\<alpha>)^((n-s)-k))"
     by (simp add:sum_distrib_left algebra_simps)
   also have "... = \<alpha>^s * (fact n / fact (n - s)) * (\<Sum>k\<le>n-s. ((n-s) choose k) * \<alpha>^k*(1-\<alpha>)^((n-s)-k))"
-    using True by (intro algebra_cong sum.cong) (auto simp add: binomial_fact)
+    using True by (intro_cong "[\<sigma>\<^sub>2(*)]" more: sum.cong) (auto simp add: binomial_fact)
   also have "... = \<alpha>^s * real (fact n div fact (n - s)) * (\<alpha>+(1-\<alpha>))^(n-s)"
     using True real_of_nat_div[OF fact_dvd] by (subst binomial_ring, simp)
   also have "... = \<alpha>^s * real (ffact s n)"
@@ -202,7 +203,7 @@ next
   have "?L =  (\<Sum>k\<le>n. (real (n choose k) * \<alpha> ^ k * (1 - \<alpha>) ^ (n - k)) * real (ffact s k))"
     unfolding p_def using assms by (subst expectation_binomial_pmf') (auto simp add:of_nat_ffact)
   also have "... = (\<Sum>k\<le>n. (real (n choose k) * \<alpha> ^ k * (1 - \<alpha>) ^ (n - k)) * real 0)"
-    using False by (intro sum.cong algebra_cong ffact_nat_triv) auto
+    using False by (intro_cong "[\<sigma>\<^sub>2(*),\<sigma>\<^sub>1 of_nat]" more: sum.cong ffact_nat_triv) auto
   also have "... = 0" by simp
   also have "... = real (ffact s n) * \<alpha>^s"
     using False by (subst ffact_nat_triv, auto)
@@ -383,7 +384,7 @@ proof -
   have Z_exp: "(\<integral>\<omega>. Z i \<omega> \<partial>\<Omega>) = \<alpha>" if "i \<in> B" for i
   proof -
     have "real (card (B \<inter> -{i})) = real (card (B - {i}))"
-      by (intro algebra_cong) auto
+      by (intro_cong "[\<sigma>\<^sub>1 card,\<sigma>\<^sub>1 of_nat]") auto
     also have "... = real (card B - card {i})"
       using that by (subst card_Diff_subset)  auto
     also have "... = real (card B) - real (card {i})"
@@ -408,7 +409,7 @@ proof -
     if "i \<in> B" "j \<in> B" for i j
   proof -
     have "real (card (B \<inter> -{i,j})) = real (card (B - {i,j}))"
-      by (intro algebra_cong) auto
+      by (intro_cong "[\<sigma>\<^sub>1 card,\<sigma>\<^sub>1 of_nat]") auto
     also have "... = real (card B - card {i,j})"
       using that by (subst card_Diff_subset)  auto
     also have "... = real (card B) - real (card {i,j})"
@@ -465,11 +466,11 @@ proof -
     (\<integral>\<omega>. (\<Sum>i \<in> B \<times> B. 1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>) - 
     (\<integral>\<omega>. (\<Sum>i \<in> B. 1 - Z i \<omega>) \<partial>\<Omega>)^2"
     using Y_eq Y_sq_eq
-    by (intro algebra_cong integral_cong_AE AE_pmfI) (auto simp add:case_prod_beta)
+    by (intro_cong "[\<sigma>\<^sub>2(-),\<sigma>\<^sub>2 power]" more: integral_cong_AE AE_pmfI) (auto simp add:case_prod_beta)
   also have "... = 
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
     (\<Sum>i \<in> B. (\<integral>\<omega>. (1 - Z i \<omega>) \<partial>\<Omega>))^2"
-    by (intro algebra_cong integral_sum int) auto
+    by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>2 power]" more: integral_sum int) auto
   also have "... = 
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega>) \<partial>\<Omega>) * (\<integral>\<omega>. (1 - Z (snd i) \<omega>) \<partial>\<Omega>))"
@@ -743,7 +744,7 @@ proof -
         integrable_pmf_iff_bounded[where C="card R^s"] q2) auto
   also have "... = (\<Sum>l\<le>s. real (s choose l) * (\<integral>\<omega>. (Z i \<omega>^l * Z j \<omega>^(s-l)) \<partial>q))"
     using assms(5)
-    by (intro sum.cong arg_cong2[where f="(*)"] hit_count_prod_pow_eq[OF assms(1-4)])
+    by (intro_cong "[\<sigma>\<^sub>2 (*)]" more: sum.cong hit_count_prod_pow_eq[OF assms(1-4)])
        auto
   also have "... = (\<Sum>l\<le>s. (\<integral>\<omega>. real (s choose l) * (Z i \<omega>^l * Z j \<omega>^(s-l)) \<partial>q))"
     by (intro sum.cong integral_mult_right[symmetric] 
@@ -1466,25 +1467,25 @@ proof -
   have "\<bar>(\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p1) -
      (\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p2)\<bar>
     \<le> \<bar>(\<Sum>i \<in> ?Bd. 
-    (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) + (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - 
-    (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1) - ( (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2) + 
-    (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2)))\<bar>" (is "?R3 \<le> _ ")
+    (\<integral>\<omega>. \<phi> (Z (fst i) \<omega>) \<partial>?p1) + (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - 
+    (\<integral>\<omega>. \<phi> (Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1) - ( (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2) + 
+    (\<integral>\<omega>. \<phi> (Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2)))\<bar>" (is "?R3 \<le> _ ")
     using Z_integrable[OF assms(2)] Z_any_integrable_2[OF assms(2)] 
     by (simp add:integral_sum sum_subtractf)
   also have "... = \<bar>(\<Sum>i \<in> ?Bd. 
-    ((\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)) + 
-    ((\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)) + 
-    ((\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1)))\<bar>"
+    ((\<integral>\<omega>. \<phi> (Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)) + 
+    ((\<integral>\<omega>. \<phi> (Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)) + 
+    ((\<integral>\<omega>. \<phi> (Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1)))\<bar>"
     by (intro arg_cong[where f="abs"] sum.cong) auto
   also have "... \<le> (\<Sum>i \<in> ?Bd. \<bar>
-    ((\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)) + 
-    ((\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)) + 
-    ((\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1))\<bar>)"
+    ((\<integral>\<omega>. \<phi> (Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)) + 
+    ((\<integral>\<omega>. \<phi> (Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)) + 
+    ((\<integral>\<omega>. \<phi> (Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1))\<bar>)"
     by (intro sum_abs)
   also have "... \<le> (\<Sum>i \<in> ?Bd.
-    \<bar>(\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)\<bar> + 
-    \<bar>(\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)\<bar> + 
-    \<bar>(\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1)\<bar>)"
+    \<bar>(\<integral>\<omega>. \<phi> (Z (fst i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega>) \<partial>?p2)\<bar> + 
+    \<bar>(\<integral>\<omega>. \<phi> (Z (snd i) \<omega>) \<partial>?p1) - (\<integral>\<omega>. \<phi>(Z (snd i) \<omega>) \<partial>?p2)\<bar> + 
+    \<bar>(\<integral>\<omega>. \<phi> (Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p2) - (\<integral>\<omega>. \<phi>(Z (fst i) \<omega> + Z (snd i) \<omega>) \<partial>?p1)\<bar>)"
     by (intro sum_mono) auto
   also have "... \<le> (\<Sum>i \<in> ?Bd. 2*\<gamma> + 2 *\<gamma> + 2^(k+2)*\<gamma>)"
     by (intro sum_mono add_mono Z_poly_diff_2 Z_poly_diff_3) auto 
@@ -1496,7 +1497,7 @@ proof -
   have "\<bar>(\<integral>\<omega>. Y \<omega> ^2 \<partial>?p1) - (\<integral>\<omega>. Y \<omega>^2 \<partial>?p2)\<bar> =
     \<bar>(\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) + Y \<omega> \<partial>?p1) -
      (\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) + Y \<omega> \<partial>?p2)\<bar>" 
-    by (intro algebra_cong integral_cong_AE AE_pmfI Y_sq_eq') auto
+    by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>1 abs]" more:  integral_cong_AE AE_pmfI Y_sq_eq') auto
   also have "... \<le> \<bar>(\<integral>\<omega>. Y \<omega> \<partial>?p1) - (\<integral>\<omega>. Y \<omega> \<partial>?p2)\<bar> + 
     \<bar>(\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p1) -
     (\<integral>\<omega>. (\<Sum>i \<in> ?Bd. ?\<phi>2 (Z (fst i) \<omega>) (Z (snd i) \<omega>)) \<partial>?p2)\<bar>"
@@ -1528,7 +1529,7 @@ proof -
 
   have "\<bar>measure_pmf.variance ?p1 Y - measure_pmf.variance ?p2 Y\<bar> = 
     \<bar>(\<integral>\<omega>. Y \<omega> ^2 \<partial>?p1) - (\<integral>\<omega>. Y \<omega> \<partial> ?p1)^2 - ((\<integral>\<omega>. Y \<omega> ^2 \<partial>?p2) - (\<integral>\<omega>. Y \<omega> \<partial> ?p2)^2)\<bar>"
-    by (intro algebra_cong measure_pmf.variance_eq int_Y int_Y_sq)
+    by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>1 abs]" more: measure_pmf.variance_eq int_Y int_Y_sq)
   also have "... \<le> \<bar>(\<integral>\<omega>. Y \<omega>^2 \<partial>?p1) - (\<integral>\<omega>. Y \<omega>^2 \<partial>?p2)\<bar> + \<bar>(\<integral>\<omega>. Y \<omega> \<partial> ?p1)\<^sup>2 - (\<integral>\<omega>. Y \<omega> \<partial> ?p2)\<^sup>2\<bar>"
     by simp
   also have "... = \<bar>(\<integral>\<omega>. Y \<omega>^2 \<partial>?p1) - (\<integral>\<omega>. Y \<omega>^2 \<partial>?p2)\<bar> + 
@@ -1711,7 +1712,7 @@ proof (cases "card R > 0")
 
   let ?r = "real (card R)" 
   let ?b = "real (card B)"
-  have a: "integrable (measure_pmf p) (\<lambda>\<omega>. (Y \<omega>)\<^sup>2)" 
+  have a: "integrable p (\<lambda>\<omega>. (Y \<omega>)\<^sup>2)" 
     unfolding Y_def
     by (intro integrable_pmf_iff_bounded[where C="real (card R)^2"])
      (auto intro!: card_image_le[OF fin_R])
@@ -1747,5 +1748,7 @@ next
 qed
 
 end
+
+unbundle no_intro_cong_syntax
 
 end

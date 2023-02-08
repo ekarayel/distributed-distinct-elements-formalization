@@ -23,7 +23,6 @@ definition mgg_graph :: "nat \<Rightarrow> (int \<times> int, (int \<times> int,
       tail = arc_tail,
       head = arc_head \<rparr>"
 
-
 locale margulis_gaber_galil =
   fixes m :: nat
   assumes m_gt_0: "m > 0"

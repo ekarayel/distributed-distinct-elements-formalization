@@ -1,18 +1,9 @@
 theory DDE_Preliminary
   imports Main "HOL-Probability.Probability_Mass_Function"  "Frequency_Moments.Frequency_Moments_Preliminary_Results"
     "Frequency_Moments.Product_PMF_Ext" "Median_Method.Median"
-
+  "Extra_Congruence_Rules"
 begin
 
-lemmas algebra_cong =
-  arg_cong2[where f="(+)"]
-  arg_cong2[where f="(*)"]
-  arg_cong2[where f="(/)"]
-  arg_cong2[where f="(-)"]
-  arg_cong2[where f="(\<lambda>x y. x ^ y)"]
-  arg_cong[where f="of_nat"]
-  arg_cong[where f="abs"]
-  arg_cong[where f="card"]
 
 lemma (in prob_space) AE_pmfI:
   assumes "M = measure_pmf p"
@@ -26,13 +17,15 @@ lemma (in prob_space) pmf_exp_of_fin_function:
   shows "expectation (\<lambda>\<omega>. f (g \<omega>)) = (\<Sum>y \<in> A. f y * prob {\<omega>. g \<omega> = y})"
     (is "?L = ?R")
 proof -
+  include intro_cong_syntax
+
   have "?L = integral\<^sup>L (map_pmf g p) f"
     using integral_map_pmf assms by simp
   also have "... = (\<Sum>a\<in>A. f a * pmf (map_pmf g p) a)"
     using assms(2,3)
     by (intro integral_measure_pmf_real) auto
   also have " ... = (\<Sum>y \<in> A. f y * prob (g -` {y}))"
-    unfolding assms(1) by (intro sum.cong algebra_cong pmf_map) auto
+    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) auto
   also have "... = ?R"
     by (intro sum.cong) (auto simp add: vimage_def) 
   finally show ?thesis by simp
@@ -138,12 +131,13 @@ lemma card_distinct_pairs:
   "card {x \<in> B \<times> B. fst x \<noteq> snd x} = card B^2 - card B" (is "card ?L = ?R")
 proof (cases "finite B")
   case True
+  include intro_cong_syntax
   have "card ?L = card (B \<times> B - (\<lambda>x. (x,x)) ` B)"
     by (intro arg_cong[where f="card"]) auto
   also have "... = card (B \<times> B) - card ((\<lambda>x. (x,x)) ` B)"
     by (intro card_Diff_subset finite_imageI True image_subsetI) auto
   also have "... = ?R"
-    using True by (intro algebra_cong card_image) 
+    using True by (intro_cong "[\<sigma>\<^sub>2 (-)]" more: card_image) 
       (auto simp add:power2_eq_square inj_on_def)
   finally show ?thesis by simp
 next
