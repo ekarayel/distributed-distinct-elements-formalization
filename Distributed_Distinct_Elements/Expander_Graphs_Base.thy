@@ -1,5 +1,10 @@
 theory Expander_Graphs_Base
-  imports Graph_Theory.Digraph "HOL-Library.Multiset" "HOL-Analysis.L2_Norm" "Extra_Congruence_Rules"
+  imports 
+    Graph_Theory.Digraph
+    Graph_Theory.Digraph_Isomorphism
+    "HOL-Library.Multiset" 
+    "HOL-Analysis.L2_Norm" 
+    "Extra_Congruence_Rules"
 begin
 
 unbundle intro_cong_syntax
@@ -123,6 +128,26 @@ lemma (in fin_digraph) count_edges_sym:
   shows "count (edges G) (v, w) = count (edges G) (w, v)" 
   unfolding count_edges using symmetric_multi_graphD4[OF assms]  by simp
 
+lemma (in fin_digraph) edges_sym:
+  assumes "symmetric_multi_graph G"
+  shows "{# (y,x). (x,y) \<in># (edges G) #} = edges G" 
+proof -
+  have "count {#(y, x). (x, y) \<in># edges G#} x = count (edges G) x" (is "?L = ?R") for x
+  proof -
+    have "?L = count (edges G) (snd x, fst x)"
+      unfolding count_mset_exp
+      by (simp add:image_mset_filter_mset_swap[symmetric] case_prod_beta prod_eq_iff ac_simps)
+    also have "... = count (edges G) (fst x, snd x)"
+      unfolding count_edges_sym[OF assms] by simp
+    also have "... = count (edges G) x" by simp
+    finally show ?thesis by simp
+  qed
+
+  thus ?thesis
+    by (intro multiset_eqI) simp
+qed
+
+
 locale pre_expander_graph = fin_digraph +
   assumes sym: "symmetric_multi_graph G"
   assumes verts_non_empty: "verts G \<noteq> {}"
@@ -176,12 +201,13 @@ lemma g_inner_simps:
   "g_inner f (\<lambda>x. 0) = 0" 
   "g_inner (\<lambda>x. c * f x) g = c * g_inner f g" 
   "g_inner f (\<lambda>x. c * g x) = c * g_inner f g" 
+  "g_inner (\<lambda>x. f x - g x) h = g_inner f h - g_inner g h" 
   "g_inner (\<lambda>x. f x + g x) h = g_inner f h + g_inner g h" 
   "g_inner f (\<lambda>x. g x + h x) = g_inner f g + g_inner f h" 
   "g_inner f (\<lambda>x. g x / c) = g_inner f g / c" 
   "g_inner (\<lambda>x. f x / c) g = g_inner f g / c" 
   unfolding g_inner_def 
-  by (auto simp add:sum.distrib algebra_simps sum_distrib_left sum_divide_distrib)
+  by (auto simp add:sum.distrib algebra_simps sum_distrib_left sum_subtractf sum_divide_distrib)
 
 (* TODO use L2_set *)
 definition "g_norm f = sqrt (g_inner f f)"
@@ -227,6 +253,13 @@ definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> re
 lemma g_step_altdef:
   "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real d)"
   unfolding g_step_def by (intro_cong "[\<sigma>\<^sub>2 (/), \<sigma>\<^sub>1 real]" more: sum.cong reg) auto
+
+
+lemma g_step_simps:
+  "g_step (\<lambda>x. f x  + g x) y = g_step f y + g_step g y"
+  "g_step (\<lambda>x. f x / c) y = g_step f y / c"
+  unfolding g_step_altdef  sum_divide_distrib[symmetric] using finite_in_arcs d_gt_0
+  by (auto intro:sum.cong simp add:sum.distrib field_simps sum_distrib_left sum_subtractf)
 
 lemma g_inner_step_eq:
   "g_inner f (g_step f) = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)) / d" (is "?L = ?R")
@@ -385,9 +418,9 @@ proof -
     by (intro cSup_least) auto
 qed
 
-lemma expansionD:
+lemma expansionD1:
   assumes "g_inner f (\<lambda>_. 1) = 0"
-  shows "\<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar> \<le> d * \<Lambda> * g_norm f^2"  (is "?L \<le> ?R")
+  shows "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda> * g_norm f^2"  (is "?L \<le> ?R")
 proof (cases "g_norm f \<noteq> 0")
   case True
   define g where "g x = f x / g_norm f" for x 
@@ -405,16 +438,12 @@ proof (cases "g_norm f \<noteq> 0")
   have 0:"g \<in> \<Lambda>_test"
     unfolding \<Lambda>_test_def using 1 2 by auto
 
-  have "?L = \<bar>\<Sum>a \<in> arcs G. g_norm f^2 * (g (head G a) * g (tail G a))\<bar>"
-    unfolding g_def using True by (intro arg_cong[where f="abs"] sum.cong refl) 
-      (auto simp add:algebra_simps power2_eq_square)
-  also have "... = g_norm f^2 * \<bar>\<Sum>a \<in> arcs G. g (head G a) * g (tail G a)\<bar>"
-    unfolding sum_distrib_left[symmetric] by (simp add:abs_mult)
-  also have "... \<le> (g_norm f^2 * d) * (\<bar>\<Sum>a \<in> arcs G. g (head G a) * g (tail G a)\<bar>/d)"
-    using d_gt_0 by simp
-  also have "... \<le> (g_norm f^2 * d) * \<Lambda>"
-    unfolding \<Lambda>_def
-    by (intro mult_left_mono cSup_upper imageI 0 bdd_above_\<Lambda>)  auto
+  have "?L = \<bar>g_inner g (g_step g) * g_norm f^2\<bar>"
+    unfolding g_def g_inner_simps g_step_simps using True by (simp add:power2_eq_square) 
+  also have "... = g_norm f^2 * (\<bar>\<Sum>a \<in> arcs G. g (head G a) * g (tail G a)\<bar>/d)"
+    unfolding g_inner_step_eq by (simp add:abs_mult)
+  also have "... \<le> g_norm f^2 * \<Lambda>"
+    unfolding \<Lambda>_def by (intro mult_left_mono cSup_upper imageI 0 bdd_above_\<Lambda>) auto
   also have "... = ?R" by simp
   finally show ?thesis by simp
 next
@@ -423,11 +452,25 @@ next
     unfolding g_norm_sq[symmetric] by simp
   hence 0:"\<And>v. v \<in> verts G \<Longrightarrow> f v = 0"
     unfolding g_inner_def by (subst (asm) sum_nonneg_eq_0_iff) auto
-  have "\<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar> = \<bar>\<Sum>a \<in> arcs G. 0 * 0\<bar>"
-    by (intro arg_cong[where f="abs"] sum.cong arg_cong2[where f="(*)"] 0) auto
-  also have "... = 0" by simp
-  also have "... \<le> d * \<Lambda> * g_norm f^2"
+  hence "?L = 0"
+    unfolding g_step_altdef g_inner_def by simp 
+  also have "... \<le> \<Lambda> * g_norm f^2"
     using False by simp
+  finally show ?thesis by simp
+qed
+
+
+lemma expansionD:
+  assumes "g_inner f (\<lambda>_. 1) = 0"
+  shows "\<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar> \<le> d * \<Lambda> * g_norm f^2"  (is "?L \<le> ?R")
+proof -
+  have "?L = \<bar>g_inner f (g_step f) * d\<bar>"
+    unfolding g_inner_step_eq using d_gt_0 by simp
+  also have "... \<le> \<bar>g_inner f (g_step f)\<bar> * d"
+    by (simp add:abs_mult)
+  also have "... \<le> (\<Lambda> * g_norm f^2) * d"
+    by (intro expansionD1 mult_right_mono assms(1)) auto
+  also have "... = ?R" by simp
   finally show ?thesis by simp
 qed
 
@@ -457,6 +500,165 @@ proof -
     using assms symmetric_multi_graphD2[OF assms(1)]
     unfolding pre_expander_graph_def pre_expander_graph_axioms_def
     by simp
+qed
+
+lemma (in fin_digraph) symmetric_graph_iso:
+  assumes "digraph_iso G H"
+  assumes "symmetric_multi_graph G"
+  shows "symmetric_multi_graph H"
+proof -
+  obtain h where hom_iso: "digraph_isomorphism h" and H_alt: "H = app_iso h G"
+    using assms unfolding digraph_iso_def by auto
+
+  have 0:"fin_digraph H"
+    unfolding H_alt
+    by (intro fin_digraphI_app_iso hom_iso)
+
+  interpret H:fin_digraph H
+    using 0 by auto
+
+  have 1:"arcs_betw H (iso_verts h v) (iso_verts h w) = iso_arcs h ` arcs_betw G v w"
+    (is "?L = ?R") if "v \<in> verts G" "w \<in> verts G" for v w
+  proof -
+    have "?L = {a \<in> iso_arcs h ` arcs G. iso_head h a=iso_verts h w \<and> iso_tail h a=iso_verts h v}"
+      unfolding arcs_betw_def H_alt arcs_app_iso head_app_iso tail_app_iso by simp
+    also have "... = {a. (\<exists>b \<in> arcs G. a = iso_arcs h b \<and> iso_verts h (head G b) = iso_verts h w \<and> 
+      iso_verts h (tail G b) = iso_verts h v)}"
+      using iso_verts_head[OF hom_iso] iso_verts_tail[OF hom_iso] by auto
+    also have "... = {a. (\<exists>b \<in> arcs G. a = iso_arcs h b \<and> head G b = w \<and> tail G b = v)}" 
+      using that iso_verts_eq_iff[OF hom_iso] by auto
+    also have "... = ?R"
+      unfolding arcs_betw_def by (auto simp add:image_iff set_eq_iff)
+    finally show ?thesis by simp
+  qed
+
+  have "card (arcs_betw H w v) = card (arcs_betw H v w)" (is "?L = ?R") 
+    if v_range: "v \<in> verts H" and w_range: "w \<in> verts H" for v w
+  proof -
+    obtain v' where v': "v = iso_verts h v'" "v' \<in> verts G"
+      using that v_range verts_app_iso unfolding H_alt by auto
+    obtain w' where w': "w = iso_verts h w'" "w' \<in> verts G"
+      using that w_range verts_app_iso unfolding H_alt by auto
+    have "?L = card (arcs_betw H (iso_verts h w') (iso_verts h v'))"
+      unfolding v' w' by simp
+    also have "... = card (iso_arcs h ` arcs_betw G w' v')"
+      by (intro arg_cong[where f="card"] 1 v' w')
+    also have "... = card (arcs_betw G w' v')"
+      using iso_arcs_eq_iff[OF hom_iso] unfolding arcs_betw_def
+      by (intro card_image inj_onI) auto
+    also have "... = card (arcs_betw G v' w')"
+      by (intro symmetric_multi_graphD4 assms(2)) 
+    also have "... = card (iso_arcs h ` arcs_betw G v' w')"
+      using iso_arcs_eq_iff[OF hom_iso] unfolding arcs_betw_def
+      by (intro card_image[symmetric] inj_onI) auto
+    also have "... = card (arcs_betw H (iso_verts h v') (iso_verts h w'))"
+      by (intro arg_cong[where f="card"] 1[symmetric] v' w')
+    also have "... = ?R"
+      unfolding v' w' by simp
+    finally show ?thesis by simp
+  qed
+
+  thus ?thesis
+    using 0 unfolding symmetric_multi_graph_def by auto
+qed
+
+lemma (in pre_expander_graph)
+  assumes "digraph_iso G H"
+  shows pre_expander_graph_iso: "pre_expander_graph H" 
+    and pre_expander_graph_iso_degree: "pre_expander_graph.d H = d"
+    and pre_expander_graph_iso_expansion_le:  "pre_expander_graph.\<Lambda> H \<le> \<Lambda>"
+proof -
+  obtain h where hom_iso: "digraph_isomorphism h" and H_alt: "H = app_iso h G"
+    using assms unfolding digraph_iso_def by auto
+
+  have 0:"symmetric_multi_graph H"
+    by (intro symmetric_graph_iso[OF assms(1)] sym)
+
+  have 1:"verts H \<noteq> {}" 
+    unfolding H_alt verts_app_iso using verts_non_empty by simp
+
+  then obtain h_wit where h_wit: "h_wit \<in> verts H"
+    by auto
+
+  have 3:"out_degree H v = d" if v_range: "v \<in> verts H" for v
+  proof -
+    obtain v' where v': "v = iso_verts h v'" "v' \<in> verts G"
+      using that v_range verts_app_iso unfolding H_alt by auto
+    have "out_degree H v = out_degree G v'"
+      unfolding v' H_alt by (intro out_degree_app_iso_eq[OF hom_iso] v')
+    also have "... = d"
+      by (intro reg v')
+    finally  show ?thesis by simp
+  qed
+
+  thus 2:"pre_expander_graph H"
+    by (intro pre_expander_graphI[where d="d"] 0 d_gt_0 1) auto
+  interpret H:"pre_expander_graph" H
+    using 2 by auto
+
+  have "H.d = out_degree H h_wit"
+    by (intro H.reg[symmetric] h_wit)
+  also have "... = d"
+    by (intro 3 h_wit)
+  finally show 4:"H.d = d" by simp
+
+  have "bij_betw (iso_verts h) (verts G) (verts H)" 
+    unfolding H_alt using hom_iso 
+    by (simp add: bij_betw_def digraph_isomorphism_inj_on_verts)
+
+  hence g_inner_conv: 
+    "g_inner (\<lambda>x. f (iso_verts h x)) (\<lambda>x. g (iso_verts h x)) = H.g_inner f g" for f g
+    unfolding g_inner_def H.g_inner_def by (intro sum.reindex_bij_betw)
+
+  have "\<bar>\<Sum>a\<in>arcs H. f (head H a) * f (tail H a)\<bar> \<le> \<Lambda> * real d * (H.g_norm f)\<^sup>2" (is "?L \<le> ?R")
+    if "H.g_inner f (\<lambda>_. 1) = 0" for f
+  proof -
+    have "g_inner (\<lambda>x. f (iso_verts h x)) (\<lambda>_. 1) = H.g_inner f (\<lambda>_. 1)"
+      by (intro g_inner_conv)
+    also have "... = 0" using that by simp
+    finally have 5:"g_inner (\<lambda>x. f (iso_verts h x)) (\<lambda>_. 1) = 0" by simp
+
+
+    have "?L = \<bar>\<Sum>a\<in>iso_arcs h ` arcs G. f (head H a) * f (tail H a)\<bar>"
+      unfolding H_alt arcs_app_iso by simp
+    also have "... = \<bar>\<Sum>a\<in>arcs G. f (head H (iso_arcs h a)) * f (tail H (iso_arcs h a))\<bar>"
+      using iso_arcs_eq_iff[OF hom_iso]
+      by (intro arg_cong[where f="abs"] sum.reindex_cong[where l="iso_arcs h"] inj_onI) auto
+    also have "... = \<bar>\<Sum>a\<in>arcs G. f (iso_verts h (head G a)) * f (iso_verts h (tail G a))\<bar>"
+      unfolding H_alt head_app_iso tail_app_iso using iso_verts_head[OF hom_iso]
+      using  iso_verts_tail[OF hom_iso] by (intro arg_cong[where f="abs"] sum.cong) auto
+    also have "... \<le> real d * \<Lambda> * (g_norm (\<lambda>x. f (iso_verts h x)))\<^sup>2"
+      by (intro expansionD 5)
+    also have "...  =real d * \<Lambda> * (H.g_norm f)^2"
+      unfolding g_norm_sq H.g_norm_sq g_inner_conv by simp
+    also have "... = ?R" by simp
+    finally show ?thesis by simp
+  qed
+
+  hence "H.\<Lambda> \<le> \<Lambda> * d/H.d"
+    by (intro H.expander_intro mult_nonneg_nonneg \<Lambda>_ge_0) auto
+  also have "... = \<Lambda>"
+    unfolding 4 using d_gt_0 by simp
+  finally show "H.\<Lambda> \<le> \<Lambda>"
+    by simp
+qed
+
+lemma (in pre_expander_graph)
+  assumes "digraph_iso G H"
+  shows pre_expander_graph_iso_expansion: "pre_expander_graph.\<Lambda> H = \<Lambda>"
+proof -
+  interpret H:"pre_expander_graph" "H"
+    by (intro pre_expander_graph_iso assms)
+
+  have "digraph_iso H G"
+    using digraph_iso_swap assms wf_digraph_axioms by blast
+
+  hence "\<Lambda> \<le> H.\<Lambda>"
+    by (intro H.pre_expander_graph_iso_expansion_le)
+  moreover have "H.\<Lambda> \<le> \<Lambda>"
+    using pre_expander_graph_iso_expansion_le[OF assms] by auto
+  ultimately show "H.\<Lambda> = \<Lambda>"
+    by auto
 qed
 
 unbundle no_intro_cong_syntax

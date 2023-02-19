@@ -45,7 +45,7 @@ proof -
   include intro_cong_syntax
 
   show ?thesis
-  apply (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>2 (+), \<sigma>\<^sub>1 card, \<sigma>\<^sub>3 If]")
+  apply (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>2 (+), \<sigma>\<^sub>1 card]")
     sorry
 qed
 

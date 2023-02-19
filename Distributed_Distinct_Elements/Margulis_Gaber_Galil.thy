@@ -5,10 +5,6 @@ theory Margulis_Gaber_Galil
     "Expander_Graphs_Base"
 begin
 
-(*
-  MGG
-*)
-
 datatype ('a, 'b) arc = Arc (arc_tail: 'a)  (arc_head: 'a) (arc_label: 'b)  
 
 fun mgg_graph_step :: "nat \<Rightarrow> (int \<times> int) \<Rightarrow> (nat \<times> int) \<Rightarrow> (int \<times> int)"
@@ -1246,7 +1242,8 @@ proof -
   finally show ?thesis by simp
 qed
 
-definition MGG_bound :: real where "MGG_bound = 5 * sqrt 2 / 8"
+definition MGG_bound :: real
+  where "MGG_bound = 5 * sqrt 2 / 8"
 
 text \<open>Main result: Theorem 8.2 in Hoory.\<close> 
 

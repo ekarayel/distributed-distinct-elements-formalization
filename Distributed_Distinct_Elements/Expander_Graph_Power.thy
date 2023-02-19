@@ -323,7 +323,8 @@ qed
 lemma filter_mset_const: "filter_mset (\<lambda>_. c) xs = (if c then xs else {#})"
   by simp
 
-lemma  (in pre_expander_graph) graph_power_out_degree:
+lemma  (in fin_digraph) graph_power_out_degree':
+  assumes reg: "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
   assumes "v \<in> verts (graph_power G l)"
   shows "out_degree (graph_power G l) v = d ^ l"  (is "?L = ?R")
 proof -
@@ -383,6 +384,11 @@ proof -
 
   finally show ?thesis by simp
 qed
+
+lemma  (in pre_expander_graph) graph_power_out_degree:
+  assumes "v \<in> verts (graph_power G l)"
+  shows "out_degree (graph_power G l) v = d ^ l"  (is "?L = ?R")
+  by (intro graph_power_out_degree' assms reg) auto
 
 lemma (in pre_expander_graph) graph_power_regular: 
   "pre_expander_graph (graph_power G l)"

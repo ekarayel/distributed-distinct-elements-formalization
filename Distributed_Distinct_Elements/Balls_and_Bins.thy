@@ -203,7 +203,8 @@ next
   have "?L =  (\<Sum>k\<le>n. (real (n choose k) * \<alpha> ^ k * (1 - \<alpha>) ^ (n - k)) * real (ffact s k))"
     unfolding p_def using assms by (subst expectation_binomial_pmf') (auto simp add:of_nat_ffact)
   also have "... = (\<Sum>k\<le>n. (real (n choose k) * \<alpha> ^ k * (1 - \<alpha>) ^ (n - k)) * real 0)"
-    using False by (intro_cong "[\<sigma>\<^sub>2(*),\<sigma>\<^sub>1 of_nat]" more: sum.cong ffact_nat_triv) auto
+    using False
+    by (intro_cong "[\<sigma>\<^sub>2(*),\<sigma>\<^sub>1 of_nat]" more: sum.cong ffact_nat_triv) auto
   also have "... = 0" by simp
   also have "... = real (ffact s n) * \<alpha>^s"
     using False by (subst ffact_nat_triv, auto)

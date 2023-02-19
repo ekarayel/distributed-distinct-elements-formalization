@@ -1326,4 +1326,5 @@ proof -
     using expansionD2[OF assms] by simp
 qed
 
+
 end

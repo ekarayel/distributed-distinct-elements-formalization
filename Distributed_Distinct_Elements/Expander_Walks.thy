@@ -4,7 +4,9 @@ theory Expander_Walks
     Expander_Graphs_3
     "HOL-Types_To_Sets.Types_To_Sets"
     Constructive_Chernoff_Bound
-begin
+begin                           
+
+unbundle  intro_cong_syntax
 
 hide_const Matrix_Legacy.transpose
 no_notation Matrix.vec_index (infixl "$" 100)
@@ -95,6 +97,15 @@ lemma image_concat_mset:
   "image_mset f (concat_mset xss) = concat_mset (image_mset (image_mset f) xss)"
   unfolding concat_mset_def by (induction xss, auto)
 
+
+lemma concat_add_mset:
+  "concat_mset (image_mset (\<lambda>x. f x + g x) xs) = concat_mset (image_mset f xs) + concat_mset (image_mset g xs)"
+  unfolding concat_mset_def by (induction xs) auto
+
+lemma concat_add_mset_2:
+  "concat_mset (xs + ys) = concat_mset xs + concat_mset ys"
+  unfolding concat_mset_def by (induction xs, auto)
+
 lemma size_concat_mset:
   "size (concat_mset xss) = sum_mset (image_mset size xss)"
   unfolding concat_mset_def by (induction xss, auto)
@@ -113,7 +124,9 @@ lemma set_mset_concat_mset:
 
 lemma concat_mset_empty: "concat_mset {#} = {#}"
   unfolding concat_mset_def by simp
-unbundle  intro_cong_syntax
+
+lemma concat_mset_single: "concat_mset {#x#} = x"
+  unfolding concat_mset_def by simp
 
 lemma concat_disjoint_union_mset:
   assumes "finite I"
@@ -511,6 +524,78 @@ proof -
     unfolding spec_bound_def using \<Lambda>_ge_0 by auto
 qed
 
+text \<open>A spectral expansion rule that does not require orthogonality of the vector for the stationary 
+distribution:\<close>
+
+lemma expansionD3_1:
+  "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda> * g_norm f^2 + (1-\<Lambda>) * g_inner f (\<lambda>_. 1)^2 / n" (is "?L \<le> ?R")
+proof -
+  define v where "v = (\<chi> i. f (enum_verts i))"
+  define v1 :: "real^ 'n" where "v1 = ((v \<bullet> 1) / n) *\<^sub>R 1"
+  define v2 :: "real^ 'n" where "v2 = v - v1"
+  have v_eq: "v = v1 + v2"
+    unfolding v2_def by simp
+
+  have 0: "A *v v1 = v1" 
+    unfolding v1_def using markov_apply[OF markov] 
+    by (simp add:algebra_simps)
+  have 1: "v1 v* A = v1" 
+    unfolding v1_def using markov_apply[OF markov] 
+    by (simp add:algebra_simps scaleR_vector_matrix_assoc)
+
+  have "v2 \<bullet> 1 = v \<bullet> 1 - v1 \<bullet> 1"
+    unfolding v2_def by (simp add:algebra_simps)
+  also have "... = v \<bullet> 1  - v \<bullet> 1 * real CARD('n) / real n"
+    unfolding v1_def by (simp add:inner_1_1)
+  also have "... = 0 "
+    using verts_non_empty unfolding card n_def by simp
+  finally have 4:"v2 \<bullet> 1 = 0" by simp
+  hence 2: "v1 \<bullet> v2 = 0"
+    unfolding v1_def by (simp add:inner_commute)
+
+  define f2 where "f2 i = v2 $ (snd (td_components) i)" for i
+  have f2_def: "v2 = (\<chi> i. f2 (enum_verts i))"
+    unfolding f2_def enum_verts_def Rep_inverse by simp
+
+  have 6: "g_inner f2 (\<lambda>_. 1) = 0"
+    unfolding g_inner_conv f2_def[symmetric] one_vec_def[symmetric] 4 by simp
+
+  have "\<bar>v2 \<bullet> (A *v v2)\<bar> = \<bar>g_inner f2 (g_step f2)\<bar>"
+    unfolding f2_def g_inner_conv g_step_conv by simp
+  also have "... \<le> \<Lambda> * (g_norm f2)\<^sup>2"
+    by (intro expansionD1 6) 
+  also have "... = \<Lambda> * (norm v2)^2"
+    unfolding g_norm_conv f2_def by simp
+  finally have 5:"\<bar>v2 \<bullet> (A *v v2)\<bar> \<le> \<Lambda> * (norm v2)\<^sup>2" by simp
+
+  have 3: "norm (1 :: real^'n)^2 = n"
+    unfolding power2_norm_eq_inner inner_1_1 card n_def by presburger 
+
+  have "?L = \<bar>v \<bullet> (A *v v)\<bar>"
+    unfolding g_inner_conv g_step_conv v_def by simp
+  also have "... = \<bar>v1 \<bullet> (A *v v1) + v2 \<bullet> (A *v v1) + v1 \<bullet> (A *v v2) + v2 \<bullet> (A *v v2)\<bar>"
+    unfolding v_eq by (simp add:algebra_simps)
+  also have "... = \<bar>v1 \<bullet> v1 + v2 \<bullet> v1 + v1 \<bullet> v2 + v2 \<bullet> (A *v v2)\<bar>"
+    unfolding dot_lmul_matrix[where x="v1",symmetric] 0 1 by simp
+  also have "... = \<bar>v1 \<bullet> v1 + v2 \<bullet> (A *v v2)\<bar>"
+    using 2 by (simp add:inner_commute)
+  also have "... \<le> \<bar>norm v1^2\<bar> + \<bar>v2 \<bullet> (A *v v2)\<bar>"
+    unfolding power2_norm_eq_inner by (intro abs_triangle_ineq)
+  also have "... \<le> norm v1^2 + \<Lambda> * norm v2^2"
+    by (intro add_mono 5) auto
+  also have "... = \<Lambda> * (norm v1^2 + norm v2^2) + (1 - \<Lambda>) * norm v1^2"
+    by (simp add:algebra_simps)
+  also have "... = \<Lambda> * norm v^2 + (1 - \<Lambda>) * norm v1^2"
+    unfolding v_eq pythagoras[OF 2] by simp
+  also have "... = \<Lambda> * norm v^2 + ((1 - \<Lambda>)) * ((v \<bullet> 1)^2*n)/n^2"
+    unfolding v1_def by (simp add:power_divide power_mult_distrib 3)
+  also have "... = \<Lambda> * norm v^2 + ((1 - \<Lambda>)/n) * (v \<bullet> 1)^2"
+    by (simp add:power2_eq_square)
+  also have "... = ?R"
+    unfolding g_norm_conv g_inner_conv v_def one_vec_def by (simp add:field_simps)
+  finally show ?thesis by simp
+qed
+
 definition ind_mat where "ind_mat S = diag (ind_vec (enum_verts -` S))"
 
 lemma walk_distr:
@@ -719,6 +804,11 @@ next
     using l by auto
 qed
 
+lemmas expansionD3 =  
+  pre_expander_graph.expansionD3_1[
+    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+    unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
+
 lemmas g_step_remains_orth =  
   pre_expander_graph.g_step_remains_orth_1[
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
@@ -808,6 +898,7 @@ qed
 
 end
 
+unbundle no_intro_cong_syntax
 
 end
 
