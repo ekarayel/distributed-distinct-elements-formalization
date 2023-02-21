@@ -1,8 +1,8 @@
-theory Margulis_Gaber_Galil
+theory Expander_Graphs_MGG
   imports 
     "HOL-Analysis.Complex_Transcendental"
     "HOL-Decision_Procs.Approximation"
-    "Expander_Graphs_Base"
+    "Expander_Graphs_Definition"
 begin
 
 datatype ('a, 'b) arc = Arc (arc_tail: 'a)  (arc_head: 'a) (arc_label: 'b)  

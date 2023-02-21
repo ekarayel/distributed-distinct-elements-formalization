@@ -1,5 +1,7 @@
-theory Expander_Graph_Power
-  imports Expander_Walks Graph_Theory.Arc_Walk
+theory Expander_Graphs_Power_Construction
+  imports 
+    Expander_Graphs_Walks
+    Graph_Theory.Arc_Walk
 begin
 
 unbundle intro_cong_syntax

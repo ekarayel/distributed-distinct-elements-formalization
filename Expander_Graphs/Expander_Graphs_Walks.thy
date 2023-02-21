@@ -1,12 +1,12 @@
-theory Expander_Walks
+theory Expander_Graphs_Walks
   imports
-    Expander_Graphs
-    Expander_Graphs_3
-    "HOL-Types_To_Sets.Types_To_Sets"
+    Expander_Graphs_Algebra
+    Expander_Graphs_Eigenvalues
+    Expander_Graphs_TTS
     Constructive_Chernoff_Bound
 begin                           
 
-unbundle  intro_cong_syntax
+unbundle intro_cong_syntax
 
 hide_const Matrix_Legacy.transpose
 no_notation Matrix.vec_index (infixl "$" 100)
@@ -65,30 +65,6 @@ next
   finally show ?case by simp
 qed
 
-lemma sum_mset_conv: 
-  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
-  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
-proof (induction A rule: disj_induct_mset)
-  case 1
-  then show ?case by simp
-next
-  case (2 n M x)
-  moreover have "count M x = 0" using 2 by (simp add: count_eq_zero_iff)
-  moreover have "\<And>y. y \<in> set_mset M \<Longrightarrow> y \<noteq> x" using 2 by blast
-  ultimately show ?case by (simp add:algebra_simps) 
-qed
-
-lemma sum_mset_conv_2: 
-  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
-  assumes "set_mset A \<subseteq> B" "finite B"
-  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) B" (is "?L = ?R")
-proof -
-  have "?L = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
-    unfolding sum_mset_conv by simp
-  also have "... = ?R"
-    by (intro sum.mono_neutral_left assms) (simp_all add: iffD2[OF count_eq_zero_iff])
-  finally show ?thesis by simp
-qed
 
 definition concat_mset :: "('a multiset) multiset \<Rightarrow> 'a multiset"
   where "concat_mset xss = fold_mset (\<lambda>xs ys. xs + ys) {#} xss"
@@ -156,8 +132,6 @@ lemma size_filter_mset_conv:
   "size (filter_mset f A) = sum_mset (image_mset (\<lambda>x. of_bool (f x) :: nat) A)"
   by (induction A, auto)
 
-definition "vertices_from G v = {# snd e | e \<in># edges G. fst e = v #}"
-definition "vertices_to G v = {# fst e | e \<in># edges G. snd e = v #}"
 
 fun walks' :: "('a,'b) pre_digraph \<Rightarrow> nat \<Rightarrow> ('a list) multiset"
   where 
@@ -172,25 +146,6 @@ lemma Union_image_mono: "(\<And>x. x \<in> A \<Longrightarrow> f x \<subseteq> g
 context fin_digraph
 begin
 
-lemma verts_from_alt:
-  "vertices_from G v = image_mset (head G) (mset_set (out_arcs G v))"
-proof -
-  have "{#x \<in># mset_set (arcs G). tail G x = v#} = mset_set {a \<in> arcs G. tail G a = v}"
-    by (intro filter_mset_mset_set) simp
-  thus ?thesis
-    unfolding vertices_from_def out_arcs_def edges_def arc_to_ends_def
-    by (simp add:image_mset.compositionality image_mset_filter_mset_swap[symmetric] comp_def)
-qed
-
-lemma verts_to_alt:
-  "vertices_to G v = image_mset (tail G) (mset_set (in_arcs G v))"
-proof -
-  have "{#x \<in># mset_set (arcs G). head G x = v#} = mset_set {a \<in> arcs G. head G a = v}"
-    by (intro filter_mset_mset_set) simp
-  thus ?thesis
-    unfolding vertices_to_def in_arcs_def edges_def arc_to_ends_def
-    by (simp add:image_mset.compositionality image_mset_filter_mset_swap[symmetric] comp_def)
-qed
 
 lemma count_walks':
   assumes "set xs \<subseteq> verts G"
@@ -244,19 +199,6 @@ lemma count_walks:
   assumes "length xs = l" "l > 0"
   shows "count (walks G l) xs = (\<Prod>i \<in> {..<l-1}. count (edges G)  (xs ! i, xs ! (i+1)))"
   using assms unfolding walks_def by (cases l, auto simp add:count_walks')
-
-lemma edge_set: 
-  assumes "x \<in># edges G"
-  shows "fst x \<in> verts G" "snd x \<in> verts G"
-  using assms unfolding edges_def arc_to_ends_def by auto
-
-lemma set_mset_vertices_from:
-  "set_mset (vertices_from G x) \<subseteq> verts G"
-  unfolding vertices_from_def using edge_set by auto
-
-lemma set_mset_vertices_to:
-  "set_mset (vertices_to G x) \<subseteq> verts G"
-  unfolding vertices_to_def using edge_set by auto
 
 lemma set_walks':
   "set_mset (walks' G l) \<subseteq> {xs. set xs \<subseteq> verts G \<and> length xs = (l+1)}"
@@ -375,42 +317,13 @@ proof -
     by auto
 qed
 
-context 
-  assumes td: "\<exists>(Rep :: ('n :: finite)  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G)"
+end
+
+context pre_expander_graph_tts
 begin
-
-definition td_components :: "('n \<Rightarrow> 'a) \<times> ('a \<Rightarrow> 'n)" 
-  where "td_components = (SOME q. type_definition (fst q) (snd q) (verts G))"
-
-interpretation type_definition "(fst td_components)" "(snd td_components)" "verts G"
-proof -
-  have 0:"\<exists>q'. type_definition ((fst q')::(('n :: finite) \<Rightarrow> 'a)) (snd q') (verts G)"
-    using td by simp
-  show "type_definition (fst td_components) (snd td_components) (verts G)"
-    unfolding td_components_def using someI_ex[OF 0] by simp
-qed
-
-definition enum_verts where "enum_verts = fst td_components"
-
-lemma enum_verts: "bij_betw enum_verts UNIV (verts G)"
-  unfolding bij_betw_def  by (simp add: Rep_inject Rep_range enum_verts_def inj_on_def)
-
-(* The stochastic matrix associated to the graph *)
-definition A :: "real^'n^'n" where 
-  "A = (\<chi> i j. count (edges G) (enum_verts j,enum_verts i)/real d)"
 
 lemma nonneg_A: "nonneg_mat A"
   unfolding nonneg_mat_def A_def by auto
-
-lemma symmetric_A: "transpose A = A"
-proof -
-  have "A $ i $ j = A $ j $ i" for i j
-    unfolding A_def count_edges arcs_betw_def using symmetric_multi_graphD[OF sym]
-    by auto
-  thus ?thesis
-    unfolding transpose_def
-    by (intro iffD2[OF vec_eq_iff] allI) auto
-qed
 
 lemma g_step_1:
   assumes "v \<in> verts G"
@@ -425,33 +338,6 @@ proof -
   also have "... = 1"
     unfolding reg(2)[OF assms] using d_gt_0 by simp
   finally show ?thesis by simp
-qed
-
-lemma g_step_conv: 
-  "(\<chi> i. g_step f (enum_verts i)) = A *v (\<chi> i. f (enum_verts i))"
-proof -
-  have "g_step f (enum_verts i) = (\<Sum>j\<in>UNIV. A $ i $ j * f (enum_verts j))" (is "?L = ?R") for i
-  proof -
-    have "?L = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real (out_degree G (tail G x)))"
-      unfolding g_step_def by simp
-    also have "... = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real d)"
-      by (intro sum.cong arg_cong2[where f="(/)"] arg_cong[where f="real"] reg) auto
-    also have "... = (\<Sum>x\<in>#vertices_to G (enum_verts i). f x/d)"
-      unfolding verts_to_alt  sum_unfold_sum_mset by (simp add:image_mset.compositionality comp_def)
-    also have "... = (\<Sum>j\<in>verts G. (count (vertices_to G (enum_verts i)) j) * (f j / real d))"
-      by (intro sum_mset_conv_2 set_mset_vertices_to) auto
-    also have "... = (\<Sum>j\<in>verts G. (count (edges G) (j,enum_verts i)) * (f j / real d))"
-      unfolding vertices_to_def count_mset_exp 
-      by (intro sum.cong arg_cong[where f="real"] arg_cong2[where f="(*)"])
-       (auto simp add:filter_filter_mset image_mset_filter_mset_swap[symmetric] prod_eq_iff ac_simps)
-    also have "...=(\<Sum>j\<in>UNIV.(count(edges G)(enum_verts j,enum_verts i))*(f(enum_verts j)/real d))"
-      by (intro sum.reindex_bij_betw[symmetric] enum_verts)
-    also have "... = ?R"
-      unfolding A_def by simp
-    finally show ?thesis by simp
-  qed
-  thus ?thesis
-    unfolding matrix_vector_mult_def by (intro iffD2[OF vec_eq_iff] allI) simp
 qed
 
 lemma markov: "markov A"
@@ -469,21 +355,7 @@ proof -
     by (intro markov_symI nonneg_A symmetric_A)
 qed
 
-lemma g_inner_conv: 
-  "g_inner f g = (\<chi> i. f (enum_verts i)) \<bullet> (\<chi> i. g (enum_verts i))"
-  unfolding inner_vec_def g_inner_def vec_lambda_beta inner_real_def
-  by (intro sum.reindex_bij_betw[symmetric] enum_verts)
-
-lemma g_norm_conv: 
-  "g_norm f = norm (\<chi> i. f (enum_verts i))"
-proof -
-  have "g_norm f^2 = norm (\<chi> i. f (enum_verts i))^2"
-    unfolding g_norm_sq power2_norm_eq_inner g_inner_conv by simp
-  thus ?thesis
-    using g_norm_nonneg norm_ge_zero by simp
-qed
-
-lemma g_step_remains_orth_1:
+lemma g_step_remains_orth:
   assumes "g_inner f (\<lambda>_. 1) = 0"
   shows "g_inner (g_step f) (\<lambda>_. 1) = 0" (is "?L = ?R")
 proof -
@@ -527,7 +399,7 @@ qed
 text \<open>A spectral expansion rule that does not require orthogonality of the vector for the stationary 
 distribution:\<close>
 
-lemma expansionD3_1:
+lemma expansionD3:
   "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda> * g_norm f^2 + (1-\<Lambda>) * g_inner f (\<lambda>_. 1)^2 / n" (is "?L \<le> ?R")
 proof -
   define v where "v = (\<chi> i. f (enum_verts i))"
@@ -708,7 +580,7 @@ next
   thus ?thesis unfolding stat_def by (simp add: inner_1_1)
 qed
 
-lemma hitting_property_1:
+lemma hitting_property:
   assumes "S \<subseteq> verts G" 
   assumes "I \<subseteq> {..<l}"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
@@ -742,7 +614,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma uniform_property_1:
+lemma uniform_property:
   assumes  "i < l" "x \<in> verts G"
   shows "measure (pmf_of_multiset (walks G l)) {w. w ! i = x} = 1/real (card (verts G))" 
     (is "?L = ?R")
@@ -773,54 +645,26 @@ qed
 
 end
 
-lemma remove_finite_premise_aux:
-  assumes "\<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G)"
-  shows "class.finite TYPE('n)"
-proof -
-  obtain Rep :: "'n \<Rightarrow> 'a" and Abs where d:"type_definition Rep Abs (verts G)"
-    using assms by auto
-  interpret type_definition Rep Abs "verts G"
-    using d by simp
-                              
-  have "finite (verts G)" by simp 
-  thus ?thesis
-    unfolding class.finite_def univ by auto
-qed
-
-lemma remove_finite_premise: 
-  "(class.finite TYPE('n) \<Longrightarrow> \<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G) \<Longrightarrow> PROP Q) 
-  \<equiv> (\<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G) \<Longrightarrow> PROP Q)" 
-  (is "?L \<equiv> ?R")
-proof (intro Pure.equal_intr_rule)
-  assume e:"\<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G)" and l:"PROP ?L"
-  hence f: "class.finite TYPE('n)" 
-    using remove_finite_premise_aux[OF e] by simp
-
-  show "PROP ?R"
-    using l[OF f] by auto
-next
-  assume "\<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G)" and l:"PROP ?R"
-  show "PROP ?L"
-    using l by auto
-qed
+context pre_expander_graph
+begin
 
 lemmas expansionD3 =  
-  pre_expander_graph.expansionD3_1[
+  pre_expander_graph_tts.expansionD3[OF eg_tts_1,
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas g_step_remains_orth =  
-  pre_expander_graph.g_step_remains_orth_1[
+  pre_expander_graph_tts.g_step_remains_orth[OF eg_tts_1,
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas hitting_property =  
-  pre_expander_graph.hitting_property_1[
+  pre_expander_graph_tts.hitting_property[OF eg_tts_1,
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas uniform_property_2 =  
-  pre_expander_graph.uniform_property_1[
+  pre_expander_graph_tts.uniform_property[OF eg_tts_1,
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 

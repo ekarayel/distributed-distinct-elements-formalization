@@ -2,10 +2,80 @@ theory Constructive_Chernoff_Bound
   imports 
     "HOL-Probability.Probability_Measure" 
     "Frequency_Moments.Product_PMF_Ext"
-    DDE_Transcendental_Extras 
-    DDE_Preliminary 
+(*    DDE_Transcendental_Extras 
+    DDE_Preliminary *)
     "Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean"
 begin
+
+lemma powr_mono_rev:
+  fixes x :: real
+  assumes "a \<le> b" and  "x > 0" "x \<le> 1"
+  shows "x powr b \<le> x powr a"
+proof -
+  have "x powr b = (1/x) powr (-b)"
+    using assms by (simp add: powr_divide powr_minus_divide)
+  also have "... \<le> (1/x) powr (-a)"
+    using assms by (intro powr_mono) auto
+  also have "... = x powr a"
+    using assms by (simp add: powr_divide powr_minus_divide)
+  finally show ?thesis by simp
+qed
+
+lemma exp_powr: "(exp x) powr y = exp (x*y)" for x :: real
+  unfolding powr_def by simp
+
+lemma integrable_pmf_iff_bounded:
+  fixes f :: "'a \<Rightarrow> real"
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> abs (f x) \<le> C"
+  shows "integrable (measure_pmf p) f"
+proof -
+  obtain x where "x \<in> set_pmf p"
+    using set_pmf_not_empty by fast
+  hence "C \<ge> 0" using assms(1) by fastforce
+  hence " (\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) \<le> (\<integral>\<^sup>+ x. C \<partial>measure_pmf p)" 
+    using assms ennreal_le_iff
+    by (intro nn_integral_mono_AE AE_pmfI) auto
+  also have "... = C"
+    by simp
+  also have "... < Orderings.top"
+    by simp
+  finally have "(\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) < Orderings.top" by simp
+  thus ?thesis 
+    by (intro iffD2[OF integrable_iff_bounded]) auto
+qed
+
+lemma split_pair_pmf: 
+  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" 
+  (is "?L = ?R")
+proof -
+  have a:"integrable (measure_pmf A) (\<lambda>x. measure_pmf.prob B {b. (x, b) \<in> S})"
+    by (intro integrable_pmf_iff_bounded[where C="1"]) simp
+
+  have "?L = (\<integral>\<^sup>+x. indicator S x \<partial>(measure_pmf (pair_pmf A B)))"
+    by (simp add: measure_pmf.emeasure_eq_measure)
+  also have "... = (\<integral>\<^sup>+x. (\<integral>\<^sup>+y. indicator S (x,y) \<partial>B) \<partial>A)"
+    by (simp add: nn_integral_pair_pmf')  
+  also have "... = (\<integral>\<^sup>+x. (\<integral>\<^sup>+y. indicator {b. (x,b) \<in> S} y \<partial>B) \<partial>A)"
+    by (simp add:indicator_def)
+  also have "... = (\<integral>\<^sup>+x. (measure_pmf.prob B {b. (x,b) \<in> S}) \<partial>A)"
+    by (simp add: measure_pmf.emeasure_eq_measure)
+  also have "... = ?R"
+    using a
+    by (subst nn_integral_eq_integral) auto
+  finally show ?thesis by simp
+qed
+
+lemma split_pair_pmf_2: 
+  "measure(pair_pmf A B) S = integral\<^sup>L B (\<lambda>a. measure_pmf.prob A {b. (b,a) \<in> S})" 
+  (is "?L = ?R")
+proof -
+  have "?L = measure (pair_pmf B A) {\<omega>. (snd \<omega>, fst \<omega>) \<in> S}"
+    by (subst pair_commute_pmf) (simp add:vimage_def case_prod_beta)
+  also have "... = ?R"
+    unfolding split_pair_pmf by simp
+  finally show ?thesis by simp
+qed
+
 
 definition KL_div :: "real \<Rightarrow> real \<Rightarrow> real" 
   where "KL_div p q = p * ln (p/q) + (1-p) * ln ((1-p)/(1-q))"

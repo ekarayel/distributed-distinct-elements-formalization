@@ -1,4 +1,4 @@
-theory Extra_Congruence_Rules
+theory Extra_Congruence_Method
   imports Main "HOL-Eisbach.Eisbach"
 begin
 
@@ -39,17 +39,6 @@ begin
   no_notation cong_tag_2 ("\<sigma>\<^sub>2")
   no_notation cong_tag_3 ("\<sigma>\<^sub>3")
 end
-
-lemma "2+3*card {Suc 1} = 2 +3*card {Suc 1}"
-proof -
-  include intro_cong_syntax
-
-  show ?thesis
-  apply (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>2 (+), \<sigma>\<^sub>1 card]")
-    sorry
-qed
-
-
 
 end
 

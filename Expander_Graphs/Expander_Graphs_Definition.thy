@@ -1,18 +1,46 @@
-theory Expander_Graphs_Base
+theory Expander_Graphs_Definition
   imports 
     Graph_Theory.Digraph
     Graph_Theory.Digraph_Isomorphism
     "HOL-Library.Multiset" 
     "HOL-Analysis.L2_Norm" 
-    "Extra_Congruence_Rules"
+    Extra_Congruence_Method
+    Frequency_Moments.Frequency_Moments_Preliminary_Results
 begin
 
 unbundle intro_cong_syntax
+
+lemma sum_mset_conv: 
+  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
+  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
+proof (induction A rule: disj_induct_mset)
+  case 1
+  then show ?case by simp
+next
+  case (2 n M x)
+  moreover have "count M x = 0" using 2 by (simp add: count_eq_zero_iff)
+  moreover have "\<And>y. y \<in> set_mset M \<Longrightarrow> y \<noteq> x" using 2 by blast
+  ultimately show ?case by (simp add:algebra_simps) 
+qed
+
+lemma sum_mset_conv_2: 
+  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
+  assumes "set_mset A \<subseteq> B" "finite B"
+  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) B" (is "?L = ?R")
+proof -
+  have "?L = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
+    unfolding sum_mset_conv by simp
+  also have "... = ?R"
+    by (intro sum.mono_neutral_left assms) (simp_all add: iffD2[OF count_eq_zero_iff])
+  finally show ?thesis by simp
+qed
 
 lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
   by (induction A, simp, simp)
 
 definition arcs_betw where "arcs_betw G u v = {a. a \<in> arcs G \<and> head G a = v \<and> tail G a = u}"
+
+subsection \<open>Symmetric Multigraphs\<close>
 
 text \<open>The following is a stronger notion than the notion of symmetry defined in 
 @{theory "Graph_Theory.Digraph"}, it requires that the number of edges from @{term "v"} to 
@@ -95,7 +123,6 @@ proof -
   have "?L = card {e \<in> arcs G. tail G e = v}"
     unfolding out_degree_def out_arcs_def by simp
   also have "... = card (\<Union>w \<in> verts G. {e \<in> arcs G. head G e = w \<and> tail G e = v})"
-    using wellformed 
     by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff)
   also have "... = (\<Sum>w \<in> verts G. card {e \<in> arcs G. head G e = w \<and> tail G e = v})"
     by (intro card_UN_disjoint) auto
@@ -104,7 +131,7 @@ proof -
   also have "... = card (\<Union>w \<in> verts G. {e \<in> arcs G. head G e = v \<and> tail G e = w})"
     by (intro card_UN_disjoint[symmetric]) auto
   also have "... = card (in_arcs G v)"
-    using wellformed by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff) 
+    by (intro arg_cong[where f="card"]) (auto simp add:set_eq_iff) 
   also have "... = ?R" 
     unfolding in_degree_def by simp
   finally show ?thesis by simp
@@ -147,6 +174,50 @@ proof -
     by (intro multiset_eqI) simp
 qed
 
+definition "vertices_from G v = {# snd e | e \<in># edges G. fst e = v #}"
+definition "vertices_to G v = {# fst e | e \<in># edges G. snd e = v #}"
+
+context fin_digraph
+begin
+
+lemma edge_set: 
+  assumes "x \<in># edges G"
+  shows "fst x \<in> verts G" "snd x \<in> verts G"
+  using assms unfolding edges_def arc_to_ends_def by auto
+
+lemma  verts_from_alt:
+  "vertices_from G v = image_mset (head G) (mset_set (out_arcs G v))"
+proof -
+  have "{#x \<in># mset_set (arcs G). tail G x = v#} = mset_set {a \<in> arcs G. tail G a = v}"
+    by (intro filter_mset_mset_set) simp
+  thus ?thesis
+    unfolding vertices_from_def out_arcs_def edges_def arc_to_ends_def
+    by (simp add:image_mset.compositionality image_mset_filter_mset_swap[symmetric] comp_def)
+qed
+
+lemma verts_to_alt:
+  "vertices_to G v = image_mset (tail G) (mset_set (in_arcs G v))"
+proof -
+  have "{#x \<in># mset_set (arcs G). head G x = v#} = mset_set {a \<in> arcs G. head G a = v}"
+    by (intro filter_mset_mset_set) simp
+  thus ?thesis
+    unfolding vertices_to_def in_arcs_def edges_def arc_to_ends_def
+    by (simp add:image_mset.compositionality image_mset_filter_mset_swap[symmetric] comp_def)
+qed
+
+lemma set_mset_vertices_from:
+  "set_mset (vertices_from G x) \<subseteq> verts G"
+  unfolding vertices_from_def using edge_set by auto
+
+lemma set_mset_vertices_to:
+  "set_mset (vertices_to G x) \<subseteq> verts G"
+  unfolding vertices_to_def using edge_set by auto
+
+end
+
+subsection \<open>Expander graphs\<close>
+
+text \<open>A symmetric multigraph is regular if every\<close>
 
 locale pre_expander_graph = fin_digraph +
   assumes sym: "symmetric_multi_graph G"

@@ -1,7 +1,7 @@
-theory Expander_Graphs_3
+theory Expander_Graphs_Eigenvalues
   imports 
-    "Expander_Graphs_Base"
-    "Commuting_Hermitian.Commuting_Hermitian"
+    Expander_Graphs_Definition
+    Commuting_Hermitian.Commuting_Hermitian
 begin
 
 hide_const "Matrix_Legacy.mat"

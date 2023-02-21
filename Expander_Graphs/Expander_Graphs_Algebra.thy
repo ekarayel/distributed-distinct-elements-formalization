@@ -1,4 +1,4 @@
-theory Expander_Graphs
+theory Expander_Graphs_Algebra
   imports Main 
     "HOL-Library.Monad_Syntax"
     "HOL-Analysis.Cartesian_Space"

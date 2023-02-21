@@ -1,9 +1,12 @@
 theory DDE_Preliminary
-  imports Main "HOL-Probability.Probability_Mass_Function"  "Frequency_Moments.Frequency_Moments_Preliminary_Results"
-    "Frequency_Moments.Product_PMF_Ext" "Median_Method.Median"
-  "Extra_Congruence_Rules"
+  imports 
+    Frequency_Moments.Frequency_Moments_Preliminary_Results
+    Frequency_Moments.Product_PMF_Ext
+    Median_Method.Median
+    Expander_Graphs.Extra_Congruence_Method
 begin
 
+unbundle intro_cong_syntax
 
 lemma (in prob_space) AE_pmfI:
   assumes "M = measure_pmf p"
@@ -17,7 +20,6 @@ lemma (in prob_space) pmf_exp_of_fin_function:
   shows "expectation (\<lambda>\<omega>. f (g \<omega>)) = (\<Sum>y \<in> A. f y * prob {\<omega>. g \<omega> = y})"
     (is "?L = ?R")
 proof -
-  include intro_cong_syntax
 
   have "?L = integral\<^sup>L (map_pmf g p) f"
     using integral_map_pmf assms by simp
@@ -235,5 +237,7 @@ proof -
     using c z(1,2) by auto
   thus ?thesis using z(3) by auto
 qed
+
+unbundle no_intro_cong_syntax
 
 end

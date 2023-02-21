@@ -1,5 +1,5 @@
-theory Strongly_Explicit_Expander_Graphs
-  imports Expander_Graph_Power Margulis_Gaber_Galil
+theory Expander_Graphs_Strongly_Explicit
+  imports Expander_Graphs_Power_Construction Expander_Graphs_MGG
 begin
 
 unbundle intro_cong_syntax
@@ -1083,6 +1083,5 @@ next
 qed
 
 unbundle no_intro_cong_syntax
-
 
 end
