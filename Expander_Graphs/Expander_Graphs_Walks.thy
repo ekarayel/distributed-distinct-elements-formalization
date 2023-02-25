@@ -1,7 +1,7 @@
 theory Expander_Graphs_Walks
   imports
     Expander_Graphs_Algebra
-    Expander_Graphs_Eigenvalues_2
+    Expander_Graphs_Eigenvalues
     Expander_Graphs_TTS
     Constructive_Chernoff_Bound
 begin                           
