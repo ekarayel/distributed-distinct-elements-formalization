@@ -138,9 +138,6 @@ lemma veq_eq_iff:
   shows "v = w \<longleftrightarrow> (\<forall>i < n. vec_index v i = vec_index w i)"
   using assms by (intro iffI eq_vecI, auto)
 
-lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
-  by (induction A, simp, simp)
-
 lemma mset_repl: "mset (replicate k x) = replicate_mset k x"
   by (induction k, auto)
 
@@ -271,8 +268,6 @@ proof -
     by (intro poly_prod_inj) simp
 qed
 
-(* A = U B U^{-1} *)
-
 lemma similar_mat_eigvals:
   fixes A B :: "complex Matrix.mat"
   assumes  "similar_mat A B"
@@ -337,11 +332,6 @@ lemma A_mat: "A \<in> carrier_mat n n"
 
 lemma A_dim[simp]: "dim_row A = n" "dim_col A = n"
   using A_mat by auto
-
-lemma count_sym:
-  "count (edges G) (u,v) = count (edges G) (v,u)"
-  unfolding count_mset_exp edges_def image_mset_filter_mset_swap[symmetric] arc_to_ends_def
-  using symmetric_multi_graphD3[OF sym] by simp
 
 lemma A_sym: "hermitian (A :: complex Matrix.mat)"
   unfolding hermitian_def using A_mat
@@ -708,15 +698,15 @@ proof -
     using i_def unfolding nths_single
     by (intro arg_cong2[where f="(-)"]  arg_cong2[where f="(+)"] refl) simp
   also have "... = mset (nths (diag_mat Kd) ({..<n}-{i}))" by simp
-  finally have 1:"replicate_mset (n - 1) 0 = mset (nths (diag_mat Kd) ({..<n}-{i}))" by simp
+  finally have x1:"replicate_mset (n - 1) 0 = mset (nths (diag_mat Kd) ({..<n}-{i}))" by simp
   have "set (nths (diag_mat Kd) ({..<n}-{i})) = set_mset (mset (nths (diag_mat Kd) ({..<n}-{i})))"
     unfolding set_mset_mset by simp
   also have "... = set_mset (replicate_mset (n - 1) 0)"
-    unfolding 1 by simp
+    unfolding x1 by simp
   also have "... \<subseteq> {0}"
     by simp
   finally have "set (nths (diag_mat Kd) ({..<n}-{i})) \<subseteq> {0}" by simp
-  hence 2:"diag_mat Kd ! j = 0" if "j < n" "j \<noteq> i" for j
+  hence 1:"diag_mat Kd ! j = 0" if "j < n" "j \<noteq> i" for j
     using subsetD[where c="diag_mat Kd ! j"] that unfolding set_nths len_diag_mat_Kd by auto
 
   define u where "u = mat_adjoint U *\<^sub>v unit"
@@ -765,7 +755,7 @@ proof -
   have "vec_index u k = vec_index u k * diag_mat Kd ! k" if "k < n" for k 
     using that by (subst 3) simp
   hence "vec_index u k = 0" if "k < n" "k \<noteq> i" for k 
-    using that 2 by (metis mult_cancel_right2)
+    using that 1 by (metis mult_cancel_right2)
   hence u_alt: "u = \<alpha> \<cdot>\<^sub>v unit_vec n i"
     using u_vec unfolding \<alpha>_def unit_vec_def
     by (intro eq_vecI, simp_all) 

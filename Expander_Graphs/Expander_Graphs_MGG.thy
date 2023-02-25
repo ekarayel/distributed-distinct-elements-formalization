@@ -1,3 +1,13 @@
+section \<open>Margulis Gabber Galil Construction\<close>
+
+text \<open>This section formalizes the Margulis-Gabber-Galil expander graph, which is defined on the
+product space $\mathbb Z_n \times \mathbb Z_n$. The construction is an adaptation of graph
+introduced by Margulis~\cite{margulis1973}, for which he gave a non-constructive proof of its
+spectral gap. Later Gabber and Galil~\cite{gabber1981} adapted the graph and derived an explicit
+spectral gap, i.e., that the second largest eigenvalue is bounded by $\frac{5}{8} \sqrt{2}$.
+Hoory et al.~\cite[\S 8]{hoory2006} present an improved version of the proof, which this 
+formalization is based on.\<close>
+
 theory Expander_Graphs_MGG
   imports 
     "HOL-Analysis.Complex_Transcendental"
@@ -523,6 +533,10 @@ definition \<gamma>_aux :: "int \<times> int \<Rightarrow> real \<times> real"
 
 definition compare :: "real \<times> real \<Rightarrow> real \<times> real \<Rightarrow> bool"
   where "compare x y = (fst x \<le> fst y \<and> snd x \<le> snd y \<and> x \<noteq> y)"
+
+text \<open>The value here is different from the value in the source material. This is because the proof 
+in Hoory~\cite[\S 8]{hoory2006} only establishes the bound $\frac{73}{80}$ while this formalization
+establishes the improved bound of $\frac{5}{9} \sqrt 2$.\<close>
 
 definition \<alpha> :: real where "\<alpha> = sqrt 2" 
 

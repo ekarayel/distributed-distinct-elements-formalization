@@ -228,6 +228,8 @@ begin
 
 definition d where "d = out_degree G (SOME v. v \<in> verts G)"
 
+lemmas count_sym = count_edges_sym[OF sym]
+
 lemma reg: 
   assumes "v \<in> verts G"
   shows "out_degree G v = d" "in_degree G v = d"
@@ -324,7 +326,6 @@ definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> re
 lemma g_step_altdef:
   "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real d)"
   unfolding g_step_def by (intro_cong "[\<sigma>\<^sub>2 (/), \<sigma>\<^sub>1 real]" more: sum.cong reg) auto
-
 
 lemma g_step_simps:
   "g_step (\<lambda>x. f x  + g x) y = g_step f y + g_step g y"

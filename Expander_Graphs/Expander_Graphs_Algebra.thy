@@ -1,7 +1,8 @@
 theory Expander_Graphs_Algebra
-  imports Main 
+  imports 
     "HOL-Library.Monad_Syntax"
     "HOL-Analysis.Cartesian_Space"
+    Expander_Graphs_TTS
 begin
 
 section "Missing Finite Cartesian Product"
@@ -22,6 +23,10 @@ lemma diag_mult_eq: "diag x ** diag y = diag (x * y)"
   unfolding diag_def 
   by (vector matrix_matrix_mult_def) 
    (auto simp add:if_distrib if_distribR sum.If_cases)
+
+lemma diag_vec_mult_eq: "diag x *v y = x * y"
+  unfolding diag_def matrix_vector_mult_def 
+  by (simp add:if_distrib if_distribR sum.If_cases times_vec_def)
 
 definition matrix_norm_bound :: "real^'n^'m \<Rightarrow> real \<Rightarrow> bool"
   where "matrix_norm_bound A l = (\<forall>x. norm (A *v x) \<le> l * norm x)"
@@ -105,42 +110,8 @@ proof (intro matrix_norm_boundI)
   finally show "norm (b *\<^sub>R A *v x) \<le> (\<bar>b\<bar> * l) * norm x" by simp
 qed
 
-section \<open>Expander Graphs - Algebra\<close>
-
-definition spec_bound :: "real^'n^'n \<Rightarrow> real \<Rightarrow> bool"
-  where "spec_bound A l = (l \<ge> 0 \<and> (\<forall>v. v \<bullet> 1 = 0 \<longrightarrow> norm (A *v v) \<le> l * norm v))"
-
-lemma spec_boundD1:
-  assumes "spec_bound A l"
-  shows "0 \<le> l" 
-  using assms unfolding spec_bound_def by simp
-
-lemma spec_boundD2:
-  assumes "spec_bound A l"
-  assumes "v \<bullet> 1 = 0 "
-  shows "norm (A *v v) \<le> l * norm v" 
-  using assms unfolding spec_bound_def by simp
-
-lemma spec_bound_mono:
-  assumes "spec_bound A \<alpha>" "\<alpha> \<le> \<beta>"
-  shows "spec_bound A \<beta>"
-proof -
-  have "norm (A *v v) \<le> \<beta> * norm v" if "inner v 1 = 0"  for v
-  proof -
-    have "norm (A *v v) \<le> \<alpha> * norm v" 
-      by (intro spec_boundD2[OF assms(1)] that)
-    also have "... \<le> \<beta> * norm v"
-      by (intro mult_right_mono assms(2)) auto
-    finally show ?thesis by simp
-  qed
-  moreover have "\<beta> \<ge> 0"
-    using assms(2) spec_boundD1[OF assms(1)] by simp
-  ultimately show ?thesis 
-    unfolding spec_bound_def by simp
-qed
-
 definition nonneg_mat :: "real^'n^'m \<Rightarrow> bool"
-  where "nonneg_mat A = (\<forall>i j. (A $ i) $ j \<ge> 0)"
+  where "nonneg_mat A = (\<forall>i j. A $ i $ j \<ge> 0)"
 
 lemma nonneg_mat_1:
   shows "nonneg_mat (mat 1)"
@@ -157,8 +128,44 @@ lemma nonneg_mat_transpose:
   unfolding nonneg_mat_def transpose_def 
   by auto
 
+
+section \<open>Expander Graphs - Algebra\<close>
+
+definition spec_bound :: "real^'n^'n \<Rightarrow> real \<Rightarrow> bool"
+  where "spec_bound M l = (l \<ge> 0 \<and> (\<forall>v. v \<bullet> 1 = 0 \<longrightarrow> norm (M *v v) \<le> l * norm v))"
+
+lemma spec_boundD1:
+  assumes "spec_bound M l"
+  shows "0 \<le> l" 
+  using assms unfolding spec_bound_def by simp
+
+lemma spec_boundD2:
+  assumes "spec_bound M l"
+  assumes "v \<bullet> 1 = 0 "
+  shows "norm (M *v v) \<le> l * norm v" 
+  using assms unfolding spec_bound_def by simp
+
+lemma spec_bound_mono:
+  assumes "spec_bound M \<alpha>" "\<alpha> \<le> \<beta>"
+  shows "spec_bound M \<beta>"
+proof -
+  have "norm (M *v v) \<le> \<beta> * norm v" if "inner v 1 = 0"  for v
+  proof -
+    have "norm (M *v v) \<le> \<alpha> * norm v" 
+      by (intro spec_boundD2[OF assms(1)] that)
+    also have "... \<le> \<beta> * norm v"
+      by (intro mult_right_mono assms(2)) auto
+    finally show ?thesis by simp
+  qed
+  moreover have "\<beta> \<ge> 0"
+    using assms(2) spec_boundD1[OF assms(1)] by simp
+  ultimately show ?thesis 
+    unfolding spec_bound_def by simp
+qed
+
+
 definition markov :: "real^'n^'n \<Rightarrow> bool"
-  where "markov A = (nonneg_mat A \<and> A *v 1  = 1 \<and> 1 v* A = 1)"
+  where "markov M = (nonneg_mat M \<and> M *v 1  = 1 \<and> 1 v* M = 1)"
 
 lemma markov_symI:
   assumes "nonneg_mat A" "transpose A = A" "A *v 1 = 1"
@@ -172,52 +179,17 @@ proof -
     unfolding markov_def using assms by auto
 qed
 
-definition stat :: "real^'n"
-  where "stat = (1 / real CARD('n)) *\<^sub>R 1"
-
-definition J :: "real^'n^'n"
-  where "J = (\<chi> i j. 1 / real CARD('n))"
-
-lemma inner_1_1: "1 \<bullet> (1::real^'n) = CARD('n)"
-  unfolding inner_vec_def by simp
-
 lemma markov_apply:
-  assumes "markov A"
-  shows "A *v 1 = 1" "1 v* A = 1"
+  assumes "markov M"
+  shows "M *v 1 = 1" "1 v* M = 1"
   using assms unfolding markov_def by auto
 
 lemma markov_transpose:
   "markov A = markov (transpose A)"
   unfolding markov_def nonneg_mat_transpose by auto
-
-definition proj_unit :: "real^'n \<Rightarrow> real^'n"
-  where "proj_unit v = (1 \<bullet> v) *\<^sub>R stat"
-
-definition proj_rem :: "real^'n \<Rightarrow> real^'n" 
-  where "proj_rem v = v - proj_unit v"
-
-lemma proj_rem_orth: "1 \<bullet> (proj_rem v) = 0"
-  unfolding proj_rem_def proj_unit_def inner_diff_right stat_def
-  by (simp add:inner_1_1)
-
-lemma split_vec: "v = proj_unit v + proj_rem v" 
-  unfolding proj_rem_def by simp
-
-lemma apply_J: "J *v x = proj_unit x"
-proof (intro iffD2[OF vec_eq_iff] allI)
-  fix i
-  have "(J *v x) $ i = inner (\<chi> j. 1 / real CARD('a)) x" 
-    unfolding matrix_vector_mul_component J_def by simp
-  also have "... = inner stat x"
-    unfolding stat_def scaleR_vec_def by auto
-  also have "... = (proj_unit x) $ i"
-    unfolding proj_unit_def stat_def by simp
-  finally show "(J *v x) $ i = (proj_unit x) $ i" by simp
-qed 
-
 fun matrix_pow where 
-  "matrix_pow A 0 = mat 1" |
-  "matrix_pow A (Suc n) = A ** (matrix_pow A n)"
+  "matrix_pow M 0 = mat 1" |
+  "matrix_pow M (Suc n) = M ** (matrix_pow M n)"
 
 lemma markov_orth_inv: 
   assumes "markov A"
@@ -292,6 +264,88 @@ next
     by (intro spec_bound_prod assms Suc markov_matrix_pow)
   thus ?case by simp
 qed
+
+fun intersperse :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a list"
+  where 
+    "intersperse x [] = []" |
+    "intersperse x (y#[]) = y#[]" |
+    "intersperse x (y#z#zs) = y#x#intersperse x (z#zs)"
+
+lemma intersperse_snoc:
+  assumes "xs \<noteq> []"
+  shows "intersperse z (xs@[y]) = intersperse z xs@[z,y]"
+  using assms
+proof (induction xs rule:list_nonempty_induct)
+  case (single x)
+  then show ?case by simp
+next
+  case (cons x xs)
+  then obtain xsh xst where t:"xs = xsh#xst"
+    by (metis neq_Nil_conv)
+  have "intersperse z ((x # xs) @ [y]) = x#z#intersperse z (xs@[y])"
+    unfolding t by simp
+  also have "... = x#z#intersperse z xs@[z,y]"
+    using cons by simp
+  also have "... = intersperse z (x#xs)@[z,y]"
+    unfolding t by simp
+  finally show ?case by simp
+qed
+
+lemma foldl_intersperse:
+  assumes "xs \<noteq> []"
+  shows "foldl f a ((intersperse x xs)@[x]) = foldl (\<lambda>y z. f (f y z) x) a xs"
+  using assms by (induction xs rule:rev_nonempty_induct) (auto simp add:intersperse_snoc)
+
+lemma foldl_intersperse_2:
+  shows "foldl f a (intersperse y (x#xs)) = foldl (\<lambda>x z. f (f x y) z) (f a x) xs"
+proof (induction xs rule:rev_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (snoc xst xs)
+  have "foldl f a (intersperse y ((x # xs) @ [xst])) = foldl (\<lambda>x. f (f x y)) (f a x) (xs @ [xst])" 
+    by (subst intersperse_snoc, auto simp add:snoc)
+  then show ?case  by simp
+qed
+
+
+context pre_expander_graph_tts
+begin
+
+definition stat :: "real^'n"
+  where "stat = (1 / real CARD('n)) *\<^sub>R 1"
+
+definition J :: "('c :: field)^'n^'n"
+  where "J = (\<chi> i j. of_nat 1 / of_nat CARD('n))"
+
+lemma inner_1_1: "1 \<bullet> (1::real^'n) = CARD('n)"
+  unfolding inner_vec_def by simp
+
+definition proj_unit :: "real^'n \<Rightarrow> real^'n"
+  where "proj_unit v = (1 \<bullet> v) *\<^sub>R stat"
+
+definition proj_rem :: "real^'n \<Rightarrow> real^'n" 
+  where "proj_rem v = v - proj_unit v"
+
+lemma proj_rem_orth: "1 \<bullet> (proj_rem v) = 0"
+  unfolding proj_rem_def proj_unit_def inner_diff_right stat_def
+  by (simp add:inner_1_1)
+
+lemma split_vec: "v = proj_unit v + proj_rem v" 
+  unfolding proj_rem_def by simp
+
+lemma apply_J: "J *v x = proj_unit x"
+proof (intro iffD2[OF vec_eq_iff] allI)
+  fix i
+  have "(J *v x) $ i = inner (\<chi> j. 1 / real CARD('n)) x" 
+    unfolding matrix_vector_mul_component J_def by simp
+  also have "... = inner stat x"
+    unfolding stat_def scaleR_vec_def by auto
+  also have "... = (proj_unit x) $ i"
+    unfolding proj_unit_def stat_def by simp
+  finally show "(J *v x) $ i = (proj_unit x) $ i" by simp
+qed 
+
 
 (* REMOVE *)
 lemma spec_bound_J: "spec_bound (J :: real^'n^'n) 0"
@@ -621,55 +675,13 @@ lemma foldl_concat:
   by (induction xss rule:rev_induct, auto)
 
 
-fun intersperse :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a list"
-  where 
-    "intersperse x [] = []" |
-    "intersperse x (y#[]) = y#[]" |
-    "intersperse x (y#z#zs) = y#x#intersperse x (z#zs)"
-
-lemma intersperse_snoc:
-  assumes "xs \<noteq> []"
-  shows "intersperse z (xs@[y]) = intersperse z xs@[z,y]"
-  using assms
-proof (induction xs rule:list_nonempty_induct)
-  case (single x)
-  then show ?case by simp
-next
-  case (cons x xs)
-  then obtain xsh xst where t:"xs = xsh#xst"
-    by (metis neq_Nil_conv)
-  have "intersperse z ((x # xs) @ [y]) = x#z#intersperse z (xs@[y])"
-    unfolding t by simp
-  also have "... = x#z#intersperse z xs@[z,y]"
-    using cons by simp
-  also have "... = intersperse z (x#xs)@[z,y]"
-    unfolding t by simp
-  finally show ?case by simp
-qed
-
-lemma foldl_intersperse:
-  assumes "xs \<noteq> []"
-  shows "foldl f a ((intersperse x xs)@[x]) = foldl (\<lambda>y z. f (f y z) x) a xs"
-  using assms by (induction xs rule:rev_nonempty_induct) (auto simp add:intersperse_snoc)
-
-lemma foldl_intersperse_2:
-  shows "foldl f a (intersperse y (x#xs)) = foldl (\<lambda>x z. f (f x y) z) (f a x) xs"
-proof (induction xs rule:rev_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (snoc xst xs)
-  have "foldl f a (intersperse y ((x # xs) @ [xst])) = foldl (\<lambda>x. f (f x y)) (f a x) (xs @ [xst])" 
-    by (subst intersperse_snoc, auto simp add:snoc)
-  then show ?case  by simp
-qed
-
 lemma hitting_property_alg_2:
-  fixes S :: "('n :: finite) set" and l :: nat
+  fixes S :: "('n :: finite) set" and l :: nat 
+  fixes M :: "real^'n^'n"
   assumes \<alpha>_range: "\<alpha> \<in> {0..1}"
   assumes "I \<subseteq> {..<l}"
   defines "P i \<equiv> (if i \<in> I then diag (ind_vec S) else mat 1)"
-  defines "\<mu> \<equiv> card S / CARD('n)"
+  defines "\<mu> \<equiv> real (card S) / real (CARD('n))"
   assumes "spec_bound M \<alpha>" "markov M"
   shows "foldl (\<lambda>x M. M *v x) stat (intersperse M (map P [0..<l])) \<bullet> 1 \<le> (\<mu> + \<alpha> * (1-\<mu>))^card I"
     (is "?L \<le> ?R")
@@ -867,6 +879,7 @@ proof -
   finally show ?thesis by simp
 qed
 
+end
 lemma foldl_matrix_mult_expand:
   fixes Ms :: "(('r::{semiring_1,comm_monoid_mult})^'a^'a) list"
   shows "(foldl (\<lambda>x M. M *v x) a Ms) $ k = (\<Sum>x | length x = length Ms+1 \<and> x! length Ms = k. 

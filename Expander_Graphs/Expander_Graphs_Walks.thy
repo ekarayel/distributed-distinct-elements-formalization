@@ -1,19 +1,16 @@
 theory Expander_Graphs_Walks
   imports
     Expander_Graphs_Algebra
-    Expander_Graphs_Eigenvalues
+    Expander_Graphs_Eigenvalues_2
     Expander_Graphs_TTS
     Constructive_Chernoff_Bound
 begin                           
 
 unbundle intro_cong_syntax
 
-hide_const Matrix_Legacy.transpose
 no_notation Matrix.vec_index (infixl "$" 100)
 hide_const Matrix.vec_index
-hide_fact Matrix.vec_eq_iff
 hide_const Matrix.vec
-hide_const Matrix.mat
 no_notation Matrix.scalar_prod  (infix "\<bullet>" 70)
 
 lemma count_image_mset_inj:
@@ -340,9 +337,9 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma markov: "markov A"
+lemma markov: "markov (A :: real^'n^'n)"
 proof -
-  have "A *v 1 = 1"
+  have "A *v 1 = (1::real ^'n)" (is "?L = ?R")
   proof -
     have "A *v 1 = (\<chi> i. g_step (\<lambda>_. 1) (enum_verts i))"
       unfolding g_step_conv one_vec_def by simp
@@ -372,26 +369,9 @@ qed
 lemma spec_bound:
   "spec_bound A \<Lambda>"
 proof -
-  have "norm (A *v v) \<le> \<Lambda> * norm v" if "v \<bullet> 1 = 0" for v
-  proof -
-    define f where "f i = v $ (snd (td_components) i)" for i
-    have v_def: "v = (\<chi> i. f (enum_verts i))"
-      unfolding f_def enum_verts_def Rep_inverse by simp
-
-    have "g_inner f (\<lambda>_. 1) = v \<bullet> (\<chi> i. 1)"
-      unfolding g_inner_conv v_def by simp
-    also have "... = v \<bullet> 1" 
-      by (simp add: one_vec_def)
-    also have "... = 0" using that by simp
-    finally have 0: "g_inner f (\<lambda>_. 1) = 0" by simp
-    have "norm (A *v v) = g_norm (g_step f)"
-      unfolding v_def g_step_conv g_norm_conv by simp
-    also have "... \<le> \<Lambda> * g_norm  f"
-      by (intro expansionD2 0)
-    also have "... = \<Lambda> * norm v"
-      unfolding v_def g_norm_conv by simp
-    finally show ?thesis by simp
-  qed
+  have "norm (A *v v) \<le> \<Lambda> * norm v" if "v \<bullet> 1 = (0::real)" for v::"real^'n"
+    unfolding \<Lambda>\<^sub>e_eq_\<Lambda>
+    by (intro \<gamma>\<^sub>2_real_bound that)
   thus ?thesis
     unfolding spec_bound_def using \<Lambda>_ge_0 by auto
 qed
@@ -425,9 +405,9 @@ proof -
   hence 2: "v1 \<bullet> v2 = 0"
     unfolding v1_def by (simp add:inner_commute)
 
-  define f2 where "f2 i = v2 $ (snd (td_components) i)" for i
+  define f2 where "f2 i = v2 $ (enum_verts_inv i)" for i
   have f2_def: "v2 = (\<chi> i. f2 (enum_verts i))"
-    unfolding f2_def enum_verts_def Rep_inverse by simp
+    unfolding f2_def Rep_inverse by simp
 
   have 6: "g_inner f2 (\<lambda>_. 1) = 0"
     unfolding g_inner_conv f2_def[symmetric] one_vec_def[symmetric] 4 by simp

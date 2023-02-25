@@ -24,7 +24,7 @@ method intro_cong for A :: "cong_tag_type list" uses more =
         \<Rightarrow> \<open>intro_cong h more:more arg_cong2[where f="f"]\<close>
     \<bar> "cong_tag_3 f#h" (multi) for f :: "'a \<Rightarrow> 'b \<Rightarrow> 'c \<Rightarrow> 'd" and h 
         \<Rightarrow> \<open>intro_cong h more:more arg_cong3[where f="f"]\<close>
-    \<bar> _ \<Rightarrow> \<open>intro more\<close>)
+    \<bar> _ \<Rightarrow> \<open>intro more refl\<close>)
 
 bundle intro_cong_syntax
 begin

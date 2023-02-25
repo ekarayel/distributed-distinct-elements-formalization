@@ -2,8 +2,6 @@ theory Constructive_Chernoff_Bound
   imports 
     "HOL-Probability.Probability_Measure" 
     "Frequency_Moments.Product_PMF_Ext"
-(*    DDE_Transcendental_Extras 
-    DDE_Preliminary *)
     "Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean"
 begin
 

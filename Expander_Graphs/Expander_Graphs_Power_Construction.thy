@@ -123,7 +123,7 @@ proof (induction l)
   also have "... = image_mset ?g (mset_set ({(u, w). u \<in> verts G \<and> w = []}))"
     by (intro_cong "[\<sigma>\<^sub>2 image_mset]") auto
   also have "... = image_mset ?g (mset_set (arc_walks G 0))"
-    unfolding arc_walks_def by (intro_cong "[\<sigma>\<^sub>2 image_mset,\<sigma>\<^sub>1 mset_set]" more:refl) auto
+    unfolding arc_walks_def by (intro_cong "[\<sigma>\<^sub>2 image_mset,\<sigma>\<^sub>1 mset_set]") auto
   also have "... = image_mset (case_prod awalk_verts) (mset_set (arc_walks G 0))"
     using arc_walks_fin by (intro image_mset_cong) (simp add:case_prod_beta awalk_verts_unfold)
   finally show ?case by simp
@@ -137,7 +137,7 @@ next
     by force
   also have "... = case_prod ?f ` {(x,y). x \<in> arc_walks G l \<and> y \<in> out_arcs G (arc_walk_head G x)}"
     unfolding arc_walks_def using is_arc_walk_snoc[where G="G"]
-    by (intro_cong "[\<sigma>\<^sub>2 image]" more:refl)  auto
+    by (intro_cong "[\<sigma>\<^sub>2 image]")  auto
   also have "... = (\<Union>w \<in> arc_walks G l. ?f w ` out_arcs G (arc_walk_head G w))"
     by (auto simp add:image_iff)
   finally have 0:"arc_walks G (l+1) = (\<Union>w \<in> arc_walks G l. ?f w ` out_arcs G (arc_walk_head G w))"
@@ -484,7 +484,7 @@ next
   also have "... = (\<Sum>y \<in> S. f (fst (?bij y))/ d^(l+1))" 
     by (intro sum.reindex_bij_betw[symmetric] 0)
   also have "... = (\<Sum>y \<in> S. f (fst (snd y))/ d^(l+1))" 
-    by (intro_cong "[\<sigma>\<^sub>2 (/),\<sigma>\<^sub>1 f]" more: sum.cong refl) (simp add:case_prod_beta)
+    by (intro_cong "[\<sigma>\<^sub>2 (/),\<sigma>\<^sub>1 f]" more: sum.cong) (simp add:case_prod_beta)
   also have "...=(\<Sum>y\<in>(\<Union>a\<in>in_arcs G x. (Pair a)`in_arcs ?H (tail G a)). f (fst (snd y))/ d^(l+1))" 
     unfolding S_def by (intro sum.cong) auto
   also have "...=(\<Sum>a\<in>in_arcs G x. (\<Sum>y\<in>(Pair a)`in_arcs ?H (tail G a). f (fst (snd y))/ d^(l+1)))"
@@ -552,7 +552,7 @@ proof -
       by (simp add:power2_eq_square)
     also have "... = ?R" 
       unfolding g_norm_sq H.g_norm_sq g_inner_def H.g_inner_def
-      by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:refl sum.cong) (auto simp add:graph_power_def)
+      by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong) (auto simp add:graph_power_def)
     finally show ?thesis by simp
   qed
   moreover have " 0 \<le> \<Lambda> ^ l" 

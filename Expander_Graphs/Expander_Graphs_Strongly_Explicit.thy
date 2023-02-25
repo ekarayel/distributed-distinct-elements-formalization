@@ -1,3 +1,7 @@
+section \<open>Strongly Explicit Expander Graphs\<close>
+
+text \<open>TODO\<close>
+
 theory Expander_Graphs_Strongly_Explicit
   imports Expander_Graphs_Power_Construction Expander_Graphs_MGG
 begin
@@ -171,7 +175,7 @@ proof -
     unfolding 0 image_mset_union by simp
   also have "...={#(v mod m,?s i v mod m). (v,i)\<in>#mset_set({..<m}\<times>{..<?d}\<union>{m..<?n}\<times>{..<?d})#}+B"
     unfolding 1 2 3 image_mset_union[symmetric]
-    by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 image_mset]" more:refl mset_set_Union[symmetric]) auto
+    by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 image_mset]" more: mset_set_Union[symmetric]) auto
   also have "...={#(v mod m,?s i v mod m). (v,i)\<in>#mset_set({..<?n}\<times>{..<?d})#}+B"
     using assms(2) by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 image_mset, \<sigma>\<^sub>1 mset_set]") auto
   also have "... = A + B"
@@ -345,7 +349,7 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>2 (+)]" more:sum.union_disjoint) auto
     also have "...  = (\<Sum>x=0..<m. f (x mod m)^2) + (\<Sum>x=0..<?n-m. f x^2) + (\<Sum>x=?n-m..<m. f x^2)"
       using assms(2,3)
-      by (intro_cong "[\<sigma>\<^sub>2 (+)]" more:refl sum.reindex_bij_betw bij_betwI[where g="(\<lambda>x. x+m)"])
+      by (intro_cong "[\<sigma>\<^sub>2 (+)]" more: sum.reindex_bij_betw bij_betwI[where g="(\<lambda>x. x+m)"])
        (auto simp add:le_mod_geq)
     also have "... = (\<Sum>x=0..<m. f x^2) + (\<Sum>x=0..<?n-m. f x^2) + (\<Sum>x=?n-m..<m. f x^2)"
       by (intro sum.cong arg_cong2[where f="(+)"]) auto
@@ -364,13 +368,13 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" more: sum.cong abs_of_nonneg sum_nonneg)
        (auto simp add:graph_of_def)
     also have "...=((\<Sum>x<m. f (x mod m))+(\<Sum>x=m..<?n. f (x mod m)))^2/G.n + (\<Sum>x=?n-m..<m. f x^2)"
-      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" more:sum.union_disjoint refl) auto
+      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" more:sum.union_disjoint) auto
     also have "...=((\<Sum>x<m. f (x mod m))+(\<Sum>x=0..<?n-m. f x))^2/G.n + (\<Sum>x=?n-m..<m. f x^2)"
       using assms(2,3) by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" 
-          more:refl sum.reindex_bij_betw bij_betwI[where g="(\<lambda>x. x+m)"]) (auto simp add:le_mod_geq)
+          more:sum.reindex_bij_betw bij_betwI[where g="(\<lambda>x. x+m)"]) (auto simp add:le_mod_geq)
     also have "...=(H.g_inner f (\<lambda>_. 1) +(\<Sum>x<?n-m. f x))^2/G.n + (\<Sum>x=?n-m..<m. f x^2)"
       unfolding H.g_inner_def
-      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" more: sum.cong refl) (auto simp:graph_of_def) 
+      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (/), \<sigma>\<^sub>2 (power)]" more: sum.cong) (auto simp:graph_of_def) 
     also have "...=(\<Sum>x<?n-m. f x)^2/G.n + (\<Sum>x=?n-m..<m. f x^2)"
       unfolding that by simp
     also have "...\<le> (\<Sum>x<?n-m. \<bar>f x\<bar> * \<bar>1\<bar>)^2/G.n + (\<Sum>x=?n-m..<m. f x^2)"
@@ -865,7 +869,7 @@ proof -
     also have "... \<le> real n + sqrt (4 * real n + (real n * (real n - 6) + 1)) + 1"
       using d by (intro add_mono iffD2[OF real_sqrt_le_iff]) auto
     also have "... = real n + sqrt ((real n-1)^2) + 1"
-      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>1 sqrt]" more:refl) (auto simp add:power2_eq_square algebra_simps)
+      by (intro_cong "[\<sigma>\<^sub>2 (+), \<sigma>\<^sub>1 sqrt]") (auto simp add:power2_eq_square algebra_simps)
     also have "... = 2 * real n"
       using d by simp
     finally show ?thesis by simp
@@ -1058,7 +1062,7 @@ next
   also have "... = concat_mset{#{#?w (l+1) i. i\<in>#mset_set {w*?d..<(w+1)*?d}#}. w\<in>#mset_set {..<r}#}"
     by (simp add:image_concat_mset image_mset.compositionality comp_def del:see_sample_walk.simps)
   also have "...=concat_mset {#{#?w(l+1)i. i\<in>#mset_set ((+)(w*?d)`{..<?d})#}. w\<in>#mset_set {..<r}#}"
-    by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset, \<sigma>\<^sub>1 mset_set]" more:ext refl )
+    by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset, \<sigma>\<^sub>1 mset_set]" more:ext)
      (simp add:  atLeast0LessThan[symmetric])
   also have "... = concat_mset 
     {#{#?w (l+1) i. i\<in>#image_mset ((+) (w*?d)) (mset_set {..<?d})#}. w\<in>#mset_set {..<r}#}"
@@ -1076,7 +1080,7 @@ next
     unfolding image_mset.compositionality comp_def by simp
   also have "... = concat_mset {#{#w@[x].x\<in>#vertices_from ?G (last w)#}. w \<in># walks' ?G l#}"
     using last_in_set set_walks_2(1,2)
-    by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]" more:image_mset_cong 2[symmetric] refl) blast
+    by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]" more:image_mset_cong 2[symmetric]) blast
   also have "... = walks' (graph_of e) (l+1)"
     by (simp add:image_mset.compositionality comp_def)
   finally show ?case by simp 

@@ -2,43 +2,26 @@
 \usepackage[T1]{fontenc}
 \usepackage{isabelle,isabellesym}
 
-% further packages required for unusual symbols (see also
-% isabellesym.sty), use only when needed
-
-%\usepackage{amssymb}
-  %for \<leadsto>, \<box>, \<diamond>, \<sqsupset>, \<mho>, \<Join>,
-  %\<lhd>, \<lesssim>, \<greatersim>, \<lessapprox>, \<greaterapprox>,
-  %\<triangleq>, \<yen>, \<lozenge>
-
-%\usepackage{eurosym}
-  %for \<euro>
-
-%\usepackage[only,bigsqcap,bigparallel,fatsemi,interleave,sslash]{stmaryrd}
-  %for \<Sqinter>, \<Parallel>, \<Zsemi>, \<Parallel>, \<sslash>
-
-%\usepackage{eufrak}
-  %for \<AA> ... \<ZZ>, \<aa> ... \<zz> (also included in amssymb)
-
-%\usepackage{textcomp}
-  %for \<onequarter>, \<onehalf>, \<threequarters>, \<degree>, \<cent>,
-  %\<currency>
-
-% this should be the last package used
+\usepackage{amssymb}
 \usepackage{pdfsetup}
-
-% urls in roman style, theory text in math-similar italics
 \urlstyle{rm}
 \isabellestyle{it}
 
-% for uniform font size
-%\renewcommand{\isastyle}{\isastyleminor}
-
-
 \begin{document}
 
-\title{Expander-Graphs}
+\title{Expander Graphs}
 \author{Emin Karayel}
 \maketitle
+
+\abstract{Expander Graphs are low-degree graphs that are highly connected. The concept has diverse 
+applications, for example in derandomization and pseudo-randomness, error-correcting codes, as well 
+as pure mathematical subjects such as metric embeddings. This entry formalizes the notion and
+derives standard results about the distribution of random walks on exander graphs, such as the 
+hitting property. Moreover strongly explicit constructions for every size and spectral gap are 
+constructed. The latter is based on the Margulis-Gabber-Galil graphs and several graph operations
+that preserve spectral properties of the graph. The proofs are based on the survey papers/monographs
+by Hoory et al.~\cite{hoory2006} and Vadhan~\cite{vadhan2012}, as well as results from Impagliazzo 
+and Kabanets~\cite{impagliazzo2010} and Murtagh~\cite{murtagh2018}.}
 
 \tableofcontents
 
@@ -49,8 +32,8 @@
 \input{session}
 
 % optional bibliography
-%\bibliographystyle{abbrv}
-%\bibliography{root}
+\bibliographystyle{abbrv}
+\bibliography{root}
 
 \end{document}
 

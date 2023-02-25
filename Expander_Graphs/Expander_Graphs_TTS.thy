@@ -13,18 +13,80 @@ begin
 definition td_components :: "('n \<Rightarrow> 'a) \<times> ('a \<Rightarrow> 'n)" 
   where "td_components = (SOME q. type_definition (fst q) (snd q) (verts G))"
 
-sublocale type_definition "(fst td_components)" "(snd td_components)" "verts G"
+definition enum_verts where "enum_verts = fst td_components"
+definition enum_verts_inv where "enum_verts_inv = snd td_components"
+
+sublocale type_definition "enum_verts" "enum_verts_inv" "verts G"
 proof -
-  have 0:"\<exists>q'. type_definition ((fst q')::(('n :: finite) \<Rightarrow> 'a)) (snd q') (verts G)"
+  have 0:"\<exists>q'. type_definition ((fst q')::('n \<Rightarrow> 'a)) (snd q') (verts G)"
     using td by simp
-  show "type_definition (fst td_components) (snd td_components) (verts G)"
-    unfolding td_components_def using someI_ex[OF 0] by simp
+  show "type_definition enum_verts enum_verts_inv (verts G)"
+    unfolding td_components_def enum_verts_def enum_verts_inv_def using someI_ex[OF 0] by simp
 qed
 
-definition enum_verts where "enum_verts = fst td_components"
-
 lemma enum_verts: "bij_betw enum_verts UNIV (verts G)"
-  unfolding bij_betw_def  by (simp add: Rep_inject Rep_range enum_verts_def inj_on_def)
+  unfolding bij_betw_def by (simp add: Rep_inject Rep_range inj_on_def)
+
+(* The stochastic matrix associated to the graph *)
+definition A :: "('c::field)^'n^'n" where 
+  "A = (\<chi> i j. of_nat (count (edges G) (enum_verts j,enum_verts i))/of_nat d)"
+
+lemma card_n: "CARD('n) = n"
+  unfolding n_def card by simp
+
+lemma symmetric_A: "transpose A = A"
+proof -
+  have "A $ i $ j = A $ j $ i" for i j
+    unfolding A_def count_edges arcs_betw_def using symmetric_multi_graphD[OF sym]
+    by auto
+  thus ?thesis
+    unfolding transpose_def
+    by (intro iffD2[OF vec_eq_iff] allI) auto
+qed
+
+lemma g_step_conv: 
+  "(\<chi> i. g_step f (enum_verts i)) = A *v (\<chi> i. f (enum_verts i))"
+proof -
+  have "g_step f (enum_verts i) = (\<Sum>j\<in>UNIV. A $ i $ j * f (enum_verts j))" (is "?L = ?R") for i
+  proof -
+    have "?L = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real (out_degree G (tail G x)))"
+      unfolding g_step_def by simp
+    also have "... = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real d)"
+      by (intro sum.cong arg_cong2[where f="(/)"] arg_cong[where f="real"] reg) auto
+    also have "... = (\<Sum>x\<in>#vertices_to G (enum_verts i). f x/d)"
+      unfolding verts_to_alt  sum_unfold_sum_mset by (simp add:image_mset.compositionality comp_def)
+    also have "... = (\<Sum>j\<in>verts G. (count (vertices_to G (enum_verts i)) j) * (f j / real d))"
+      by (intro sum_mset_conv_2 set_mset_vertices_to) auto
+    also have "... = (\<Sum>j\<in>verts G. (count (edges G) (j,enum_verts i)) * (f j / real d))"
+      unfolding vertices_to_def count_mset_exp 
+      by (intro sum.cong arg_cong[where f="real"] arg_cong2[where f="(*)"])
+       (auto simp add:filter_filter_mset image_mset_filter_mset_swap[symmetric] prod_eq_iff ac_simps)
+    also have "...=(\<Sum>j\<in>UNIV.(count(edges G)(enum_verts j,enum_verts i))*(f(enum_verts j)/real d))"
+      by (intro sum.reindex_bij_betw[symmetric] enum_verts)
+    also have "... = ?R"
+      unfolding A_def by simp
+    finally show ?thesis by simp
+  qed
+  thus ?thesis
+    unfolding matrix_vector_mult_def by (intro iffD2[OF vec_eq_iff] allI) simp
+qed
+
+lemma g_inner_conv: 
+  "g_inner f g = (\<chi> i. f (enum_verts i)) \<bullet> (\<chi> i. g (enum_verts i))"
+  unfolding inner_vec_def g_inner_def vec_lambda_beta inner_real_def
+  by (intro sum.reindex_bij_betw[symmetric] enum_verts)
+
+lemma g_norm_conv: 
+  "g_norm f = norm (\<chi> i. f (enum_verts i))"
+proof -
+  have "g_norm f^2 = norm (\<chi> i. f (enum_verts i))^2"
+    unfolding g_norm_sq power2_norm_eq_inner g_inner_conv by simp
+  thus ?thesis
+    using g_norm_nonneg norm_ge_zero by simp
+qed
+
+lemma test: "True" by auto
+
 
 end
 
