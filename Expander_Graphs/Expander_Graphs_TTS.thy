@@ -1,3 +1,5 @@
+section \<open>Setup for Types to Sets\label{sec:tts}\<close>
+
 theory Expander_Graphs_TTS
   imports 
     Expander_Graphs_Definition     
@@ -5,9 +7,16 @@ theory Expander_Graphs_TTS
     "HOL-Types_To_Sets.Types_To_Sets"
 begin
 
+text \<open>This section sets up a sublocale with the assumption that there is a finite type with the same
+cardinality as the vertex set of an expander graph. This allows defining the adjacency matrix for 
+the graph using type-based linear algebra.
+
+Theorems shown in the sublocale that do not refer to the local type are then lifted to the
+@{locale pre_expander_graph} locale using the Types-To-Sets mechanism.\<close>
+
 locale pre_expander_graph_tts = pre_expander_graph +
   fixes n_itself :: "('n :: finite) itself"
-  assumes td: "\<exists>(enum_verts :: ('n \<Rightarrow> 'a)) enum_verts_inv. type_definition enum_verts enum_verts_inv (verts G)"
+  assumes td: "\<exists>(f :: ('n \<Rightarrow> 'a)) g. type_definition f g (verts G)"
 begin
 
 definition td_components :: "('n \<Rightarrow> 'a) \<times> ('a \<Rightarrow> 'n)" 
@@ -18,7 +27,7 @@ definition enum_verts_inv where "enum_verts_inv = snd td_components"
 
 sublocale type_definition "enum_verts" "enum_verts_inv" "verts G"
 proof -
-  have 0:"\<exists>q'. type_definition ((fst q')::('n \<Rightarrow> 'a)) (snd q') (verts G)"
+  have 0:"\<exists>q. type_definition ((fst q)::('n \<Rightarrow> 'a)) (snd q) (verts G)"
     using td by simp
   show "type_definition enum_verts enum_verts_inv (verts G)"
     unfolding td_components_def enum_verts_def enum_verts_inv_def using someI_ex[OF 0] by simp
@@ -27,8 +36,9 @@ qed
 lemma enum_verts: "bij_betw enum_verts UNIV (verts G)"
   unfolding bij_betw_def by (simp add: Rep_inject Rep_range inj_on_def)
 
-(* The stochastic matrix associated to the graph *)
-definition A :: "('c::field)^'n^'n" where 
+text \<open>The stochastic matrix associated to the graph.\<close>
+
+definition A :: "('c::field)^'n^'n" where
   "A = (\<chi> i j. of_nat (count (edges G) (enum_verts j,enum_verts i))/of_nat d)"
 
 lemma card_n: "CARD('n) = n"
@@ -49,12 +59,10 @@ lemma g_step_conv:
 proof -
   have "g_step f (enum_verts i) = (\<Sum>j\<in>UNIV. A $ i $ j * f (enum_verts j))" (is "?L = ?R") for i
   proof -
-    have "?L = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real (out_degree G (tail G x)))"
+    have "?L = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / d)"
       unfolding g_step_def by simp
-    also have "... = (\<Sum>x\<in>in_arcs G (enum_verts i). f (tail G x) / real d)"
-      by (intro sum.cong arg_cong2[where f="(/)"] arg_cong[where f="real"] reg) auto
     also have "... = (\<Sum>x\<in>#vertices_to G (enum_verts i). f x/d)"
-      unfolding verts_to_alt  sum_unfold_sum_mset by (simp add:image_mset.compositionality comp_def)
+      unfolding verts_to_alt sum_unfold_sum_mset by (simp add:image_mset.compositionality comp_def)
     also have "... = (\<Sum>j\<in>verts G. (count (vertices_to G (enum_verts i)) j) * (f j / real d))"
       by (intro sum_mset_conv_2 set_mset_vertices_to) auto
     also have "... = (\<Sum>j\<in>verts G. (count (edges G) (j,enum_verts i)) * (f j / real d))"
@@ -73,7 +81,7 @@ qed
 
 lemma g_inner_conv: 
   "g_inner f g = (\<chi> i. f (enum_verts i)) \<bullet> (\<chi> i. g (enum_verts i))"
-  unfolding inner_vec_def g_inner_def vec_lambda_beta inner_real_def
+  unfolding inner_vec_def g_inner_def vec_lambda_beta inner_real_def conjugate_real_def
   by (intro sum.reindex_bij_betw[symmetric] enum_verts)
 
 lemma g_norm_conv: 
@@ -85,9 +93,6 @@ proof -
     using g_norm_nonneg norm_ge_zero by simp
 qed
 
-lemma test: "True" by auto
-
-
 end
 
 lemma eg_tts_1:
@@ -97,24 +102,8 @@ lemma eg_tts_1:
   using assms  
   unfolding pre_expander_graph_tts_def  pre_expander_graph_tts_axioms_def by auto
 
-
 context pre_expander_graph 
 begin
-
-lemma eg_tts_2:
-  assumes "\<exists>(f :: ('n \<Rightarrow> 'a)) g. type_definition f g (verts G)"
-  shows "class.finite TYPE('n)"
-proof -
-  obtain Rep :: "'n \<Rightarrow> 'a" and Abs where d:"type_definition Rep Abs (verts G)"
-    using assms by auto
-  interpret type_definition Rep Abs "verts G"
-    using d by simp
-                              
-  have "finite (verts G)" by simp 
-  thus ?thesis
-    unfolding class.finite_def univ by auto
-qed
-
 
 lemma remove_finite_premise_aux:
   assumes "\<exists>(Rep :: 'n  \<Rightarrow> 'a) Abs. type_definition Rep Abs (verts G)"
@@ -148,7 +137,5 @@ next
 qed
 
 end
-
-
 
 end

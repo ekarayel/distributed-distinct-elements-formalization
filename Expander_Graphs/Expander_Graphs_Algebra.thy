@@ -1,11 +1,13 @@
+section \<open>Algebra-only Theorems\<close>
+
+text \<open>This section verifies the linear algebraic counter-parts of the graph-theoretic theorems
+about Random walks. The graph-theoretic results are then derived in Section~\ref{sec:random_walks}.\<close>
+
 theory Expander_Graphs_Algebra
   imports 
     "HOL-Library.Monad_Syntax"
-    "HOL-Analysis.Cartesian_Space"
     Expander_Graphs_TTS
 begin
-
-section "Missing Finite Cartesian Product"
 
 lemma pythagoras: 
   fixes v w :: "'a::real_inner"
@@ -128,9 +130,6 @@ lemma nonneg_mat_transpose:
   unfolding nonneg_mat_def transpose_def 
   by auto
 
-
-section \<open>Expander Graphs - Algebra\<close>
-
 definition spec_bound :: "real^'n^'n \<Rightarrow> real \<Rightarrow> bool"
   where "spec_bound M l = (l \<ge> 0 \<and> (\<forall>v. v \<bullet> 1 = 0 \<longrightarrow> norm (M *v v) \<le> l * norm v))"
 
@@ -162,7 +161,6 @@ proof -
   ultimately show ?thesis 
     unfolding spec_bound_def by simp
 qed
-
 
 definition markov :: "real^'n^'n \<Rightarrow> bool"
   where "markov M = (nonneg_mat M \<and> M *v 1  = 1 \<and> 1 v* M = 1)"
@@ -346,8 +344,6 @@ proof (intro iffD2[OF vec_eq_iff] allI)
   finally show "(J *v x) $ i = (proj_unit x) $ i" by simp
 qed 
 
-
-(* REMOVE *)
 lemma spec_bound_J: "spec_bound (J :: real^'n^'n) 0"
 proof -
   have "norm (J *v v) = 0" if "inner v 1 = 0" for v :: "real^'n"
@@ -674,7 +670,6 @@ lemma foldl_concat:
   "foldl f a (concat xss) = foldl (\<lambda>y xs. foldl f y xs) a xss"
   by (induction xss rule:rev_induct, auto)
 
-
 lemma hitting_property_alg_2:
   fixes S :: "('n :: finite) set" and l :: nat 
   fixes M :: "real^'n^'n"
@@ -683,7 +678,8 @@ lemma hitting_property_alg_2:
   defines "P i \<equiv> (if i \<in> I then diag (ind_vec S) else mat 1)"
   defines "\<mu> \<equiv> real (card S) / real (CARD('n))"
   assumes "spec_bound M \<alpha>" "markov M"
-  shows "foldl (\<lambda>x M. M *v x) stat (intersperse M (map P [0..<l])) \<bullet> 1 \<le> (\<mu> + \<alpha> * (1-\<mu>))^card I"
+  shows 
+    "foldl (\<lambda>x M. M *v x) stat (intersperse M (map P [0..<l])) \<bullet> 1 \<le> (\<mu>+\<alpha>*(1-\<mu>))^card I"
     (is "?L \<le> ?R")
 proof (cases "I \<noteq> {}")
   case True
@@ -880,6 +876,7 @@ proof -
 qed
 
 end
+
 lemma foldl_matrix_mult_expand:
   fixes Ms :: "(('r::{semiring_1,comm_monoid_mult})^'a^'a) list"
   shows "(foldl (\<lambda>x M. M *v x) a Ms) $ k = (\<Sum>x | length x = length Ms+1 \<and> x! length Ms = k. 
@@ -957,6 +954,5 @@ proof -
     by (intro sum.cong, auto)
   finally show ?thesis by simp
 qed
-
 
 end

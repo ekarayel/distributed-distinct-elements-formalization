@@ -1,4 +1,6 @@
-theory Expander_Graphs_Eigenvalues_2
+section \<open>Spectral Theory\label{sec:expander_eigenvalues}\<close>
+
+theory Expander_Graphs_Eigenvalues
   imports 
     Expander_Graphs_Algebra
     Expander_Graphs_TTS 
@@ -20,11 +22,8 @@ hide_fact Matrix.mat_def
 hide_fact Matrix.row_def
 no_notation Matrix.scalar_prod  (infix "\<bullet>" 70)
 
-lemma mult_right_mono': "y \<ge> (0::real) \<Longrightarrow> x \<le> x2 \<or> y = 0  \<Longrightarrow> x * y \<le> x2 * y"  
+lemma mult_right_mono': "y \<ge> (0::real) \<Longrightarrow> x \<le> z \<or> y = 0 \<Longrightarrow> x * y \<le> z * y"  
   by (metis mult_cancel_right mult_right_mono)
-
-lemma mset_repl: "mset (replicate k x) = replicate_mset k x"
-  by (induction k, auto)
 
 lemma poly_prod_zero:
   fixes x :: "'a :: idom"
@@ -106,7 +105,8 @@ proof (induction "size xs + size ys" arbitrary: xs ys rule:nat_less_induct)
 qed
 
 definition eigenvalues :: "('a::comm_ring_1)^'n^'n \<Rightarrow> 'a multiset" 
-  where "eigenvalues A = (SOME as. charpoly A = (\<Prod>a\<in>#as. [:- a, 1:]) \<and> size as = CARD ('n))"
+  where 
+    "eigenvalues A = (SOME as. charpoly A = (\<Prod>a\<in>#as. [:- a, 1:]) \<and> size as = CARD ('n))"
 
 lemma char_poly_factorized_hma: 
   fixes A :: "complex^'n^'n"
@@ -224,7 +224,7 @@ begin
 
 lemma cinner_hma: 
   fixes x y :: "complex^'n"
-  shows "cinner x y=  (from_hma\<^sub>v x) \<bullet>c (from_hma\<^sub>v y)" (is "?L = ?R")
+  shows "cinner x y = (from_hma\<^sub>v x) \<bullet>c (from_hma\<^sub>v y)" (is "?L = ?R")
 proof -
   have "?L = (\<Sum>i\<in>UNIV. x $h i * cnj (y $h i))" 
     unfolding cinner_def map_vector_def  scalar_product_def by simp
@@ -237,11 +237,13 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma cinner_hma_transfer[transfer_rule]: "(HMA_V ===> HMA_V ===> (=)) (\<bullet>c) cinner"
+lemma cinner_hma_transfer[transfer_rule]: 
+  "(HMA_V ===> HMA_V ===> (=)) (\<bullet>c) cinner"
   unfolding  HMA_V_def  cinner_hma
   by (auto simp:rel_fun_def)
 
-lemma adjoint_hma_transfer[transfer_rule]: "(HMA_M ===> HMA_M) (mat_adjoint) adjoint_hma"
+lemma adjoint_hma_transfer[transfer_rule]: 
+  "(HMA_M ===> HMA_M) (mat_adjoint) adjoint_hma"
   unfolding HMA_M_def rel_fun_def by (auto simp add:adjoint_hma)
 
 end
@@ -299,15 +301,14 @@ definition real_diag_decomp_hma where
 definition hermitian_hma :: "complex^'n^'n \<Rightarrow> bool" where 
   "hermitian_hma A = (adjoint_hma A = A)"
 
-
 lemma from_hma_one:
-  "from_hma\<^sub>m ((Finite_Cartesian_Product.mat 1) :: (('a::{one,zero})^('n::finite)^'n)) = 1\<^sub>m CARD('n)"
+  "from_hma\<^sub>m (mat 1 :: (('a::{one,zero})^'n^'n)) = 1\<^sub>m CARD('n)"
   unfolding Finite_Cartesian_Product.mat_def from_hma\<^sub>m_def using from_nat_inj
   by (intro eq_matI) auto
 
 lemma from_hma_mult: 
-  fixes A :: "('a :: semiring_1)^('m::finite)^('n::finite)"
-  fixes B :: "'a^('k::finite)^('m::finite)"
+  fixes A :: "('a :: semiring_1)^'m^'n"
+  fixes B :: "'a^'k^'m::finite"
   shows "from_hma\<^sub>m A * from_hma\<^sub>m B = from_hma\<^sub>m (A ** B)"
   using HMA_M_mult unfolding rel_fun_def HMA_M_def by auto
 
@@ -352,7 +353,8 @@ lemma unitary_hma_adjoint:
 
 lemma unitarily_equiv_hma:
   fixes A :: "complex^'n^'n"
-  shows  "unitarily_equiv_hma A B U = unitarily_equiv (from_hma\<^sub>m A) (from_hma\<^sub>m B) (from_hma\<^sub>m U)"
+  shows  "unitarily_equiv_hma A B U = 
+    unitarily_equiv (from_hma\<^sub>m A) (from_hma\<^sub>m B) (from_hma\<^sub>m U)"
     (is "?L = ?R")
 proof -
   have "?R \<longleftrightarrow> (unitary_hma U \<and> similar_mat_wit (from_hma\<^sub>m A) (from_hma\<^sub>m B) (from_hma\<^sub>m U) (from_hma\<^sub>m (adjoint_hma U)))"
@@ -398,7 +400,8 @@ qed
 
 lemma unitary_diag_hma:
   fixes A :: "complex^'n^'n"
-  shows "unitary_diag A d U = Spectral_Theory_Complements.unitary_diag (from_hma\<^sub>m A) (from_hma\<^sub>m (diag d)) (from_hma\<^sub>m U)"
+  shows "unitary_diag A d U = 
+    Spectral_Theory_Complements.unitary_diag (from_hma\<^sub>m A) (from_hma\<^sub>m (diag d)) (from_hma\<^sub>m U)"
 proof -
   have "Matrix.diagonal_mat (from_hma\<^sub>m (diag d))"
     unfolding diagonal_mat_hma[symmetric] by simp
@@ -409,7 +412,8 @@ qed
 
 lemma real_diag_decomp_hma:
   fixes A :: "complex^'n^'n"
-  shows "real_diag_decomp_hma A d U = real_diag_decomp (from_hma\<^sub>m A) (from_hma\<^sub>m (diag d)) (from_hma\<^sub>m U)"
+  shows "real_diag_decomp_hma A d U = 
+    real_diag_decomp (from_hma\<^sub>m A) (from_hma\<^sub>m (diag d)) (from_hma\<^sub>m U)"
 proof -
   have 0:"(\<forall>i. d $h i \<in> \<real>) \<longleftrightarrow> (\<forall>i < CARD('n). from_hma\<^sub>m (diag d) $$ (i,i) \<in> \<real>)"
     unfolding from_hma\<^sub>m_def diag_def using to_nat_less_card by fastforce
@@ -561,12 +565,8 @@ lemma g_step_1:
   assumes "v \<in> verts G"
   shows "g_step (\<lambda>_. 1) v = 1" (is "?L = ?R")
 proof -
-  have "?L = (\<Sum>x\<in>in_arcs G v. 1 / real (out_degree G (tail G x)))"
-    unfolding g_step_def by simp
-  also have "... = (\<Sum>x\<in>in_arcs G v. 1 / d)"
-    using assms by (intro sum.cong arg_cong2[where f="(/)"] arg_cong[where f="real"] reg) auto
-  also have "... = in_degree G v / d"
-    unfolding in_degree_def by simp
+  have "?L = in_degree G v / d"
+    unfolding g_step_def in_degree_def by simp
   also have "... = 1"
     unfolding reg(2)[OF assms] using d_gt_0 by simp
   finally show ?thesis by simp
@@ -797,6 +797,9 @@ qed
 
 definition \<Lambda>\<^sub>e :: "'n itself \<Rightarrow> real" where
   "\<Lambda>\<^sub>e _ = Max_mset (image_mset cmod (eigenvalues A - {#(1::complex)#})+{#0::real#})"
+
+definition \<gamma>\<^sub>2 :: "'n itself \<Rightarrow> real" where
+  "\<gamma>\<^sub>2 _ = Max_mset (image_mset Re (eigenvalues A - {#(1::complex)#}))"
 
 lemma J_sym: "hermitian_hma J"
   unfolding J_def hermitian_hma_def

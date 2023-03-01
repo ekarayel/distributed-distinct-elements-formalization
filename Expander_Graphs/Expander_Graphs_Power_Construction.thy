@@ -1,3 +1,5 @@
+section \<open>Graph Powers\label{sec:graph_power}\<close>
+
 theory Expander_Graphs_Power_Construction
   imports 
     Expander_Graphs_Walks
@@ -322,9 +324,6 @@ proof -
     unfolding symmetric_multi_graph_def by auto
 qed
 
-lemma filter_mset_const: "filter_mset (\<lambda>_. c) xs = (if c then xs else {#})"
-  by simp
-
 lemma  (in fin_digraph) graph_power_out_degree':
   assumes reg: "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
   assumes "v \<in> verts (graph_power G l)"
@@ -435,7 +434,7 @@ proof (induction l arbitrary: x)
   have "pre_expander_graph.g_step (graph_power G 0) f x = H.g_step f x"
     by simp
   have "H.g_step f x = (\<Sum>x\<in>in_arcs ?H x. f (tail ?H x))"
-    unfolding H.g_step_altdef graph_power_degree by simp
+    unfolding H.g_step_def graph_power_degree by simp
   also have "... = (\<Sum>v\<in>{e \<in> arc_walks G 0. arc_walk_head G e = x}. f (fst v))"
     unfolding in_arcs_def graph_power_def by (simp add:case_prod_beta)
   also have "... = (\<Sum>v\<in>{x}. f v)"
@@ -478,7 +477,7 @@ next
     by (intro bij_betwI[where g="?bijr"]) auto
 
   have "HS.g_step f x = (\<Sum>y\<in>in_arcs ?HS x. f (tail ?HS y)/ d^(l+1))"
-    unfolding HS.g_step_altdef graph_power_degree by simp
+    unfolding HS.g_step_def graph_power_degree by simp
   also have "... = (\<Sum>y\<in>in_arcs ?HS x. f (fst y)/ d^(l+1))"
     unfolding graph_power_def by simp
   also have "... = (\<Sum>y \<in> S. f (fst (?bij y))/ d^(l+1))" 
@@ -495,11 +494,11 @@ next
     unfolding graph_power_def
     by (simp add:sum_divide_distrib algebra_simps)
   also have "... = (\<Sum>a \<in> in_arcs G x. H.g_step f (tail G a)/ d)" 
-    unfolding H.g_step_altdef graph_power_degree by simp
+    unfolding H.g_step_def graph_power_degree by simp
   also have "... = (\<Sum>a \<in> in_arcs G x. (g_step^^l) f (tail G a)/ d)"
     by (intro sum.cong refl arg_cong2[where f="(/)"] Suc) auto
   also have "... = g_step ((g_step^^l) f) x"
-    unfolding g_step_altdef by simp
+    unfolding g_step_def by simp
   also have "... = (g_step^^(l+1)) f x"
     by simp
   finally show ?case by simp

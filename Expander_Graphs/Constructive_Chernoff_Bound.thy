@@ -1,8 +1,12 @@
+subsection \<open>Constructive Chernoff Bound\label{sec:constructive_chernoff_bound}\<close>
+
+text \<open>This section formalizes Theorem~5 by Impagliazzo and Kabanets~\cite{impagliazzo2010}.\<close>
+
 theory Constructive_Chernoff_Bound
   imports 
     "HOL-Probability.Probability_Measure" 
-    "Frequency_Moments.Product_PMF_Ext"
-    "Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean"
+    Frequency_Moments.Product_PMF_Ext
+    Weighted_Arithmetic_Geometric_Mean.Weighted_Arithmetic_Geometric_Mean
 begin
 
 lemma powr_mono_rev:
@@ -73,7 +77,6 @@ proof -
     unfolding split_pair_pmf by simp
   finally show ?thesis by simp
 qed
-
 
 definition KL_div :: "real \<Rightarrow> real \<Rightarrow> real" 
   where "KL_div p q = p * ln (p/q) + (1-p) * ln ((1-p)/(1-q))"
@@ -282,7 +285,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-text \<open>The distribution of a random variable with a countable range is discrete probability space, 
+text \<open>The distribution of a random variable with a countable range is a discrete probability space, 
 i.e., induces a PMF. Using this it is possible to generalize the previous result to arbitrary
 probability spaces.\<close>
 

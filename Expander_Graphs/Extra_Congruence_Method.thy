@@ -1,3 +1,8 @@
+subsection \<open>Congruence Method\<close>
+
+text \<open>The following is a method for proving equalities of large terms by checking the equivalence
+of subterms. It is possible to precisely control which operators to split by.\<close>
+
 theory Extra_Congruence_Method
   imports Main "HOL-Eisbach.Eisbach"
 begin

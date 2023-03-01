@@ -1,3 +1,5 @@
+section \<open>Random Walks\label{sec:random_walks}\<close>
+
 theory Expander_Graphs_Walks
   imports
     Expander_Graphs_Algebra
@@ -13,127 +15,11 @@ hide_const Matrix.vec_index
 hide_const Matrix.vec
 no_notation Matrix.scalar_prod  (infix "\<bullet>" 70)
 
-lemma count_image_mset_inj:
-  assumes "inj f"
-  shows "count (image_mset f A) (f x) = count A x"
-proof (cases "x \<in> set_mset A")
-  case True
-  hence "f -` {f x} \<inter> set_mset A = {x}" 
-    using assms by (auto simp add:vimage_def inj_def) 
-  then show ?thesis by (simp add:count_image_mset)
-next
-  case False
-  hence "f -` {f x} \<inter> set_mset A = {}" 
-    using assms by (auto simp add:vimage_def inj_def) 
-  thus ?thesis  using False by (simp add:count_image_mset count_eq_zero_iff)
-qed
-
-lemma count_image_mset_0_triv:
-  assumes "x \<notin> range f"
-  shows "count (image_mset f A) x = 0" 
-proof -
-  have "x \<notin> set_mset (image_mset f A)" 
-    using assms by auto
-  thus ?thesis 
-    by (meson count_inI)
-qed
-
-lemma filter_mset_ex_predicates:
-  assumes "\<And>x. \<not> P x \<or> \<not> Q x"
-  shows "filter_mset P M + filter_mset Q M = filter_mset (\<lambda>x. P x \<or> Q x) M"
-  using assms by (induction M, auto)
-
-lemma sum_count_2: 
-  assumes "finite F"
-  shows "sum (count M) F = size (filter_mset (\<lambda>x. x \<in> F) M)"
-  using assms
-proof (induction F rule:finite_induct)
-  case empty
-  then show ?case by simp
-next
-  case (insert x F)
-  have "sum (count M) (insert x F) = size ({#y \<in># M. y = x#} + {#x \<in># M. x \<in> F#})"
-    using insert(1,2,3) by (simp add:count_mset_exp)
-  also have "... = size ({#y \<in># M. y = x \<or> y \<in> F#})"
-    using insert(2)
-    by (intro arg_cong[where f="size"] filter_mset_ex_predicates) simp
-  also have "... = size (filter_mset (\<lambda>y. y \<in> insert x F) M)"
-    by simp
-  finally show ?case by simp
-qed
-
-
-definition concat_mset :: "('a multiset) multiset \<Rightarrow> 'a multiset"
-  where "concat_mset xss = fold_mset (\<lambda>xs ys. xs + ys) {#} xss"
-
-lemma image_concat_mset:
-  "image_mset f (concat_mset xss) = concat_mset (image_mset (image_mset f) xss)"
-  unfolding concat_mset_def by (induction xss, auto)
-
-
-lemma concat_add_mset:
-  "concat_mset (image_mset (\<lambda>x. f x + g x) xs) = concat_mset (image_mset f xs) + concat_mset (image_mset g xs)"
-  unfolding concat_mset_def by (induction xs) auto
-
-lemma concat_add_mset_2:
-  "concat_mset (xs + ys) = concat_mset xs + concat_mset ys"
-  unfolding concat_mset_def by (induction xs, auto)
-
-lemma size_concat_mset:
-  "size (concat_mset xss) = sum_mset (image_mset size xss)"
-  unfolding concat_mset_def by (induction xss, auto)
-
-lemma filter_concat_mset:
-  "filter_mset P (concat_mset xss) = concat_mset (image_mset (filter_mset P) xss)"
-  unfolding concat_mset_def by (induction xss, auto)
-
-lemma count_concat_mset:
-  "count (concat_mset xss) xs = sum_mset (image_mset (\<lambda>x. count x xs) xss)"
-  unfolding concat_mset_def by (induction xss, auto)
-
-lemma set_mset_concat_mset:
-  "set_mset (concat_mset xss) = \<Union> (set_mset ` (set_mset xss))"
-  unfolding concat_mset_def by (induction xss, auto)
-
-lemma concat_mset_empty: "concat_mset {#} = {#}"
-  unfolding concat_mset_def by simp
-
-lemma concat_mset_single: "concat_mset {#x#} = x"
-  unfolding concat_mset_def by simp
-
-lemma concat_disjoint_union_mset:
-  assumes "finite I"
-  assumes "\<And>i. i \<in> I \<Longrightarrow> finite (A i)"
-  assumes "\<And>i j. i \<in> I \<Longrightarrow> j \<in> I \<Longrightarrow> i \<noteq> j \<Longrightarrow> A i \<inter> A j = {}"
-  shows  "mset_set (\<Union> (A ` I)) = concat_mset (image_mset (mset_set \<circ> A) (mset_set I))"
-  using assms
-proof (induction I rule:finite_induct)
-  case empty
-  then show ?case by (simp add:concat_mset_empty)
-next
-  case (insert x F)
-  have "mset_set (\<Union> (A ` insert x F)) = mset_set (A x \<union> (\<Union> (A ` F)))"
-    by simp
-  also have "... = mset_set (A x) + mset_set (\<Union> (A ` F))"
-    using insert by (intro mset_set_Union) auto
-  also have "... = mset_set (A x) + concat_mset (image_mset (mset_set \<circ> A) (mset_set F))"
-    using insert by (intro arg_cong2[where f="(+)"] insert(3)) auto
-  also have "... = concat_mset (image_mset (mset_set \<circ> A) ({#x#} + mset_set F))"
-    by (simp add:concat_mset_def)
-  also have "... = concat_mset (image_mset (mset_set \<circ> A) (mset_set (insert x F)))"
-    using insert by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]") auto
-  finally show ?case by blast
-qed
-
-lemma size_filter_mset_conv:
-  "size (filter_mset f A) = sum_mset (image_mset (\<lambda>x. of_bool (f x) :: nat) A)"
-  by (induction A, auto)
-
-
 fun walks' :: "('a,'b) pre_digraph \<Rightarrow> nat \<Rightarrow> ('a list) multiset"
   where 
     "walks' G 0 = image_mset (\<lambda>x. [x]) (mset_set (verts G))" |
-    "walks' G (Suc n) = concat_mset {#{#w @[z].z\<in># vertices_from G (last w)#}. w \<in># walks' G n#}" 
+    "walks' G (Suc n) = 
+      concat_mset {#{#w @[z].z\<in># vertices_from G (last w)#}. w \<in># walks' G n#}" 
 
 definition "walks G l = (case l of 0 \<Rightarrow> {#[]#} | Suc pl \<Rightarrow> walks' G pl)"
 
@@ -142,7 +28,6 @@ lemma Union_image_mono: "(\<And>x. x \<in> A \<Longrightarrow> f x \<subseteq> g
 
 context fin_digraph
 begin
-
 
 lemma count_walks':
   assumes "set xs \<subseteq> verts G"
@@ -302,14 +187,14 @@ next
 qed
 
 lemma size_walks:
-  "size (walks G l) = (if l > 0 then card (verts G) * d^(l-1) else 1)" (* TODO Use n = card (verts G) *)
-  using size_walks' unfolding walks_def by (cases l, auto)
+  "size (walks G l) = (if l > 0 then n * d^(l-1) else 1)"
+  using size_walks' unfolding walks_def n_def by (cases l, auto)
 
 lemma walks_nonempty: 
   "walks G l \<noteq> {#}"
 proof -
   have "size (walks G l) > 0"
-    unfolding size_walks using d_gt_0 verts_non_empty by auto 
+    unfolding size_walks using d_gt_0 n_gt_0 by auto 
   thus "walks G l \<noteq> {#}"
     by auto
 qed
@@ -318,39 +203,6 @@ end
 
 context pre_expander_graph_tts
 begin
-
-lemma nonneg_A: "nonneg_mat A"
-  unfolding nonneg_mat_def A_def by auto
-
-lemma g_step_1:
-  assumes "v \<in> verts G"
-  shows "g_step (\<lambda>_. 1) v = 1" (is "?L = ?R")
-proof -
-  have "?L = (\<Sum>x\<in>in_arcs G v. 1 / real (out_degree G (tail G x)))"
-    unfolding g_step_def by simp
-  also have "... = (\<Sum>x\<in>in_arcs G v. 1 / d)"
-    using assms by (intro sum.cong arg_cong2[where f="(/)"] arg_cong[where f="real"] reg) auto
-  also have "... = in_degree G v / d"
-    unfolding in_degree_def by simp
-  also have "... = 1"
-    unfolding reg(2)[OF assms] using d_gt_0 by simp
-  finally show ?thesis by simp
-qed
-
-lemma markov: "markov (A :: real^'n^'n)"
-proof -
-  have "A *v 1 = (1::real ^'n)" (is "?L = ?R")
-  proof -
-    have "A *v 1 = (\<chi> i. g_step (\<lambda>_. 1) (enum_verts i))"
-      unfolding g_step_conv one_vec_def by simp
-    also have "... = (\<chi> i. 1)"
-      using bij_betw_apply[OF enum_verts] by (subst g_step_1) auto
-    also have "... = 1" unfolding one_vec_def by simp
-    finally show ?thesis by simp
-  qed
-  thus ?thesis
-    by (intro markov_symI nonneg_A symmetric_A)
-qed
 
 lemma g_step_remains_orth:
   assumes "g_inner f (\<lambda>_. 1) = 0"
@@ -456,7 +308,7 @@ lemma walk_distr:
   (is "?L = ?R")
 proof (cases "l > 0")
   case True
-  let ?n = "real (card (verts G))"
+  let ?n = "real n"
   let ?d = "real d"
   let ?W = "{(w::'a list). set w \<subseteq> verts G \<and> length w = l}"
   let ?V = "{(w::'n list). length w = l}"
@@ -542,7 +394,7 @@ proof (cases "l > 0")
     (\<Sum>w\<in>?V. (\<Prod>i<lp. (xt ! i ** A) $ w!(i+1) $ w!i) * of_bool(enum_verts (w!0)\<in>S 0))/?n"
     unfolding xh_xt[symmetric] by auto
   also have "... = (\<Sum>w\<in>?V. (\<Prod>i<lp. (xt!i**A)$ w!(i+1) $ w!i)*(ind_mat(S 0)*v stat) $w!0)"
-    unfolding matrix_vector_mult_def diag_def stat_def ind_vec_def ind_mat_def card
+    using n_def unfolding matrix_vector_mult_def diag_def stat_def ind_vec_def ind_mat_def card
     by (simp add:sum.If_cases if_distrib if_distribR sum_divide_distrib)
   also have "... = (\<Sum>w\<in>?V. (\<Prod>i<lp. (xt ! i ** A) $ w!(i+1) $ w!i) * (xh *v stat) $ w ! 0)"
     unfolding xh_eq by simp
@@ -648,7 +500,7 @@ lemmas uniform_property_2 =
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
-lemma uniform_property:
+theorem uniform_property:
   assumes "i < l"
   shows "map_pmf (\<lambda>w. w ! i) (pmf_of_multiset (walks G l)) = pmf_of_set (verts G)" (is "?L = ?R")
 proof (rule pmf_eqI)
@@ -693,12 +545,12 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma kl_chernoff_property:
+theorem kl_chernoff_property:
   assumes "l > 0"
   assumes "S \<subseteq> verts G"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
   assumes "\<gamma> \<le> 1" "\<mu> + \<Lambda> * (1-\<mu>) \<in> {0<..\<gamma>}"
-  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*real l} 
+  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l} 
     \<le> exp (- real l * KL_div \<gamma> (\<mu>+\<Lambda>*(1-\<mu>)))" (is "?L \<le> ?R")
 proof -
   let ?\<delta> = "(\<Sum>i<l. \<mu>+\<Lambda>*(1-\<mu>))/l"

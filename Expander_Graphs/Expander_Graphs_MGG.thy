@@ -1,12 +1,13 @@
-section \<open>Margulis Gabber Galil Construction\<close>
+section \<open>Margulis Gabber Galil Construction\label{sec:margulis}\<close>
 
 text \<open>This section formalizes the Margulis-Gabber-Galil expander graph, which is defined on the
 product space $\mathbb Z_n \times \mathbb Z_n$. The construction is an adaptation of graph
 introduced by Margulis~\cite{margulis1973}, for which he gave a non-constructive proof of its
 spectral gap. Later Gabber and Galil~\cite{gabber1981} adapted the graph and derived an explicit
-spectral gap, i.e., that the second largest eigenvalue is bounded by $\frac{5}{8} \sqrt{2}$.
-Hoory et al.~\cite[\S 8]{hoory2006} present an improved version of the proof, which this 
-formalization is based on.\<close>
+spectral gap, i.e., that the second largest eigenvalue is bounded by $\frac{5}{8} \sqrt{2}$. The
+proof was later improved by Jimbo and Marouka~\cite{jimbo1987} using Fourier Analysis. 
+Hoory et al.~\cite[\S 8]{hoory2006} present a slight simplification of that proof (due to Boppala)
+which this formalization is based on.\<close>
 
 theory Expander_Graphs_MGG
   imports 
@@ -188,47 +189,25 @@ proof -
     unfolding d_def by simp
 qed
 
-definition c_inner :: "(int \<times> int \<Rightarrow> complex) \<Rightarrow> (int \<times> int \<Rightarrow> complex) \<Rightarrow> complex"
-  where "c_inner f g = (\<Sum>v \<in> verts G. f v * cnj (g v))" 
+text \<open>We start by introducing Fourier Analysis on the torus $\mathbb Z_n \times \mathbb Z_n$. The
+following is too specialized for a general AFP entry.\<close>
 
-lemma c_inner_simps:
-  "c_inner (\<lambda>x. 0) g = 0" 
-  "c_inner f (\<lambda>x. 0) = 0" 
-  "c_inner (\<lambda>x. c * f x) g = c * c_inner f g" 
-  "c_inner f (\<lambda>x. c * g x) = cnj c * c_inner f g" 
-  "c_inner (\<lambda>x. f x + g x) h = c_inner f h + c_inner g h" 
-  "c_inner f (\<lambda>x. g x + h x) = c_inner f g + c_inner f h" 
-  "c_inner f (\<lambda>x. g x / c) = c_inner f g / cnj c" 
-  "c_inner (\<lambda>x. f x / c) g = c_inner f g / c" 
-  unfolding c_inner_def 
-  by (auto simp add:sum.distrib algebra_simps sum_distrib_left sum_divide_distrib)
-
-lemma c_inner_sum_left:
+lemma g_inner_sum_left:
   assumes "finite I"
-  shows "c_inner (\<lambda>x. (\<Sum>i \<in> I. f i x)) g = (\<Sum>i\<in> I. c_inner (f i) g)"
-  using assms by (induction I rule:finite_induct) (auto simp add:c_inner_simps)
+  shows "g_inner (\<lambda>x. (\<Sum>i \<in> I. f i x)) g = (\<Sum>i\<in> I. g_inner (f i) g)"
+  using assms by (induction I rule:finite_induct) (auto simp add:g_inner_simps)
 
-lemma c_inner_sum_right:
+lemma g_inner_sum_right:
   assumes "finite I"
-  shows "c_inner f (\<lambda>x. (\<Sum>i \<in> I. g i x)) = (\<Sum>i\<in> I. c_inner f (g i))"
-  using assms by (induction I rule:finite_induct) (auto simp add:c_inner_simps)
+  shows "g_inner f (\<lambda>x. (\<Sum>i \<in> I. g i x)) = (\<Sum>i\<in> I. g_inner f (g i))"
+  using assms by (induction I rule:finite_induct) (auto simp add:g_inner_simps)
 
-lemma c_inner_reindex:
+lemma g_inner_reindex:
   assumes "bij_betw h (verts G) (verts G)"
-  shows "c_inner f g = c_inner (\<lambda>x. (f (h x))) (\<lambda>x. (g (h x)))"
-  unfolding c_inner_def
+  shows "g_inner f g = g_inner (\<lambda>x. (f (h x))) (\<lambda>x. (g (h x)))"
+  unfolding g_inner_def
   by (subst sum.reindex_bij_betw[OF assms,symmetric]) simp
-
-lemma c_inner_self:
-  "c_inner f f = (\<Sum>v \<in> verts G. norm (f v)^2)"
-  unfolding c_inner_def using complex_norm_square by simp 
-
-lemma c_inner_cong:
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> f1 x = f2 x"
-  assumes "\<And>x. x \<in> verts G \<Longrightarrow> g1 x = g2 x"
-  shows "c_inner f1 g1 = c_inner f2 g2"
-  unfolding c_inner_def using assms by (intro sum.cong) auto
-
+  
 definition \<omega>\<^sub>F :: "real \<Rightarrow> complex" where "\<omega>\<^sub>F x = cis (2*pi*x/m)"
 
 lemma \<omega>\<^sub>F_simps:
@@ -295,16 +274,16 @@ next
 qed
 
 definition FT :: "(int \<times> int \<Rightarrow> complex) \<Rightarrow> (int \<times> int \<Rightarrow> complex)"
-  where "FT f v = c_inner f (\<lambda>x. \<omega>\<^sub>F (fst x * fst v + snd x * snd v))"
+  where "FT f v = g_inner f (\<lambda>x. \<omega>\<^sub>F (fst x * fst v + snd x * snd v))"
 
-lemma FT_altdef: "FT f (u,v) = c_inner f (\<lambda>x. \<omega>\<^sub>F (fst x * u + snd x * v))"
+lemma FT_altdef: "FT f (u,v) = g_inner f (\<lambda>x. \<omega>\<^sub>F (fst x * u + snd x * v))"
   unfolding FT_def by (simp add:case_prod_beta)
 
 lemma FT_add: "FT (\<lambda>x. f x + g x) v = FT f v + FT g v"
-  unfolding FT_def by (simp add:c_inner_simps algebra_simps)
+  unfolding FT_def by (simp add:g_inner_simps algebra_simps)
 
 lemma FT_zero: "FT (\<lambda>x. 0) v = 0"
-  unfolding FT_def c_inner_def by simp
+  unfolding FT_def g_inner_def by simp
 
 lemma FT_sum: 
   assumes "finite I" 
@@ -312,20 +291,20 @@ lemma FT_sum:
   using assms by (induction rule: finite_induct, auto simp add:FT_zero FT_add)
 
 lemma FT_scale: "FT (\<lambda>x. c * f x) v = c * FT f v"
-  unfolding FT_def by (simp add: c_inner_simps)
+  unfolding FT_def by (simp add: g_inner_simps)
 
 lemma FT_cong:
   assumes "\<And>x. x \<in> verts G \<Longrightarrow> f x = g x"
   shows "FT f = FT g"
-  unfolding FT_def by (intro ext c_inner_cong assms refl)
+  unfolding FT_def by (intro ext g_inner_cong assms refl)
 
 lemma parseval:
-  "c_inner f g = c_inner (FT f) (FT g)/m^2" (is "?L = ?R")
+  "g_inner f g = g_inner (FT f) (FT g)/m^2" (is "?L = ?R")
 proof -
   define \<delta> :: "(int \<times> int) \<Rightarrow> (int \<times> int) \<Rightarrow> complex" where "\<delta> x y = of_bool (x = y)" for x y
 
   have FT_\<delta>: "FT (\<delta> v) x = \<omega>\<^sub>F (-(fst v *fst x +snd v * snd x))" if "v \<in> verts G" for v x
-    using that by (simp add:FT_def c_inner_def \<delta>_def \<omega>\<^sub>F_simps)
+    using that by (simp add:FT_def g_inner_def \<delta>_def \<omega>\<^sub>F_simps)
 
   have 1: "(\<Sum>x=0..<int m. \<omega>\<^sub>F (z*x)) = m * of_bool(z mod m = 0)" (is "?L1 = ?R1") for z :: int
   proof (cases "z mod m = 0")
@@ -355,13 +334,13 @@ proof -
     then show ?thesis using False by simp
   qed
 
-  have 0:"c_inner (\<delta> v) (\<delta> w) = c_inner (FT (\<delta> v)) (FT (\<delta> w))/m^2" (is "?L1 = ?R1/_")
+  have 0:"g_inner (\<delta> v) (\<delta> w) = g_inner (FT (\<delta> v)) (FT (\<delta> w))/m^2" (is "?L1 = ?R1/_")
     if "v \<in> verts G" "w \<in> verts G" for v w
   proof -
-    have "?R1=c_inner(\<lambda>x. \<omega>\<^sub>F(-(fst v *fst x +snd v * snd x)))(\<lambda>x. \<omega>\<^sub>F(-(fst w *fst x +snd w * snd x)))"
-      using that by (intro c_inner_cong, auto simp add:FT_\<delta>)
+    have "?R1=g_inner(\<lambda>x. \<omega>\<^sub>F(-(fst v *fst x +snd v * snd x)))(\<lambda>x. \<omega>\<^sub>F(-(fst w *fst x +snd w * snd x)))"
+      using that by (intro g_inner_cong, auto simp add:FT_\<delta>)
     also have "...=(\<Sum>(x,y)\<in>{0..<int m}\<times>{0..<int m}. \<omega>\<^sub>F((fst w-fst v)*x)*\<omega>\<^sub>F((snd w - snd v)* y))"
-      unfolding mgg_graph_def c_inner_def by (simp add:\<omega>\<^sub>F_simps algebra_simps case_prod_beta)
+      unfolding g_inner_def by (simp add:\<omega>\<^sub>F_simps algebra_simps case_prod_beta mgg_graph_def)
     also have "...=(\<Sum>x=0..<int m. \<Sum>y = 0..<int m. \<omega>\<^sub>F((fst w - fst v)*x)*\<omega>\<^sub>F((snd w - snd v) * y))"
       by (subst sum.cartesian_product[symmetric]) simp
     also have "...=(\<Sum>x=0..<int m. \<omega>\<^sub>F((fst w - fst v)*x))*(\<Sum>y = 0..<int m. \<omega>\<^sub>F((snd w - snd v) * y))"
@@ -374,36 +353,36 @@ proof -
     also have "... = m^2 * of_bool(v = w)"
       using that by (auto simp add:prod_eq_iff mgg_graph_def power2_eq_square)
     also have "... = m^2 * ?L1" 
-      using that unfolding c_inner_def \<delta>_def by simp
+      using that unfolding g_inner_def \<delta>_def by simp
     finally have "?R1 = m^2 * ?L1" by simp
     thus ?thesis using m_gt_0 by simp
   qed
 
-  have "?L = c_inner (\<lambda>x. (\<Sum>v \<in> verts G. (f v) * \<delta> v x)) (\<lambda>x. (\<Sum>v \<in> verts G. (g v) * \<delta> v x))"
-    unfolding \<delta>_def by (intro c_inner_cong) auto
-  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * c_inner (\<delta> v) (\<delta> w)))"
-    by (simp add:c_inner_simps c_inner_sum_left c_inner_sum_right)
-  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * c_inner(FT (\<delta> v)) (FT (\<delta> w))))/m^2"
+  have "?L = g_inner (\<lambda>x. (\<Sum>v \<in> verts G. (f v) * \<delta> v x)) (\<lambda>x. (\<Sum>v \<in> verts G. (g v) * \<delta> v x))"
+    unfolding \<delta>_def by (intro g_inner_cong) auto
+  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * g_inner (\<delta> v) (\<delta> w)))"
+    by (simp add:g_inner_simps g_inner_sum_left g_inner_sum_right)
+  also have "... = (\<Sum>v\<in>verts G. (f v) * (\<Sum>w\<in>verts G. cnj (g w) * g_inner(FT (\<delta> v)) (FT (\<delta> w))))/m^2"
     by (simp add:0 sum_divide_distrib sum_distrib_left algebra_simps)
-  also have "...=c_inner(\<lambda>x.(\<Sum>v\<in>verts G. (f v)*FT (\<delta> v) x))(\<lambda>x.(\<Sum>v\<in>verts G. (g v)*FT (\<delta> v) x))/m\<^sup>2"
-    by (simp add:c_inner_simps c_inner_sum_left c_inner_sum_right)
-  also have "...=c_inner(FT(\<lambda>x.(\<Sum>v\<in>verts G.(f v)*\<delta> v x)))(FT(\<lambda>x.(\<Sum>v\<in>verts G.(g v)*\<delta> v x)))/m\<^sup>2"
-    by (intro c_inner_cong arg_cong2[where f="(/)"]) (simp_all add: FT_sum FT_scale)
-  also have "... = c_inner (FT f) (FT g)/m^2 "
+  also have "...=g_inner(\<lambda>x.(\<Sum>v\<in>verts G. (f v)*FT (\<delta> v) x))(\<lambda>x.(\<Sum>v\<in>verts G. (g v)*FT (\<delta> v) x))/m\<^sup>2"
+    by (simp add:g_inner_simps g_inner_sum_left g_inner_sum_right)
+  also have "...=g_inner(FT(\<lambda>x.(\<Sum>v\<in>verts G.(f v)*\<delta> v x)))(FT(\<lambda>x.(\<Sum>v\<in>verts G.(g v)*\<delta> v x)))/m\<^sup>2"
+    by (intro g_inner_cong arg_cong2[where f="(/)"]) (simp_all add: FT_sum FT_scale)
+  also have "... = g_inner (FT f) (FT g)/m^2 "
     unfolding \<delta>_def comp_def
-    by (intro c_inner_cong arg_cong2[where f="(/)"] fun_cong[OF FT_cong]) auto
+    by (intro g_inner_cong arg_cong2[where f="(/)"] fun_cong[OF FT_cong]) auto
   finally show ?thesis by simp
 qed
 
 lemma plancharel:
   "(\<Sum>v \<in> verts G. norm (f v)^2) = (\<Sum>v \<in> verts G. norm (FT f v)^2)/m^2" (is "?L = ?R")
 proof -
-  have "complex_of_real ?L = c_inner f f"
-    by (simp flip:of_real_power add:complex_norm_square c_inner_def algebra_simps)
-  also have "... = c_inner (FT f) (FT f) / m^2"
+  have "complex_of_real ?L = g_inner f f"
+    by (simp flip:of_real_power add:complex_norm_square g_inner_def algebra_simps)
+  also have "... = g_inner (FT f) (FT f) / m^2"
     by (subst parseval) simp
   also have "... = complex_of_real ?R"
-    by (simp flip:of_real_power add:complex_norm_square c_inner_def algebra_simps) simp
+    by (simp flip:of_real_power add:complex_norm_square g_inner_def algebra_simps) simp
   finally have "complex_of_real ?L = complex_of_real ?R" by simp
   thus ?thesis 
     using of_real_eq_iff by blast
@@ -417,7 +396,7 @@ proof -
      (auto simp add:mgg_graph_def)
   show ?thesis
     unfolding FT_def
-    by (subst c_inner_reindex[OF 0]) (simp add:algebra_simps)
+    by (subst g_inner_reindex[OF 0]) (simp add:algebra_simps)
 qed
 
 lemma mod_add_mult_eq:
@@ -447,7 +426,7 @@ lemma periodic_cong:
 lemma periodic_FT: "periodic (FT f)"
 proof -
   have "FT f (x,y) = FT f (x mod m,y mod m)" for x y
-    unfolding FT_altdef by (intro  arg_cong2[where f="c_inner"] \<omega>\<^sub>F_cong ext) 
+    unfolding FT_altdef by (intro g_inner_cong \<omega>\<^sub>F_cong ext) 
      (auto simp add:mod_simps cong:mod_add_cong)
   thus ?thesis 
     unfolding periodic_def by simp
@@ -479,21 +458,21 @@ proof -
   have 5: "fst (s x) = fst x" for x
     unfolding s_def by (cases x, simp)
 
-  have "?L = c_inner (\<lambda>x. f (fst x, snd x + c*fst x+d)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
+  have "?L = g_inner (\<lambda>x. f (fst x, snd x + c*fst x+d)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
     unfolding FT_altdef by simp
-  also have "... = c_inner (\<lambda>x. f (fst x, (snd x + c*fst x+d) mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
-    by (intro c_inner_cong  periodic_cong[OF assms]) (auto simp add:algebra_simps)
-  also have "... = c_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ snd (s x)* v))"
-    by (subst c_inner_reindex[OF 3]) (simp add:4 5)
+  also have "... = g_inner (\<lambda>x. f (fst x, (snd x + c*fst x+d) mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u + snd x* v))"
+    by (intro g_inner_cong  periodic_cong[OF assms]) (auto simp add:algebra_simps)
+  also have "... = g_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ snd (s x)* v))"
+    by (subst g_inner_reindex[OF 3]) (simp add:4 5)
   also have "... =
-    c_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ ((snd x-c*fst x-d) mod m)* v))"
+    g_inner (\<lambda>x. f (fst x, snd x mod m)) (\<lambda>x. \<omega>\<^sub>F (fst x*u+ ((snd x-c*fst x-d) mod m)* v))"
     by (simp add:s_def case_prod_beta)
-  also have "... = c_inner f (\<lambda>x. \<omega>\<^sub>F (fst x* (u-c * v) + snd x * v-d * v))"
-    by (intro c_inner_cong \<omega>\<^sub>F_cong) (auto simp add:mgg_graph_def algebra_simps mod_add_mult_eq) 
-  also have "... = c_inner f (\<lambda>x. \<omega>\<^sub>F (-d* v)*\<omega>\<^sub>F (fst x*(u-c* v) + snd x * v))"
+  also have "... = g_inner f (\<lambda>x. \<omega>\<^sub>F (fst x* (u-c * v) + snd x * v-d * v))"
+    by (intro g_inner_cong \<omega>\<^sub>F_cong) (auto simp add:mgg_graph_def algebra_simps mod_add_mult_eq) 
+  also have "... = g_inner f (\<lambda>x. \<omega>\<^sub>F (-d* v)*\<omega>\<^sub>F (fst x*(u-c* v) + snd x * v))"
     by (simp add: \<omega>\<^sub>F_simps   algebra_simps)
-  also have "... = \<omega>\<^sub>F (d* v)*c_inner f (\<lambda>x. \<omega>\<^sub>F (fst x*(u-c* v) + snd x * v))"
-    by (simp add:c_inner_simps \<omega>\<^sub>F_simps)
+  also have "... = \<omega>\<^sub>F (d* v)*g_inner f (\<lambda>x. \<omega>\<^sub>F (fst x*(u-c* v) + snd x * v))"
+    by (simp add:g_inner_simps \<omega>\<^sub>F_simps)
   also have "... = ?R"
     unfolding FT_altdef by simp 
   finally show ?thesis by simp
@@ -536,7 +515,7 @@ definition compare :: "real \<times> real \<Rightarrow> real \<times> real \<Rig
 
 text \<open>The value here is different from the value in the source material. This is because the proof 
 in Hoory~\cite[\S 8]{hoory2006} only establishes the bound $\frac{73}{80}$ while this formalization
-establishes the improved bound of $\frac{5}{9} \sqrt 2$.\<close>
+establishes the improved bound of $\frac{5}{8} \sqrt 2$.\<close>
 
 definition \<alpha> :: real where "\<alpha> = sqrt 2" 
 
@@ -630,6 +609,10 @@ proof -
   thus ?thesis
     by (intro cos_ge_zero) auto 
 qed
+
+text \<open>The following is the first step in establishing Eq. 15 in Hoory et al.~\cite[\S 8]{hoory2006}.
+Afterwards using various symmetries (diagonal, x-axis, y-axis) the result will follow for the entire
+square $[0,1] \times [0,1]$.\<close>
 
 lemma fun_bound_real_3:
   assumes "0 \<le> x"  "x \<le> y" "y \<le> 1/2" "(x,y) \<noteq> (0,0)"
@@ -817,7 +800,7 @@ proof -
   thus ?thesis using 0 by simp
 qed
 
-text \<open>Extend to square [0; 1/2]\<times>[0;1/2] using symmetry around x=y axis.\<close>
+text \<open>Extend to square $[0, \frac{1}{2}] \times [0,\frac{1}{2}]$ using symmetry around x=y axis.\<close>
 
 lemma fun_bound_real_2:
   assumes "x \<in> {0..1/2}" "y \<in> {0..1/2}" "(x,y) \<noteq> (0,0)"
@@ -836,7 +819,7 @@ next
     by (intro fun_bound_real_3) auto
 qed
 
-text \<open>Extend to x > 1/2 using symmetry around x=1/2 axis.\<close>
+text \<open>Extend to $x > \frac{1}{2}$ using symmetry around $x=\frac{1}{2}$ axis.\<close>
 
 lemma fun_bound_real_1:
   assumes "x \<in> {0..<1}" "y \<in> {0..1/2}" "(x,y) \<noteq> (0,0)"
@@ -893,7 +876,7 @@ next
   thus ?thesis using assms fun_bound_real_2 by simp 
 qed
 
-text \<open>Extend to y > 1/2 using symmetry around y=1/2 axis.\<close>
+text \<open>Extend to $y > \frac{1}{2}$ using symmetry around $y=\frac{1}{2}$ axis.\<close>
 
 lemma fun_bound_real:
   assumes "x \<in> {0..<1}" "y \<in> {0..<1}" "(x,y) \<noteq> (0,0)"
@@ -1104,7 +1087,7 @@ lemma hoory_8_7:
   fixes f :: "int\<times>int \<Rightarrow> complex"
   assumes "f (0,0) = 0"
   assumes "periodic f"
-  shows "norm(c_inner f (\<lambda>x. f (S\<^sub>2 x) * (1+\<omega>\<^sub>F (fst x)) + f (S\<^sub>1 x) * (1+\<omega>\<^sub>F (snd x))))
+  shows "norm(g_inner f (\<lambda>x. f (S\<^sub>2 x) * (1+\<omega>\<^sub>F (fst x)) + f (S\<^sub>1 x) * (1+\<omega>\<^sub>F (snd x))))
     \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (f v)^2)" (is "?L \<le> ?R")
 proof -
   define g :: "int\<times>int \<Rightarrow> real" where "g x = norm (f x)" for x
@@ -1133,7 +1116,7 @@ proof -
   qed
 
   have "?L\<le>norm(\<Sum>v\<in>verts G. f v * cnj(f(S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v))+f(S\<^sub>1 v )*(1+\<omega>\<^sub>F (snd v))))"
-    unfolding c_inner_def by (simp add:case_prod_beta)
+    unfolding g_inner_def by (simp add:case_prod_beta)
   also have "...\<le>(\<Sum>v\<in>verts G. norm(f v * cnj(f (S\<^sub>2 v) *(1+\<omega>\<^sub>F (fst v))+f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v)))))"
     by (intro norm_sum)
   also have "...=(\<Sum>v\<in>verts G. g v * norm(f (S\<^sub>2 v) *(1+\<omega>\<^sub>F (fst v))+f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v))))"
@@ -1156,19 +1139,21 @@ lemma hoory_8_3:
   shows "\<bar>(\<Sum>(x,y)\<in>verts G. f(x,y)*(f(x+2*y,y)+f(x+2*y+1,y)+f(x,y+2*x)+f(x,y+2*x+1)))\<bar> 
     \<le> (2.5 * sqrt 2) * g_norm f^2" (is "\<bar>?L\<bar> \<le> ?R")
 proof -
+  let ?f = "(\<lambda>x. complex_of_real (f x))"
+
   define Ts :: "(int \<times> int \<Rightarrow> int \<times> int) list" where 
     "Ts = [(\<lambda>(x,y).(x+2*y,y)),(\<lambda>(x,y).(x+2*y+1,y)),(\<lambda>(x,y).(x,y+2*x)),(\<lambda>(x,y).(x,y+2*x+1))]"
-  have p: "periodic (\<lambda>x. complex_of_real (f x))" 
+  have p: "periodic ?f" 
     by (intro periodic_comp[OF assms(2)])
 
-  have 0: "(\<Sum>T\<leftarrow>Ts. FT (f\<circ>T) v) = FT f (S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v))+FT f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v))" 
+  have 0: "(\<Sum>T\<leftarrow>Ts. FT (?f\<circ>T) v) = FT ?f (S\<^sub>2 v)*(1+\<omega>\<^sub>F (fst v))+FT ?f (S\<^sub>1 v)*(1+\<omega>\<^sub>F (snd v))" 
     (is "?L1 = ?R1") for v :: "int \<times> int"
   proof -
     obtain x y where v_def: "v = (x,y)" by (cases v, auto)
-    have "?L1 = (\<Sum>T\<leftarrow>Ts. FT (f\<circ>T) (x,y))"
+    have "?L1 = (\<Sum>T\<leftarrow>Ts. FT (?f\<circ>T) (x,y))"
       unfolding v_def by simp
-    also have "... = FT f (x,y-2*x)*(1+\<omega>\<^sub>F x) + FT f (x-2*y,y)*(1+\<omega>\<^sub>F y)"
-      unfolding Ts_def by (simp add:FT_sheer[OF p] case_prod_beta) (simp add:algebra_simps)
+    also have "... = FT ?f (x,y-2*x)*(1+\<omega>\<^sub>F x) + FT ?f (x-2*y,y)*(1+\<omega>\<^sub>F y)"
+      unfolding Ts_def by (simp add:FT_sheer[OF p] case_prod_beta comp_def) (simp add:algebra_simps)
     also have "... = ?R1"
       unfolding v_def S\<^sub>2_def S\<^sub>1_def
       by (intro arg_cong2[where f="(+)"] arg_cong2[where f="(*)"] periodic_cong[OF periodic_FT]) auto
@@ -1181,7 +1166,7 @@ proof -
   finally have 1: "cmod ((of_nat m)\<^sup>2) = (real m)\<^sup>2" by simp
 
   have "FT (\<lambda>x. complex_of_real (f x)) (0, 0) = complex_of_real (g_inner f (\<lambda>_ . 1))"
-    unfolding FT_def g_inner_def c_inner_def \<omega>\<^sub>F_def by simp
+    unfolding FT_def g_inner_def g_inner_def \<omega>\<^sub>F_def by simp
   also have "... = 0"
     unfolding assms by simp
   finally have 2: "FT (\<lambda>x. complex_of_real (f x)) (0, 0) = 0"
@@ -1189,13 +1174,13 @@ proof -
 
   have "abs ?L = norm (complex_of_real ?L)" 
     unfolding norm_of_real by simp
-  also have "... = norm (\<Sum>T \<leftarrow> Ts. (c_inner f (f \<circ> T)))"
-    unfolding Ts_def by (simp add:algebra_simps c_inner_def sum.distrib comp_def case_prod_beta)
-  also have "... = norm (\<Sum>T \<leftarrow> Ts. (c_inner (FT f) (FT (f \<circ> T)))/m^2)" 
+  also have "... = norm (\<Sum>T \<leftarrow> Ts. (g_inner ?f (?f \<circ> T)))"
+    unfolding Ts_def by (simp add:algebra_simps g_inner_def  sum.distrib comp_def case_prod_beta)
+  also have "... = norm (\<Sum>T \<leftarrow> Ts. (g_inner (FT ?f) (FT (?f \<circ> T)))/m^2)" 
     by (subst parseval) simp
-  also have "... = norm (c_inner (FT f) (\<lambda>x. (\<Sum>T \<leftarrow> Ts. (FT (f \<circ> T) x)))/m^2)"
-    unfolding Ts_def by (simp add:c_inner_simps case_prod_beta add_divide_distrib)
-  also have "...=norm(c_inner(FT f)(\<lambda>x.(FT f(S\<^sub>2 x)*(1+\<omega>\<^sub>F (fst x))+FT f(S\<^sub>1 x)*(1+\<omega>\<^sub>F (snd x)))))/m^2"
+  also have "... = norm (g_inner (FT ?f) (\<lambda>x. (\<Sum>T \<leftarrow> Ts. (FT (?f \<circ> T) x)))/m^2)"
+    unfolding Ts_def by (simp add:g_inner_simps case_prod_beta add_divide_distrib)
+  also have "...=norm(g_inner(FT ?f)(\<lambda>x.(FT ?f(S\<^sub>2 x)*(1+\<omega>\<^sub>F (fst x))+FT f(S\<^sub>1 x)*(1+\<omega>\<^sub>F (snd x)))))/m^2"
     by (subst 0) (simp add:norm_divide 1)
   also have "... \<le> (2.5 * sqrt 2) * (\<Sum>v \<in> verts G. norm (FT f v)^2) / m^2"
     by (intro divide_right_mono hoory_8_7[where f="FT f"] 2 periodic_FT) auto 

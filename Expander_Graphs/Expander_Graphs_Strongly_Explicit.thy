@@ -1,6 +1,17 @@
-section \<open>Strongly Explicit Expander Graphs\<close>
+section \<open>Strongly Explicit Expander Graphs\label{sec:see}\<close>
 
-text \<open>TODO\<close>
+text \<open>In some applications, representing an expander graph using a data structure (for example
+as an adjacency lists) would be prohibitive. For such cases strongly explicit expander graphs (SEE) 
+are relevant. These are expander graphs, which can be represented implicitly using a function that 
+computes for each vertex its neighbors in space and time logarithmic w.r.t. to the size of the 
+graph. An application can for example sample a random walk, from a SEE using such a function 
+efficiently. An example of such a graph is the Margulis construction from 
+Section~\ref{sec:margulis}. This section presents the latter as a SEE but also shows that two graph
+operations that preserve the SEE property, in particular the graph power construction from 
+Section~\ref{sec:graph_power} and a compression scheme introduced by 
+Murtagh~\cite[Theorem~20]{murtagh2019}. Combining all of the above it is possible to construct 
+strongly explicit expander graphs of \emph{every size} and spectral gap, which is formalized in 
+Subsection~\ref{sec:see_standard}.\<close>
 
 theory Expander_Graphs_Strongly_Explicit
   imports Expander_Graphs_Power_Construction Expander_Graphs_MGG
@@ -66,6 +77,67 @@ proof -
   finally show ?thesis by simp
 qed
 
+lemma out_degree_see:
+  assumes "v \<in> verts (graph_of e)"
+  shows "out_degree (graph_of e) v = see_degree e" (is "?L = ?R")
+proof -
+  let ?d = "see_degree e"
+  let ?n = "see_size e"
+  have 0: "v < ?n" 
+    using assms unfolding graph_of_def by simp
+
+  have "?L = card {a. (\<exists>x\<in>{..<?n}. \<exists>y\<in>{..<?d}. a = Arc x (see_step e y x) y) \<and> arc_tail a = v}"
+    unfolding out_degree_def out_arcs_def graph_of_def by (simp add:image_iff)
+  also have "... = card {a. (\<exists>y\<in>{..<?d}. a = Arc v (see_step e y v) y)}"
+    using 0 by (intro arg_cong[where f="card"]) auto
+  also have "... = card ((\<lambda>y. Arc v (see_step e y v) y) ` {..<?d})"
+    by (intro arg_cong[where f="card"] iffD2[OF set_eq_iff]) (simp add:image_iff)
+  also have "... = card {..<?d}"
+    by (intro card_image inj_onI) auto
+  also have "... = ?d" by simp
+  finally show ?thesis by simp
+qed
+
+lemma card_arc_walks_see:
+  assumes "fin_digraph (graph_of e)"
+  shows "card (arc_walks (graph_of e) n) = see_degree e^n * see_size e" (is "?L = ?R")
+proof -
+  let ?G = "graph_of e"
+  interpret fin_digraph ?G
+    using assms by auto
+  have "?L = card (\<Union>v \<in> verts ?G. {x. fst x = v \<and> is_arc_walk ?G v (snd x) \<and> length (snd x) = n})"
+    unfolding arc_walks_def by (intro arg_cong[where f="card"]) auto
+  also have "... = (\<Sum>v \<in> verts ?G. card {x. fst x=v\<and>is_arc_walk ?G v (snd x)\<and>length (snd x) = n})"
+    using is_arc_walk_set[where G="?G"]
+    by (intro card_UN_disjoint ballI finite_cartesian_product subsetI finite_lists_length_eq
+        finite_subset[where B="verts ?G \<times> {x. set x \<subseteq> arcs ?G \<and> length x = n}"]) force+
+  also have "... = (\<Sum>v \<in> verts ?G. out_degree (graph_power ?G n) v)"
+    unfolding out_degree_def graph_power_def out_arcs_def arc_walks_def 
+    by (intro sum.cong arg_cong[where f="card"]) auto
+  also have "... = (\<Sum>v \<in> verts ?G. see_degree e^n)"
+    by (intro sum.cong graph_power_out_degree' out_degree_see refl) (simp_all add: graph_power_def)
+  also have "... = ?R"
+    by (simp add:graph_of_def)
+  finally show ?thesis by simp
+qed
+
+lemma pre_expander_graph_degree_eq_see_degree:
+  assumes "pre_expander_graph (graph_of e)"
+  shows "pre_expander_graph.d (graph_of e) = see_degree e" (is "?L = ?R")
+proof -
+  interpret pre_expander_graph "graph_of e"
+    using assms(1) by simp
+  obtain v where v_set: "v \<in> verts (graph_of e)"
+    using verts_non_empty by auto
+  hence "?L = out_degree (graph_of e) v" 
+    using v_set reg by auto
+  also have "... = see_degree e"
+    by (intro out_degree_see v_set)
+  finally show ?thesis by simp
+qed
+
+text \<open>The following introduces the compression scheme, described in \cite[Theorem 20]{murtagh2019}.\<close>
+
 fun see_compress :: "nat \<Rightarrow> strongly_explicit_expander \<Rightarrow> strongly_explicit_expander"
   where "see_compress m e = 
     \<lparr> see_size = m, see_degree = see_degree e * 2
@@ -73,32 +145,6 @@ fun see_compress :: "nat \<Rightarrow> strongly_explicit_expander \<Rightarrow> 
       if k < see_degree e 
         then (see_step e k v) mod m 
         else (if v+m < see_size e then (see_step e (k-see_degree e) (v+m)) mod m else v)) \<rparr>"
-
-lemma repeat_image_concat_mset: 
-  "repeat_mset n (image_mset f A) = concat_mset (image_mset (\<lambda>x. replicate_mset n (f x)) A)"
-  unfolding concat_mset_def by (induction A, auto)
-
-lemma mset_prod_eq:
-  assumes "finite A" "finite B"
-  shows "mset_set (A \<times> B) = concat_mset {# {# (x,y). y \<in># mset_set B #} .x \<in># mset_set A #}"
-  using assms(1)
-proof (induction rule:finite_induct)
-  case empty
-  then show ?case unfolding concat_mset_def by simp
-next
-  case (insert x F)
-  have "mset_set (insert x F \<times> B) = mset_set (F \<times> B \<union> (\<lambda>y. (x,y)) ` B)"
-    by (intro arg_cong[where f="mset_set"]) auto
-  also have "... = mset_set (F \<times> B) + mset_set ((\<lambda>y. (x,y)) ` B)"
-    using insert(1,2) assms(2) by (intro mset_set_Union finite_cartesian_product) auto
-  also have "... = mset_set (F \<times> B) + {# (x,y). y \<in># mset_set B #}"
-    by (intro arg_cong2[where f="(+)"] image_mset_mset_set[symmetric] inj_onI) auto
-  also have "... = concat_mset {#image_mset (Pair x) (mset_set B). x \<in># {#x#} + (mset_set F)#}"
-    unfolding insert image_mset_union concat_add_mset_2 by (simp add:concat_mset_single)
-  also have "... = concat_mset {#image_mset (Pair x) (mset_set B). x \<in># mset_set (insert x F)#}"
-    using insert(1,2) by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]") auto
-  finally show ?case by simp
-qed
 
 lemma edges_of_compress:
   fixes e m
@@ -231,71 +277,6 @@ proof -
     using 1 H.fin_digraph_axioms
     unfolding symmetric_multi_graph_def by auto
 qed
-
-lemma out_degree_see:
-  assumes "v \<in> verts (graph_of e)"
-  shows "out_degree (graph_of e) v = see_degree e" (is "?L = ?R")
-proof -
-  let ?d = "see_degree e"
-  let ?n = "see_size e"
-  have 0: "v < ?n" 
-    using assms unfolding graph_of_def by simp
-
-  have "?L = card {a. (\<exists>x\<in>{..<?n}. \<exists>y\<in>{..<?d}. a = Arc x (see_step e y x) y) \<and> arc_tail a = v}"
-    unfolding out_degree_def out_arcs_def graph_of_def by (simp add:image_iff)
-  also have "... = card {a. (\<exists>y\<in>{..<?d}. a = Arc v (see_step e y v) y)}"
-    using 0 by (intro arg_cong[where f="card"]) auto
-  also have "... = card ((\<lambda>y. Arc v (see_step e y v) y) ` {..<?d})"
-    by (intro arg_cong[where f="card"] iffD2[OF set_eq_iff]) (simp add:image_iff)
-  also have "... = card {..<?d}"
-    by (intro card_image inj_onI) auto
-  also have "... = ?d" by simp
-  finally show ?thesis by simp
-qed
-
-lemma card_arc_walks_see:
-  assumes "fin_digraph (graph_of e)"
-  shows "card (arc_walks (graph_of e) n) = see_degree e^n * see_size e" (is "?L = ?R")
-proof -
-  let ?G = "graph_of e"
-  interpret fin_digraph ?G
-    using assms by auto
-  have "?L = card (\<Union>v \<in> verts ?G. {x. fst x = v \<and> is_arc_walk ?G v (snd x) \<and> length (snd x) = n})"
-    unfolding arc_walks_def by (intro arg_cong[where f="card"]) auto
-  also have "... = (\<Sum>v \<in> verts ?G. card {x. fst x=v\<and>is_arc_walk ?G v (snd x)\<and>length (snd x) = n})"
-    using is_arc_walk_set[where G="?G"]
-    by (intro card_UN_disjoint ballI finite_cartesian_product subsetI finite_lists_length_eq
-        finite_subset[where B="verts ?G \<times> {x. set x \<subseteq> arcs ?G \<and> length x = n}"]) force+
-  also have "... = (\<Sum>v \<in> verts ?G. out_degree (graph_power ?G n) v)"
-    unfolding out_degree_def graph_power_def out_arcs_def arc_walks_def 
-    by (intro sum.cong arg_cong[where f="card"]) auto
-  also have "... = (\<Sum>v \<in> verts ?G. see_degree e^n)"
-    by (intro sum.cong graph_power_out_degree' out_degree_see refl) (simp_all add: graph_power_def)
-  also have "... = ?R"
-    by (simp add:graph_of_def)
-  finally show ?thesis by simp
-qed
-
-
-lemma pre_expander_graph_degree_eq_see_degree:
-  assumes "pre_expander_graph (graph_of e)"
-  shows "pre_expander_graph.d (graph_of e) = see_degree e" (is "?L = ?R")
-proof -
-  interpret pre_expander_graph "graph_of e"
-    using assms(1) by simp
-  obtain v where v_set: "v \<in> verts (graph_of e)"
-    using verts_non_empty by auto
-  hence "?L = out_degree (graph_of e) v" 
-    using v_set reg by auto
-  also have "... = see_degree e"
-    by (intro out_degree_see v_set)
-  finally show ?thesis by simp
-qed
-
-lemma sum_mset_repeat: 
-  fixes f :: "'a \<Rightarrow> 'b :: {comm_monoid_add,semiring_1}"
-  shows "sum_mset (image_mset f (repeat_mset n A)) = of_nat n * sum_mset (image_mset f A)"
-  by (induction n, auto simp add:sum_mset.distrib algebra_simps)
 
 lemma see_compress:
   assumes "is_expander e \<Lambda>"
@@ -438,6 +419,9 @@ proof -
   thus ?thesis unfolding is_expander_def using 0 by simp
 qed
 
+text \<open>The graph power of a strongly explicit expander graph is itself a strongly explicit expander
+graph.\<close>
+
 fun to_digits :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat list"
   where 
     "to_digits _ 0 _ = []" |
@@ -447,7 +431,6 @@ fun from_digits :: "nat \<Rightarrow> nat list \<Rightarrow> nat"
   where
     "from_digits b [] = 0" |
     "from_digits b (x#xs) = x + b * from_digits b xs"
-
 
 lemma to_from_digits:
   assumes "length xs = n" "set xs \<subseteq> {..<b}"
@@ -661,6 +644,9 @@ proof -
     unfolding is_expander_def by auto
 qed
 
+text \<open>The Margulis Construction from Section~\ref{sec:margulis} is a strongly explicit expander
+graph.\<close>
+
 definition mgg_vert :: "nat \<Rightarrow> nat \<Rightarrow> (int \<times> int)"
   where "mgg_vert n x = (x mod n, x div n)"
 
@@ -682,7 +668,6 @@ lemma mgg_arc_inv:
   assumes  "x \<in> {..<4}\<times>{-1,1}"
   shows "mgg_arc (mgg_arc_inv x) = x"
   using assms unfolding mgg_arc_def mgg_arc_inv_def by auto
-
 
 definition see_mgg :: "nat \<Rightarrow> strongly_explicit_expander" where
   "see_mgg n = \<lparr> see_size = n^2, see_degree = 8, 
@@ -820,6 +805,9 @@ proof -
     unfolding is_expander_def by auto
 qed
 
+text \<open>Using all of the above it is possible to construct strongly explicit expanders of every 
+size and spectral gap with asymptotically optimal degree.\<close>
+
 definition see_standard_aux 
   where "see_standard_aux n = see_compress n (see_mgg (nat \<lceil>sqrt n\<rceil>))"
 
@@ -929,7 +917,7 @@ next
 qed
 
 lemma see_standard_power_eval[code]: 
-  "see_standard_power x =  (if x \<le> 0 \<or> x \<ge> 1 then 0 else (1+see_standard_power (x/0.95)))"
+  "see_standard_power x = (if x \<le> 0 \<or> x \<ge> 1 then 0 else (1+see_standard_power (x/0.95)))"
 proof (cases "x \<le> 0 \<or> x \<ge> 1")
   case True
   have "ln x / ln (19 / 20) \<le> 0" if "x > 0"
@@ -967,7 +955,7 @@ qed
 definition see_standard :: "nat \<Rightarrow> real \<Rightarrow> strongly_explicit_expander"
   where "see_standard n \<Lambda> = see_power (see_standard_power \<Lambda>) (see_standard_aux n)"
 
-lemma see_standard:
+theorem see_standard:
   assumes "n > 0" "\<Lambda> > 0"
   shows "is_expander (see_standard n \<Lambda>) \<Lambda>"
     and "see_size (see_standard n \<Lambda>) = n"
@@ -997,7 +985,7 @@ fun see_sample_walk :: "strongly_explicit_expander \<Rightarrow> nat \<Rightarro
     "see_sample_walk e (Suc l) x = (let w = see_sample_walk e l (x div (see_degree e)) in 
       w@[see_step e (x mod (see_degree e)) (last w)])"
 
-lemma see_sample_walk:
+theorem see_sample_walk:
   fixes e l
   assumes "fin_digraph (graph_of e)"
   defines "r \<equiv> see_size e * see_degree e ^l" 

@@ -1,3 +1,5 @@
+section \<open>Definitions\label{sec:definitions}\<close>
+
 theory Expander_Graphs_Definition
   imports 
     Graph_Theory.Digraph
@@ -5,42 +7,13 @@ theory Expander_Graphs_Definition
     "HOL-Library.Multiset" 
     "HOL-Analysis.L2_Norm" 
     Extra_Congruence_Method
-    Frequency_Moments.Frequency_Moments_Preliminary_Results
+    Expander_Graphs_Multiset_Extras
+    Jordan_Normal_Form.Conjugate
 begin
 
 unbundle intro_cong_syntax
 
-lemma sum_mset_conv: 
-  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
-  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
-proof (induction A rule: disj_induct_mset)
-  case 1
-  then show ?case by simp
-next
-  case (2 n M x)
-  moreover have "count M x = 0" using 2 by (simp add: count_eq_zero_iff)
-  moreover have "\<And>y. y \<in> set_mset M \<Longrightarrow> y \<noteq> x" using 2 by blast
-  ultimately show ?case by (simp add:algebra_simps) 
-qed
-
-lemma sum_mset_conv_2: 
-  fixes f :: "'a \<Rightarrow> 'b::{semiring_1}"
-  assumes "set_mset A \<subseteq> B" "finite B"
-  shows "sum_mset (image_mset f A) = sum (\<lambda>x. of_nat (count A x) * f x) B" (is "?L = ?R")
-proof -
-  have "?L = sum (\<lambda>x. of_nat (count A x) * f x) (set_mset A)"
-    unfolding sum_mset_conv by simp
-  also have "... = ?R"
-    by (intro sum.mono_neutral_left assms) (simp_all add: iffD2[OF count_eq_zero_iff])
-  finally show ?thesis by simp
-qed
-
-lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
-  by (induction A, simp, simp)
-
 definition arcs_betw where "arcs_betw G u v = {a. a \<in> arcs G \<and> head G a = v \<and> tail G a = u}"
-
-subsection \<open>Symmetric Multigraphs\<close>
 
 text \<open>The following is a stronger notion than the notion of symmetry defined in 
 @{theory "Graph_Theory.Digraph"}, it requires that the number of edges from @{term "v"} to 
@@ -104,7 +77,8 @@ qed
 
 lemma symmetric_multi_graphD3:
   assumes "symmetric_multi_graph G"
-  shows "card {e \<in> arcs G. tail G e=v \<and> head G e=w} = card {e \<in> arcs G. tail G e=w \<and> head G e=v}" 
+  shows
+    "card {e\<in>arcs G. tail G e=v \<and> head G e=w}=card {e\<in>arcs G. tail G e=w\<and>head G e=v}" 
   using symmetric_multi_graphD[OF assms] by (simp add:conj.commute)
 
 lemma symmetric_multi_graphD4:
@@ -266,23 +240,37 @@ proof -
 qed
 
 (* should we use conjugatable field here? *)
-definition g_inner :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real) \<Rightarrow> real" 
-  where "g_inner f g = (\<Sum>x \<in> verts G. (f x) * (g x))"
+definition g_inner :: "('a \<Rightarrow> ('c :: conjugatable_field)) \<Rightarrow> ('a \<Rightarrow> 'c) \<Rightarrow> 'c" 
+  where "g_inner f g = (\<Sum>x \<in> verts G. (f x) * conjugate (g x))"
+
+lemma conjugate_divide[simp]:
+  fixes x y :: "'c :: conjugatable_field"
+  shows "conjugate (x / y) = conjugate x / conjugate y"
+proof (cases "y = 0")
+  case True
+  then show ?thesis by simp
+next
+  case False
+  have "conjugate (x/y) * conjugate y = conjugate x"
+    using False by (simp add:conjugate_dist_mul[symmetric])
+  thus ?thesis
+    by (simp add:divide_simps)
+qed
 
 lemma g_inner_simps:
   "g_inner (\<lambda>x. 0) g = 0" 
   "g_inner f (\<lambda>x. 0) = 0" 
   "g_inner (\<lambda>x. c * f x) g = c * g_inner f g" 
-  "g_inner f (\<lambda>x. c * g x) = c * g_inner f g" 
+  "g_inner f (\<lambda>x. c * g x) = conjugate c * g_inner f g" 
   "g_inner (\<lambda>x. f x - g x) h = g_inner f h - g_inner g h" 
   "g_inner (\<lambda>x. f x + g x) h = g_inner f h + g_inner g h" 
   "g_inner f (\<lambda>x. g x + h x) = g_inner f g + g_inner f h" 
-  "g_inner f (\<lambda>x. g x / c) = g_inner f g / c" 
+  "g_inner f (\<lambda>x. g x / c) = g_inner f g / conjugate c" 
   "g_inner (\<lambda>x. f x / c) g = g_inner f g / c" 
   unfolding g_inner_def 
-  by (auto simp add:sum.distrib algebra_simps sum_distrib_left sum_subtractf sum_divide_distrib)
+  by (auto simp add:sum.distrib algebra_simps sum_distrib_left sum_subtractf sum_divide_distrib 
+      conjugate_dist_mul conjugate_dist_add)
 
-(* TODO use L2_set *)
 definition "g_norm f = sqrt (g_inner f f)"
 
 lemma g_norm_eq: "g_norm f = L2_set f (verts G)"
@@ -290,10 +278,11 @@ lemma g_norm_eq: "g_norm f = L2_set f (verts G)"
   by (intro arg_cong[where f="sqrt"] sum.cong refl) (simp add:power2_eq_square)
 
 lemma g_inner_cauchy_schwartz:
-  "\<bar>g_inner f g\<bar> \<le> g_norm f * g_norm g"
+  fixes f g :: "'a \<Rightarrow> real"
+  shows "\<bar>g_inner f g\<bar> \<le> g_norm f * g_norm g"
 proof -
   have "\<bar>g_inner f g\<bar> \<le> (\<Sum>v \<in> verts G. \<bar>f v * g v\<bar>)" 
-    unfolding g_inner_def by (intro sum_abs)
+    unfolding g_inner_def conjugate_real_def by (intro sum_abs)
   also have "... \<le> g_norm f * g_norm g"
     unfolding g_norm_eq abs_mult by (intro L2_set_mult_ineq)
   finally show ?thesis by simp
@@ -321,23 +310,19 @@ lemma g_norm_sq:
   using g_norm_nonneg g_norm_def by simp
 
 definition g_step :: "('a \<Rightarrow> real) \<Rightarrow> ('a \<Rightarrow> real)"
-  where "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real (out_degree G (tail G x)))"
-
-lemma g_step_altdef:
-  "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real d)"
-  unfolding g_step_def by (intro_cong "[\<sigma>\<^sub>2 (/), \<sigma>\<^sub>1 real]" more: sum.cong reg) auto
+  where "g_step f v = (\<Sum>x \<in> in_arcs G v. f (tail G x) / real d)"
 
 lemma g_step_simps:
-  "g_step (\<lambda>x. f x  + g x) y = g_step f y + g_step g y"
+  "g_step (\<lambda>x. f x + g x) y = g_step f y + g_step g y"
   "g_step (\<lambda>x. f x / c) y = g_step f y / c"
-  unfolding g_step_altdef  sum_divide_distrib[symmetric] using finite_in_arcs d_gt_0
+  unfolding g_step_def sum_divide_distrib[symmetric] using finite_in_arcs d_gt_0
   by (auto intro:sum.cong simp add:sum.distrib field_simps sum_distrib_left sum_subtractf)
 
 lemma g_inner_step_eq:
   "g_inner f (g_step f) = (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)) / d" (is "?L = ?R")
 proof -
   have "?L = (\<Sum>v\<in>verts G. f v * (\<Sum>a\<in>in_arcs G v. f (tail G a) / d))"
-    unfolding g_inner_def g_step_altdef by simp
+    unfolding g_inner_def g_step_def by simp
   also have "... = (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f v * f (tail G a) / d))"
     by (subst sum_distrib_left) simp
   also have "... =  (\<Sum>v\<in>verts G. (\<Sum>a\<in>in_arcs G v. f (head G a) * f (tail G a) / d))"
@@ -362,75 +347,90 @@ proof -
   thus ?thesis by auto
 qed
 
-text \<open>The following is a variational definition for the second largest absolute eigenvalue of the
-stochastic matrix (using the supremum of the Rayleigh-Quotient for vectors orthogonal to the
-stationary distribution). In Section~\ref{sec:expander_spectral_theory}, the equivalence of this
-definition and the more common definition will be shown. The definition here has the advantage
+text \<open>The following are variational definitions for the maxiumum of the spectrum (resp. maximum 
+modulus of the spectrum) of the stochastic matrix (excluding the Perron eigenvalue $1$). Note that
+both values can still obtain the value one $1$ (if the multiplicity of the eigenvalue $1$ is larger
+than $1$ in the stochastic matrix, or in the modulus case if $-1$ is an eigenvalue)..
+
+The definition relies on the supremum of the Rayleigh-Quotient for vectors orthogonal to the
+stationary distribution). In Section~\ref{sec:expander_eigenvalues}, the equivalence of this
+value with the algebraic definition will be shown. The definition here has the advantage
 that it is (obviously) independent of the matrix representation (ordering of the vertices) used.\<close>
 
-definition \<Lambda> :: real 
+definition \<Lambda>\<^sub>2 :: real
+  where "\<Lambda>\<^sub>2 = (SUP f \<in> \<Lambda>_test. (\<Sum>a \<in> arcs G. f (head G a) * f (tail G a))/d)"
+
+definition \<Lambda> :: real
   where "\<Lambda> = (SUP f \<in> \<Lambda>_test. \<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar>/d)"
 
-lemma 
-  shows bdd_above_\<Lambda>: "bdd_above ((\<lambda>f.\<bar>\<Sum>a\<in>arcs G. f(head G a)*f(tail G a)\<bar>/d)`\<Lambda>_test)" (is "?A")
-    and \<Lambda>_le_1: "\<Lambda> \<le> 1" (is "?B")
+lemma bdd_above_aux:
+  assumes "f \<in> \<Lambda>_test"
+  shows "\<bar>\<Sum>a\<in>arcs G. f(head G a)*f(tail G a)\<bar>/d \<le> 1" (is "?L \<le> ?R")
 proof -
-  have 2:"\<bar>\<Sum>a\<in>arcs G. f (head G a) * f (tail G a)\<bar>/d \<le> 1" (is "?L \<le> ?R") if "f \<in> \<Lambda>_test" for f
-  proof -
-    have "(\<Sum>a\<in>arcs G. f (head G a)^2) = (\<Sum>a\<in>(\<Union>v \<in> verts G. in_arcs G v). f (head G a)^2)"
-      unfolding in_arcs_def by (intro sum.cong) auto
-    also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> in_arcs G v. f (head G a)^2))"
-      by (intro sum.UNION_disjoint) auto
-    also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> in_arcs G v. f v^2))"
-      unfolding in_arcs_def by (intro sum.cong refl) auto
-    also have "... = (\<Sum>v \<in> verts G. in_degree G v * f v^2)"
-      unfolding in_degree_def by simp
-    also have "... = (\<Sum>v \<in> verts G. d * f v^2)"
-      by (intro sum.cong arg_cong2[where f="(*)"] arg_cong[where f="real"] reg) auto
-    also have "... = d * g_norm f^2"
-      unfolding sum_distrib_left[symmetric] g_norm_sq g_inner_def
-      by (simp add:power2_eq_square)
-    also have "... \<le> real d * 1"
-      using that \<Lambda>_test_def by (intro mult_left_mono) auto
-    finally have "(\<Sum>a\<in>arcs G. f (head G a)^2) \<le> d" by simp
-    hence 0:"L2_set (\<lambda>a. f (head G a)) (arcs G) \<le> sqrt d" 
-      unfolding L2_set_def by simp
+  have "(\<Sum>a\<in>arcs G. f (head G a)^2) = (\<Sum>a\<in>(\<Union>v \<in> verts G. in_arcs G v). f (head G a)^2)"
+    unfolding in_arcs_def by (intro sum.cong) auto
+  also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> in_arcs G v. f (head G a)^2))"
+    by (intro sum.UNION_disjoint) auto
+  also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> in_arcs G v. f v^2))"
+    unfolding in_arcs_def by (intro sum.cong refl) auto
+  also have "... = (\<Sum>v \<in> verts G. in_degree G v * f v^2)"
+    unfolding in_degree_def by simp
+  also have "... = (\<Sum>v \<in> verts G. d * f v^2)"
+    by (intro sum.cong arg_cong2[where f="(*)"] arg_cong[where f="real"] reg) auto
+  also have "... = d * g_norm f^2"
+    unfolding sum_distrib_left[symmetric] g_norm_sq g_inner_def
+    by (simp add:power2_eq_square)
+  also have "... \<le> real d * 1"
+    using assms \<Lambda>_test_def by (intro mult_left_mono) auto
+  finally have "(\<Sum>a\<in>arcs G. f (head G a)^2) \<le> d" by simp
+  hence 0:"L2_set (\<lambda>a. f (head G a)) (arcs G) \<le> sqrt d" 
+    unfolding L2_set_def by simp
 
-    have "(\<Sum>a\<in>arcs G. f (tail G a)^2) = (\<Sum>a\<in>(\<Union>v \<in> verts G. out_arcs G v). f (tail G a)^2)"
-      unfolding out_arcs_def by (intro sum.cong) auto
-    also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> out_arcs G v. f (tail G a)^2))"
-      by (intro sum.UNION_disjoint) auto
-    also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> out_arcs G v. f v^2))"
-      by (intro sum.cong refl) auto
-    also have "... = (\<Sum>v \<in> verts G. out_degree G v * f v^2)"
-      unfolding out_degree_def by simp
-    also have "... = (\<Sum>v \<in> verts G. d * f v^2)"
-      by (intro sum.cong arg_cong2[where f="(*)"] arg_cong[where f="real"] reg) auto
-    also have "... = d * g_norm f^2"
-      unfolding sum_distrib_left[symmetric] g_norm_sq g_inner_def
-      by (simp add:power2_eq_square)
-    also have "... \<le> real d * 1"
-      using that \<Lambda>_test_def by (intro mult_left_mono) auto
-    finally have "(\<Sum>a\<in>arcs G. f (tail G a)^2) \<le> d" by simp
-    hence 1:"L2_set (\<lambda>a. f (tail G a)) (arcs G) \<le> sqrt d" 
-      unfolding L2_set_def by simp
+  have "(\<Sum>a\<in>arcs G. f (tail G a)^2) = (\<Sum>a\<in>(\<Union>v \<in> verts G. out_arcs G v). f (tail G a)^2)"
+    unfolding out_arcs_def by (intro sum.cong) auto
+  also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> out_arcs G v. f (tail G a)^2))"
+    by (intro sum.UNION_disjoint) auto
+  also have "... = (\<Sum>v \<in> verts G. (\<Sum>a \<in> out_arcs G v. f v^2))"
+    by (intro sum.cong refl) auto
+  also have "... = (\<Sum>v \<in> verts G. out_degree G v * f v^2)"
+    unfolding out_degree_def by simp
+  also have "... = (\<Sum>v \<in> verts G. d * f v^2)"
+    by (intro sum.cong arg_cong2[where f="(*)"] arg_cong[where f="real"] reg) auto
+  also have "... = d * g_norm f^2"
+    unfolding sum_distrib_left[symmetric] g_norm_sq g_inner_def
+    by (simp add:power2_eq_square)
+  also have "... \<le> real d * 1"
+    using assms \<Lambda>_test_def by (intro mult_left_mono) auto
+  finally have "(\<Sum>a\<in>arcs G. f (tail G a)^2) \<le> d" by simp
+  hence 1:"L2_set (\<lambda>a. f (tail G a)) (arcs G) \<le> sqrt d" 
+    unfolding L2_set_def by simp
 
-    have "?L \<le> (\<Sum>a \<in> arcs G. \<bar>f (head G a)\<bar> * \<bar>f(tail G a)\<bar>)/d"
-      unfolding abs_mult[symmetric] by (intro divide_right_mono sum_abs) auto
-    also have "... \<le> (L2_set (\<lambda>a. f (head G a)) (arcs G) * L2_set (\<lambda>a. f (tail G a)) (arcs G)) / d"
-      by (intro L2_set_mult_ineq divide_right_mono) auto
-    also have "... \<le> (sqrt d * sqrt d) / d"
-      by (intro divide_right_mono mult_mono 0 1) auto
-    also have "... = 1"
-      using d_gt_0 by simp
-    finally show ?thesis by simp
-  qed
-  thus ?A
-    by (intro bdd_aboveI[where M="1"]) auto
-  show ?B
-    unfolding \<Lambda>_def using 2 \<Lambda>_test_ne
-    by (intro cSup_least) auto
+  have "?L \<le> (\<Sum>a \<in> arcs G. \<bar>f (head G a)\<bar> * \<bar>f(tail G a)\<bar>)/d"
+    unfolding abs_mult[symmetric] by (intro divide_right_mono sum_abs) auto
+  also have "... \<le> (L2_set (\<lambda>a. f (head G a)) (arcs G) * L2_set (\<lambda>a. f (tail G a)) (arcs G)) / d"
+    by (intro L2_set_mult_ineq divide_right_mono) auto
+  also have "... \<le> (sqrt d * sqrt d) / d"
+    by (intro divide_right_mono mult_mono 0 1) auto
+  also have "... = 1"
+    using d_gt_0 by simp
+  finally show ?thesis by simp
 qed
+
+lemma bdd_above_\<Lambda>: 
+  "bdd_above ((\<lambda>f.\<bar>\<Sum>a\<in>arcs G. f(head G a)*f(tail G a)\<bar>/d)`\<Lambda>_test)"
+  using bdd_above_aux
+  by (intro bdd_aboveI[where M="1"]) auto
+
+lemma \<Lambda>_le_1: "\<Lambda> \<le> 1"
+  unfolding \<Lambda>_def using bdd_above_aux \<Lambda>_test_ne
+  by (intro cSup_least) auto
+
+lemma \<Lambda>\<^sub>2_le_1: "\<Lambda>\<^sub>2 \<le> 1"
+  unfolding \<Lambda>\<^sub>2_def using bdd_above_aux \<Lambda>_test_ne
+  apply (intro cSup_least) 
+  apply auto 
+  using d_gt_0 by fastforce
+
 
 lemma \<Lambda>_ge_0: "\<Lambda> \<ge> 0"
 proof -
@@ -525,12 +525,11 @@ next
   hence 0:"\<And>v. v \<in> verts G \<Longrightarrow> f v = 0"
     unfolding g_inner_def by (subst (asm) sum_nonneg_eq_0_iff) auto
   hence "?L = 0"
-    unfolding g_step_altdef g_inner_def by simp 
+    unfolding g_step_def g_inner_def by simp 
   also have "... \<le> \<Lambda> * g_norm f^2"
     using False by simp
   finally show ?thesis by simp
 qed
-
 
 lemma expansionD:
   assumes "g_inner f (\<lambda>_. 1) = 0"
@@ -573,6 +572,9 @@ proof -
     unfolding pre_expander_graph_def pre_expander_graph_axioms_def
     by simp
 qed
+
+text \<open>The following theorems verify that a graph isomorphisms preserve symmetry, regularity and
+spectral expansion.\<close>
 
 lemma (in fin_digraph) symmetric_graph_iso:
   assumes "digraph_iso G H"
@@ -679,7 +681,8 @@ proof -
     by (simp add: bij_betw_def digraph_isomorphism_inj_on_verts)
 
   hence g_inner_conv: 
-    "g_inner (\<lambda>x. f (iso_verts h x)) (\<lambda>x. g (iso_verts h x)) = H.g_inner f g" for f g
+    "g_inner (\<lambda>x. f (iso_verts h x)) (\<lambda>x. g (iso_verts h x)) = H.g_inner f g" 
+    for f g :: "'c \<Rightarrow> real" 
     unfolding g_inner_def H.g_inner_def by (intro sum.reindex_bij_betw)
 
   have "\<bar>\<Sum>a\<in>arcs H. f (head H a) * f (tail H a)\<bar> \<le> \<Lambda> * real d * (H.g_norm f)\<^sup>2" (is "?L \<le> ?R")
