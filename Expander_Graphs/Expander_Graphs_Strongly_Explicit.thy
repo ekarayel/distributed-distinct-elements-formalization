@@ -32,8 +32,8 @@ definition graph_of :: "strongly_explicit_expander \<Rightarrow> (nat, (nat,nat)
       tail = arc_tail,
       head = arc_head \<rparr>"
 
-definition "is_expander e \<Lambda> \<longleftrightarrow>
-  pre_expander_graph (graph_of e) \<and> pre_expander_graph.\<Lambda> (graph_of e) \<le> \<Lambda>"
+definition "is_expander e \<Lambda>\<^sub>a \<longleftrightarrow>
+  regular_graph (graph_of e) \<and> regular_graph.\<Lambda>\<^sub>a (graph_of e) \<le> \<Lambda>\<^sub>a"
 
 lemma is_expander_mono:
   assumes "is_expander e a" "a \<le> b"
@@ -121,11 +121,11 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma pre_expander_graph_degree_eq_see_degree:
-  assumes "pre_expander_graph (graph_of e)"
-  shows "pre_expander_graph.d (graph_of e) = see_degree e" (is "?L = ?R")
+lemma regular_graph_degree_eq_see_degree:
+  assumes "regular_graph (graph_of e)"
+  shows "regular_graph.d (graph_of e) = see_degree e" (is "?L = ?R")
 proof -
-  interpret pre_expander_graph "graph_of e"
+  interpret regular_graph "graph_of e"
     using assms(1) by simp
   obtain v where v_set: "v \<in> verts (graph_of e)"
     using verts_non_empty by auto
@@ -279,20 +279,20 @@ proof -
 qed
 
 lemma see_compress:
-  assumes "is_expander e \<Lambda>"
+  assumes "is_expander e \<Lambda>\<^sub>a"
   assumes "2*m \<ge> see_size e" "m \<le> see_size e"
-  shows "is_expander (see_compress m e) (\<Lambda>/2 + 1/2)"
+  shows "is_expander (see_compress m e) (\<Lambda>\<^sub>a/2 + 1/2)"
 proof -
   let ?H = "graph_of (see_compress m e)"
   let ?G = "graph_of e"
   let ?d = "see_degree e"
   let ?n = "see_size e"
 
-  interpret G:pre_expander_graph "graph_of e" 
+  interpret G:regular_graph "graph_of e" 
     using assms(1) is_expander_def by simp
 
   have d_eq: "?d = G.d"
-    using pre_expander_graph_degree_eq_see_degree[OF G.pre_expander_graph_axioms] by simp
+    using regular_graph_degree_eq_see_degree[OF G.regular_graph_axioms] by simp
 
   have n_eq: "G.n = ?n"
     unfolding G.n_def by (simp add:graph_of_def)
@@ -310,12 +310,12 @@ proof -
   moreover have 1:"0 < see_degree e" 
     using d_eq G.d_gt_0 by auto
   hence "0 < see_degree (see_compress m e)" by simp
-  ultimately have 0:"pre_expander_graph ?H"
-    by (intro pre_expander_graphI[where d="see_degree (see_compress m e)"] out_degree_see) auto
-  interpret H:pre_expander_graph ?H
+  ultimately have 0:"regular_graph ?H"
+    by (intro regular_graphI[where d="see_degree (see_compress m e)"] out_degree_see) auto
+  interpret H:regular_graph ?H
     using 0 by auto
 
-  have "\<bar>\<Sum>a\<in>arcs ?H. f (head ?H a) * f (tail ?H a)\<bar> \<le> (real G.d * G.\<Lambda> + G.d) * (H.g_norm f)\<^sup>2" 
+  have "\<bar>\<Sum>a\<in>arcs ?H. f (head ?H a) * f (tail ?H a)\<bar> \<le> (real G.d * G.\<Lambda>\<^sub>a + G.d) * (H.g_norm f)\<^sup>2" 
     (is "?L \<le> ?R") if "H.g_inner f (\<lambda>_. 1) = 0" for f
   proof -
     define f' where "f' x = f (x mod m)" for x
@@ -394,28 +394,28 @@ proof -
     also have "... = ?d * (\<bar>G.g_inner f' (G.g_step f')\<bar> + \<bar>\<Sum>x=?n-m..<m. f x^2\<bar>)" 
       unfolding G.g_inner_step_eq sum_unfold_sum_mset edges_def arc_to_ends_def f'_def
       by (simp add:image_mset.compositionality comp_def del:see_compress.simps)
-    also have "...\<le> ?d * ((G.\<Lambda> * G.g_norm f'^2 + (1-G.\<Lambda>)*G.g_inner f' (\<lambda>_.1)^2/ G.n)
+    also have "...\<le> ?d * ((G.\<Lambda>\<^sub>a * G.g_norm f'^2 + (1-G.\<Lambda>\<^sub>a)*G.g_inner f' (\<lambda>_.1)^2/ G.n)
       + \<bar>\<Sum>x=?n-m..<m. f x^2\<bar>)"
       by (intro add_mono G.expansionD3 mult_left_mono) auto
-    also have "... = ?d * (G.\<Lambda> * ?L1 + (1 - G.\<Lambda>) * ?L2)"
+    also have "... = ?d * (G.\<Lambda>\<^sub>a * ?L1 + (1 - G.\<Lambda>\<^sub>a) * ?L2)"
       by (simp add:algebra_simps)
-    also have "... \<le> ?d * (G.\<Lambda> * (2 * H.g_norm f^2) + (1-G.\<Lambda>) * H.g_norm f^2)"
+    also have "... \<le> ?d * (G.\<Lambda>\<^sub>a * (2 * H.g_norm f^2) + (1-G.\<Lambda>\<^sub>a) * H.g_norm f^2)"
       unfolding 2 using G.\<Lambda>_ge_0 G.\<Lambda>_le_1 by (intro mult_left_mono add_mono 3) auto
     also have "... = ?R"
       unfolding d_eq[symmetric] by (simp add:algebra_simps)
     finally show ?thesis by simp
   qed
 
-  hence "H.\<Lambda> \<le> (G.d*G.\<Lambda>+G.d)/H.d"
+  hence "H.\<Lambda>\<^sub>a \<le> (G.d*G.\<Lambda>\<^sub>a+G.d)/H.d"
     using G.d_gt_0 G.\<Lambda>_ge_0 by (intro H.expander_intro) (auto simp del:see_compress.simps)
-  also have "... = (see_degree e * G.\<Lambda> + see_degree e) / (2* see_degree e)"
-    unfolding d_eq[symmetric] pre_expander_graph_degree_eq_see_degree[OF H.pre_expander_graph_axioms]
+  also have "... = (see_degree e * G.\<Lambda>\<^sub>a + see_degree e) / (2* see_degree e)"
+    unfolding d_eq[symmetric] regular_graph_degree_eq_see_degree[OF H.regular_graph_axioms]
     by simp
-  also have "... = G.\<Lambda>/2 + 1/2"
+  also have "... = G.\<Lambda>\<^sub>a/2 + 1/2"
     using 1 by (simp add:field_simps)
-  also have "... \<le> \<Lambda>/2 + 1/2"
+  also have "... \<le> \<Lambda>\<^sub>a/2 + 1/2"
     using assms(1) unfolding is_expander_def by simp
-  finally have "H.\<Lambda> \<le> \<Lambda>/2 + 1/2" by simp
+  finally have "H.\<Lambda>\<^sub>a \<le> \<Lambda>\<^sub>a/2 + 1/2" by simp
   thus ?thesis unfolding is_expander_def using 0 by simp
 qed
 
@@ -617,29 +617,29 @@ proof -
 qed
 
 lemma see_power:
-  assumes "is_expander e \<Lambda>"
-  shows "is_expander (see_power n e) (\<Lambda>^n)"
+  assumes "is_expander e \<Lambda>\<^sub>a"
+  shows "is_expander (see_power n e) (\<Lambda>\<^sub>a^n)"
 proof -
-  interpret G: "pre_expander_graph" "graph_of e" 
+  interpret G: "regular_graph" "graph_of e" 
     using assms unfolding is_expander_def by auto
 
-  interpret H:"pre_expander_graph" "graph_power (graph_of e) n"
+  interpret H:"regular_graph" "graph_power (graph_of e) n"
     by (intro G.graph_power_regular)
 
   have 0:"digraph_iso (graph_power (graph_of e) n) (graph_of (see_power n e))"
     by (intro graph_power_iso_see_power) auto 
 
-  have "pre_expander_graph.\<Lambda> (graph_of (see_power n e)) = H.\<Lambda>"
-    using H.pre_expander_graph_iso_expansion[OF 0] by auto
-  also have "... \<le> G.\<Lambda>^n"
+  have "regular_graph.\<Lambda>\<^sub>a (graph_of (see_power n e)) = H.\<Lambda>\<^sub>a"
+    using H.regular_graph_iso_expansion[OF 0] by auto
+  also have "... \<le> G.\<Lambda>\<^sub>a^n"
     by (intro G.graph_power_expansion)
-  also have "... \<le> \<Lambda>^n"
+  also have "... \<le> \<Lambda>\<^sub>a^n"
     using assms(1) unfolding is_expander_def
     by (intro power_mono G.\<Lambda>_ge_0)  auto
-  finally have "pre_expander_graph.\<Lambda> (graph_of (see_power n e)) \<le> \<Lambda>^n"
+  finally have "regular_graph.\<Lambda>\<^sub>a (graph_of (see_power n e)) \<le> \<Lambda>\<^sub>a^n"
     by simp
-  moreover have "pre_expander_graph (graph_of (see_power n e))"
-    using H.pre_expander_graph_iso[OF 0] by auto
+  moreover have "regular_graph (graph_of (see_power n e))"
+    using H.regular_graph_iso[OF 0] by auto
   ultimately show ?thesis
     unfolding is_expander_def by auto
 qed
@@ -793,14 +793,14 @@ proof -
 
   note 0 = mgg_graph_iso[OF assms]
 
-  have "pre_expander_graph.\<Lambda> (graph_of (see_mgg n)) = G.\<Lambda>"
-    using G.pre_expander_graph_iso_expansion[OF 0] by auto
+  have "regular_graph.\<Lambda>\<^sub>a (graph_of (see_mgg n)) = G.\<Lambda>\<^sub>a"
+    using G.regular_graph_iso_expansion[OF 0] by auto
   also have "... \<le> (5* sqrt 2 / 8)"
     using G.mgg_numerical_radius unfolding G.MGG_bound_def by simp
-  finally have "pre_expander_graph.\<Lambda> (graph_of (see_mgg n)) \<le> (5* sqrt 2 / 8)"
+  finally have "regular_graph.\<Lambda>\<^sub>a (graph_of (see_mgg n)) \<le> (5* sqrt 2 / 8)"
     by simp
-  moreover have "pre_expander_graph (graph_of (see_mgg n))"
-    using G.pre_expander_graph_iso[OF 0] by auto
+  moreover have "regular_graph (graph_of (see_mgg n))"
+    using G.regular_graph_iso[OF 0] by auto
   ultimately show ?thesis
     unfolding is_expander_def by auto
 qed
@@ -888,30 +888,30 @@ definition see_standard_power
   where "see_standard_power x  = (if x \<le> (0::real) then 0 else nat \<lceil>ln x / ln 0.95\<rceil>)"
 
 lemma see_standard_power:
-  assumes "\<Lambda> > 0"
-  shows "0.95^(see_standard_power \<Lambda>) \<le> \<Lambda>" (is "?L \<le> ?R")
-proof (cases "\<Lambda> \<le> 1")
+  assumes "\<Lambda>\<^sub>a > 0"
+  shows "0.95^(see_standard_power \<Lambda>\<^sub>a) \<le> \<Lambda>\<^sub>a" (is "?L \<le> ?R")
+proof (cases "\<Lambda>\<^sub>a \<le> 1")
   case True
-  hence "0 \<le> ln \<Lambda> / ln 0.95" 
+  hence "0 \<le> ln \<Lambda>\<^sub>a / ln 0.95" 
     using assms by (intro divide_nonpos_neg) auto
-  hence 1:"0 \<le> \<lceil>ln \<Lambda> / ln 0.95\<rceil>" 
+  hence 1:"0 \<le> \<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>" 
     by simp
-  have "?L = 0.95^nat \<lceil>ln \<Lambda> / ln 0.95\<rceil>"
+  have "?L = 0.95^nat \<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>"
     using assms unfolding see_standard_power_def by simp
-  also have "... = 0.95 powr (of_nat (nat (\<lceil>ln \<Lambda> / ln 0.95\<rceil>)))"
+  also have "... = 0.95 powr (of_nat (nat (\<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>)))"
     by (subst powr_realpow) auto 
-  also have "... = 0.95 powr \<lceil>ln \<Lambda> / ln 0.95\<rceil>"
+  also have "... = 0.95 powr \<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>"
     using 1 by (subst of_nat_nat) auto
-  also have "... \<le> 0.95 powr (ln \<Lambda> / ln 0.95)"
+  also have "... \<le> 0.95 powr (ln \<Lambda>\<^sub>a / ln 0.95)"
     by (intro powr_mono_rev) auto
   also have "... = ?R"
     using assms unfolding powr_def by simp
   finally show ?thesis by simp
 next
   case False
-  hence "ln \<Lambda> / ln 0.95 \<le> 0"
+  hence "ln \<Lambda>\<^sub>a / ln 0.95 \<le> 0"
     by (subst neg_divide_le_eq) auto
-  hence "see_standard_power \<Lambda> = 0"
+  hence "see_standard_power \<Lambda>\<^sub>a = 0"
     unfolding see_standard_power_def by simp
   then show ?thesis using False by simp
 qed
@@ -953,28 +953,28 @@ next
 qed
 
 definition see_standard :: "nat \<Rightarrow> real \<Rightarrow> strongly_explicit_expander"
-  where "see_standard n \<Lambda> = see_power (see_standard_power \<Lambda>) (see_standard_aux n)"
+  where "see_standard n \<Lambda>\<^sub>a = see_power (see_standard_power \<Lambda>\<^sub>a) (see_standard_aux n)"
 
 theorem see_standard:
-  assumes "n > 0" "\<Lambda> > 0"
-  shows "is_expander (see_standard n \<Lambda>) \<Lambda>"
-    and "see_size (see_standard n \<Lambda>) = n"
-    and "see_degree (see_standard n \<Lambda>) = 16 ^ (nat \<lceil>ln \<Lambda> / ln 0.95\<rceil>)" (is "?C")
+  assumes "n > 0" "\<Lambda>\<^sub>a > 0"
+  shows "is_expander (see_standard n \<Lambda>\<^sub>a) \<Lambda>\<^sub>a"
+    and "see_size (see_standard n \<Lambda>\<^sub>a) = n"
+    and "see_degree (see_standard n \<Lambda>\<^sub>a) = 16 ^ (nat \<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>)" (is "?C")
 proof -
   have 0:"is_expander (see_standard_aux n) 0.95"
     by (intro see_standard_aux(1)[OF assms(1)] is_expander_mono[where a="(8+5 * sqrt 2) / 16"])
      (approximation 10)
 
-  show "is_expander (see_standard n \<Lambda>) \<Lambda>"
+  show "is_expander (see_standard n \<Lambda>\<^sub>a) \<Lambda>\<^sub>a"
     unfolding see_standard_def 
-    by (intro see_power 0 is_expander_mono[where a="0.95^(see_standard_power \<Lambda>)"]
+    by (intro see_power 0 is_expander_mono[where a="0.95^(see_standard_power \<Lambda>\<^sub>a)"]
       see_standard_power assms(2))
-  show "see_size (see_standard n \<Lambda>) = n"
+  show "see_size (see_standard n \<Lambda>\<^sub>a) = n"
     unfolding see_standard_def using see_standard_aux[OF assms(1)] by simp
 
-  have "see_degree (see_standard n \<Lambda>) = 16 ^ (see_standard_power \<Lambda>)"
+  have "see_degree (see_standard n \<Lambda>\<^sub>a) = 16 ^ (see_standard_power \<Lambda>\<^sub>a)"
     unfolding see_standard_def using see_standard_aux[OF assms(1)] by simp 
-  also have "... = 16 ^ (nat \<lceil>ln \<Lambda> / ln 0.95\<rceil>)"
+  also have "... = 16 ^ (nat \<lceil>ln \<Lambda>\<^sub>a / ln 0.95\<rceil>)"
     unfolding see_standard_power_def using assms(2) by simp
   finally show ?C by simp
 qed

@@ -28,6 +28,7 @@ and Kabanets~\cite{impagliazzo2010} and Murtagh~\cite{murtagh2019}.}
 
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
+\pagebreak
 
 \section{Introduction}
 A good introduction into Expander Graphs can be found in the survey article by 
@@ -56,7 +57,7 @@ This entry formalizes
 \item proofs of how expansion-properties are affected by graph operations
 (Sections~\ref{sec:graph_power} and \ref{sec:see}).
 \end{itemize}
-Using the above results a consturction of strongly explicit expanders for every size and 
+And concludes with a consturction of strongly explicit expanders for every size and 
 spectral gap with asymptotically optimal degree (Section~\ref{sec:see}). 
 
 It also includes a proof of the hitting property, i.e., tail-bounds for the probability that a 
@@ -65,10 +66,10 @@ the number of times a given subset will be hit by a random walk. (Section~\ref{s
 
 The basis for the graph theory relies on the formalization by 
 Lars Noschinski~\cite{Graph_Theory-AFP}. Most of the algabraic development is carried out in the
-type-based formalization of linear algebra in ``HOL-Analysis'', however I have tranferred some 
-results from the set based world into the type-based world - most notably unified diagonalization of 
-commuting hermitian matrices by Echenim~\cite{Commuting_Hermitian-AFP} 
-(Section~\ref{sec:expander_eigenvalues}) using the pre-exisiting framework by 
+type-based formalization of linear algebra in ``HOL-Analysis''. To achieve that I have transferred 
+some  results from the set based world into the type-based world - most notably unified 
+diagonalization of commuting hermitian matrices by Echenim~\cite{Commuting_Hermitian-AFP} 
+(Section~\ref{sec:expander_eigenvalues}). The transfer happens using the pre-exisiting framework by 
 Divas\'{o}n et al.~\cite{Perron_Frobenius-AFP}.
 
 On the otherhand, results that are obtained using the stochastic matrix, but do not explicitly 

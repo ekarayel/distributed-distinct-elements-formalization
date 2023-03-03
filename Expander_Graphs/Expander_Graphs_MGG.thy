@@ -174,9 +174,9 @@ lemma verts_ne:
   "verts G \<noteq> {}" 
   using m_gt_0 unfolding mgg_graph_def by simp
 
-sublocale pre_expander_graph "mgg_graph m"
+sublocale regular_graph "mgg_graph m"
   using out_deg verts_ne
-  by (intro pre_expander_graphI[where d="8"] sym) auto
+  by (intro regular_graphI[where d="8"] sym) auto
 
 lemma d_eq_8: "d = 8"
 proof -
@@ -1246,9 +1246,9 @@ definition MGG_bound :: real
 
 text \<open>Main result: Theorem 8.2 in Hoory.\<close> 
 
-lemma mgg_numerical_radius: "\<Lambda> \<le> MGG_bound"
+lemma mgg_numerical_radius: "\<Lambda>\<^sub>a \<le> MGG_bound"
 proof -
-  have "\<Lambda> \<le> (5 * sqrt 2)/real d"
+  have "\<Lambda>\<^sub>a \<le> (5 * sqrt 2)/real d"
     by (intro expander_intro mgg_numerical_radius_aux) auto
   also have "... = MGG_bound"
     unfolding MGG_bound_def d_eq_8 by simp 

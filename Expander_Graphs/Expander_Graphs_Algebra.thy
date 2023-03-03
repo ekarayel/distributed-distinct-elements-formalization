@@ -307,7 +307,7 @@ next
 qed
 
 
-context pre_expander_graph_tts
+context regular_graph_tts
 begin
 
 definition stat :: "real^'n"

@@ -1,6 +1,9 @@
 subsection \<open>Constructive Chernoff Bound\label{sec:constructive_chernoff_bound}\<close>
 
-text \<open>This section formalizes Theorem~5 by Impagliazzo and Kabanets~\cite{impagliazzo2010}.\<close>
+text \<open>This section formalizes Theorem~5 by Impagliazzo and Kabanets~\cite{impagliazzo2010}. It is
+a general result with which Chernoff-type tail bounds for various kinds of weakly dependent random 
+variables can be obtained. The results here are general and will be applied in
+Section~\ref{sec:random_walks} to random walks in expander graphs.\<close>
 
 theory Constructive_Chernoff_Bound
   imports 

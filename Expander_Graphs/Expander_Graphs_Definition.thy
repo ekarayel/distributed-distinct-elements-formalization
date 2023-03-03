@@ -1,5 +1,8 @@
 section \<open>Definitions\label{sec:definitions}\<close>
 
+text \<open>This section introduces regular graphs as a sublocale in the graph theory developed by
+Lars Noschinski~\cite{Graph_Theory-AFP} and introduces various expansion coefficients.\<close> 
+
 theory Expander_Graphs_Definition
   imports 
     Graph_Theory.Digraph_Isomorphism
@@ -9,11 +12,6 @@ theory Expander_Graphs_Definition
     Jordan_Normal_Form.Conjugate
     Interpolation_Polynomials_HOL_Algebra.Interpolation_Polynomial_Cardinalities
 begin
-
-lemma restr_Collect_cong:
-  assumes "\<And>x. x \<in> A \<Longrightarrow> P x = Q x"
-  shows "{x \<in> A. P x} = {x \<in> A. Q x}"
-  using assms by auto
 
 unbundle intro_cong_syntax
 
@@ -193,11 +191,10 @@ lemma set_mset_vertices_to:
 
 end
 
-subsection \<open>Expander graphs\<close>
+text \<open>A symmetric multigraph is regular if every node has the same degree. This is the context
+in which the expansion conditions are introduced.\<close>
 
-text \<open>A symmetric multigraph is regular if every\<close>
-
-locale pre_expander_graph = fin_digraph +
+locale regular_graph = fin_digraph +
   assumes sym: "symmetric_multi_graph G"
   assumes verts_non_empty: "verts G \<noteq> {}"
   assumes arcs_non_empty: "arcs G \<noteq> {}"
@@ -243,7 +240,6 @@ proof -
   finally show ?thesis by simp
 qed
 
-(* should we use conjugatable field here? *)
 definition g_inner :: "('a \<Rightarrow> ('c :: conjugatable_field)) \<Rightarrow> ('a \<Rightarrow> 'c) \<Rightarrow> 'c" 
   where "g_inner f g = (\<Sum>x \<in> verts G. (f x) * conjugate (g x))"
 
@@ -414,8 +410,8 @@ that it is (obviously) independent of the matrix representation (ordering of the
 definition \<Lambda>\<^sub>2 :: real
   where "\<Lambda>\<^sub>2 = (if n > 1 then (SUP f \<in> \<Lambda>_test. g_inner f (g_step f)/g_inner f f) else 0)"
 
-definition \<Lambda> :: real (* TODO: Rename to \<Lambda>\<^sub>a *)
-  where "\<Lambda> = (if n > 1 then (SUP f \<in> \<Lambda>_test. \<bar>g_inner f (g_step f)\<bar>/g_inner f f) else 0)"
+definition \<Lambda>\<^sub>a :: real (* TODO: Rename to \<Lambda>\<^sub>a *)
+  where "\<Lambda>\<^sub>a = (if n > 1 then (SUP f \<in> \<Lambda>_test. \<bar>g_inner f (g_step f)\<bar>/g_inner f f) else 0)"
 
 lemma sum_arcs_tail:
   fixes f :: "'a \<Rightarrow> ('c :: semiring_1)"
@@ -507,7 +503,6 @@ proof -
   finally show ?thesis by simp
 qed
 
-
 lemma bdd_above_\<Lambda>: "bdd_above ((\<lambda>f. \<bar>g_inner f (g_step f)\<bar> / g_inner f f) ` \<Lambda>_test)"
   using bdd_above_aux_2
   by (intro bdd_aboveI[where M="1"])  auto
@@ -516,16 +511,16 @@ lemma bdd_above_\<Lambda>\<^sub>2: "bdd_above ((\<lambda>f. g_inner f (g_step f)
   using bdd_above_aux_3
   by (intro bdd_aboveI[where M="1"])  auto
 
-lemma \<Lambda>_le_1: "\<Lambda> \<le> 1"
+lemma \<Lambda>_le_1: "\<Lambda>\<^sub>a \<le> 1"
 proof (cases "n > 1")
   case True
   have "(SUP f\<in>\<Lambda>_test. \<bar>g_inner f (g_step f)\<bar> / g_inner f f) \<le> 1" 
     using bdd_above_aux_2 \<Lambda>_test_ne[OF True] by (intro cSup_least) auto
-  thus "\<Lambda> \<le> 1"
-    unfolding \<Lambda>_def using True by simp
+  thus "\<Lambda>\<^sub>a \<le> 1"
+    unfolding \<Lambda>\<^sub>a_def using True by simp
 next
   case False
-  thus ?thesis unfolding \<Lambda>_def by simp
+  thus ?thesis unfolding \<Lambda>\<^sub>a_def by simp
 qed
 
 lemma \<Lambda>\<^sub>2_le_1: "\<Lambda>\<^sub>2 \<le> 1"
@@ -540,7 +535,7 @@ next
   thus ?thesis unfolding \<Lambda>\<^sub>2_def by simp
 qed
 
-lemma \<Lambda>_ge_0: "\<Lambda> \<ge> 0"
+lemma \<Lambda>_ge_0: "\<Lambda>\<^sub>a \<ge> 0"
 proof (cases "n > 1")
   case True
   obtain f where f_def: "f \<in> \<Lambda>_test" 
@@ -552,10 +547,10 @@ proof (cases "n > 1")
   finally have "(SUP f\<in>\<Lambda>_test. \<bar>g_inner f (g_step f)\<bar> / g_inner f f) \<ge> 0"
     by simp
   thus ?thesis
-    unfolding \<Lambda>_def using True by simp
+    unfolding \<Lambda>\<^sub>a_def using True by simp
 next
   case False
-  thus ?thesis unfolding \<Lambda>_def by simp
+  thus ?thesis unfolding \<Lambda>\<^sub>a_def by simp
 qed
 
 lemma os_expanderI:
@@ -615,7 +610,7 @@ qed
 lemma expander_intro_1:
   assumes "C \<ge> 0"
   assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>g_inner f (g_step f)\<bar> \<le> C*g_norm f^2" 
-  shows "\<Lambda> \<le> C"
+  shows "\<Lambda>\<^sub>a \<le> C"
 proof (cases "n > 1")
   case True
   have "\<bar>g_inner f (g_step f)\<bar> / g_inner f f \<le> C" if "f \<in> \<Lambda>_test" for f
@@ -630,16 +625,16 @@ proof (cases "n > 1")
 
   hence "(SUP f\<in>\<Lambda>_test. \<bar>g_inner f (g_step f)\<bar> / g_inner f f) \<le> C" 
     using \<Lambda>_test_ne[OF True] by (intro cSup_least) auto
-  thus ?thesis using True unfolding \<Lambda>_def by auto
+  thus ?thesis using True unfolding \<Lambda>\<^sub>a_def by auto
 next
   case False
-  then show ?thesis using assms unfolding \<Lambda>_def by simp
+  then show ?thesis using assms unfolding \<Lambda>\<^sub>a_def by simp
 qed
 
 lemma expander_intro:
   assumes "C \<ge> 0"
   assumes "\<And>f. g_inner f (\<lambda>_. 1)=0 \<Longrightarrow> \<bar>\<Sum>a \<in> arcs G. f(head G a) * f(tail G a)\<bar> \<le> C*g_norm f^2" 
-  shows "\<Lambda> \<le> C/d"
+  shows "\<Lambda>\<^sub>a \<le> C/d"
 proof -
   have "\<bar>g_inner f (g_step f)\<bar> \<le> C / real d * (g_norm f)\<^sup>2" (is "?L \<le> ?R") 
     if "g_inner f (\<lambda>_. 1) = 0" for f
@@ -657,7 +652,7 @@ qed
 
 lemma expansionD1:
   assumes "g_inner f (\<lambda>_. 1) = 0"
-  shows "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda> * g_norm f^2"  (is "?L \<le> ?R")
+  shows "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda>\<^sub>a * g_norm f^2"  (is "?L \<le> ?R")
 proof (cases "g_norm f \<noteq> 0")
   case True
 
@@ -671,9 +666,9 @@ proof (cases "g_norm f \<noteq> 0")
     unfolding g_norm_sq by simp
   also have "... \<le> (SUP f\<in>\<Lambda>_test. \<bar>g_inner f (g_step f)\<bar> / g_inner f f)"
     by (intro cSup_upper bdd_above_\<Lambda> imageI 0) 
-  also have "... = \<Lambda>"
-    using 1 unfolding \<Lambda>_def by simp
-  finally have "\<bar>g_inner f (g_step f)\<bar>/ g_norm f^2 \<le> \<Lambda>" by simp
+  also have "... = \<Lambda>\<^sub>a"
+    using 1 unfolding \<Lambda>\<^sub>a_def by simp
+  finally have "\<bar>g_inner f (g_step f)\<bar>/ g_norm f^2 \<le> \<Lambda>\<^sub>a" by simp
   thus ?thesis 
     using True by (simp add:divide_simps)
 next
@@ -684,20 +679,20 @@ next
     unfolding g_inner_def by (subst (asm) sum_nonneg_eq_0_iff) auto
   hence "?L = 0"
     unfolding g_step_def g_inner_def by simp 
-  also have "... \<le> \<Lambda> * g_norm f^2"
+  also have "... \<le> \<Lambda>\<^sub>a * g_norm f^2"
     using False by simp
   finally show ?thesis by simp
 qed
 
 lemma expansionD:
   assumes "g_inner f (\<lambda>_. 1) = 0"
-  shows "\<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar> \<le> d * \<Lambda> * g_norm f^2"  (is "?L \<le> ?R")
+  shows "\<bar>\<Sum>a \<in> arcs G. f (head G a) * f (tail G a)\<bar> \<le> d * \<Lambda>\<^sub>a * g_norm f^2"  (is "?L \<le> ?R")
 proof -
   have "?L = \<bar>g_inner f (g_step f) * d\<bar>"
     unfolding g_inner_step_eq using d_gt_0 by simp
   also have "... \<le> \<bar>g_inner f (g_step f)\<bar> * d"
     by (simp add:abs_mult)
-  also have "... \<le> (\<Lambda> * g_norm f^2) * d"
+  also have "... \<le> (\<Lambda>\<^sub>a * g_norm f^2) * d"
     by (intro expansionD1 mult_right_mono assms(1)) auto
   also have "... = ?R" by simp
   finally show ?thesis by simp
@@ -705,12 +700,16 @@ qed
 
 definition edges_betw where "edges_betw S T = {a \<in> arcs G. tail G a \<in> S \<and> head G a \<in> T}"
 
-definition edge_expansion where "edge_expansion = (if n > 1 then
+text \<open>This parameter is the edge expansion. It is usually denoted by the symbol $h$ or $h(G)$ in
+text books. Contrary to the previous definitions it doesn't have a spectral theoretic counter
+part.\<close>
+
+definition \<Lambda>\<^sub>e where "\<Lambda>\<^sub>e = (if n > 1 then
   (MIN S\<in>{S. S\<subseteq>verts G\<and>2*card S\<le>n\<and>S\<noteq>{}}. real (card (edges_betw S (-S)))/card S) else 0)"
 
 lemma edge_expansionD:
   assumes "S \<subseteq> verts G" "2*card S \<le> n"
-  shows "edge_expansion * card S \<le> real (card (edges_betw S (-S)))"
+  shows "\<Lambda>\<^sub>e * card S \<le> real (card (edges_betw S (-S)))"
 proof (cases "S \<noteq> {}")
   case True
   moreover have "finite S" 
@@ -723,12 +722,12 @@ proof (cases "S \<noteq> {}")
 
   have 0: "finite ?St"
     by (rule finite_subset[where B="Pow (verts G)"]) auto
-  have "edge_expansion = (MIN S\<in>?St. real (card (edges_betw S (-S)))/card S)"
-    using 2 unfolding edge_expansion_def by simp
+  have "\<Lambda>\<^sub>e = (MIN S\<in>?St. real (card (edges_betw S (-S)))/card S)"
+    using 2 unfolding \<Lambda>\<^sub>e_def by simp
 
   also have "... \<le> real (card (edges_betw S (-S))) / card S"
     using assms True by (intro Min_le finite_imageI imageI) auto
-  finally have "edge_expansion \<le> real (card (edges_betw S (-S))) / card S" by simp
+  finally have "\<Lambda>\<^sub>e \<le> real (card (edges_betw S (-S))) / card S" by simp
   thus ?thesis using 1 by (simp add:divide_simps)
 next
   case False
@@ -740,7 +739,7 @@ lemma edge_expansionI:
   fixes \<alpha> :: real
   assumes "n > 1"
   assumes "\<And>S. S \<subseteq> verts G \<Longrightarrow> 2*card S \<le> n \<Longrightarrow> S \<noteq> {} \<Longrightarrow> card (edges_betw S (-S)) \<ge> \<alpha> * card S" 
-  shows "edge_expansion \<ge> \<alpha>"
+  shows "\<Lambda>\<^sub>e \<ge> \<alpha>"
 proof -
   define St where "St = {S. S \<subseteq> verts G \<and> 2*card S \<le> n \<and> S \<noteq> {}}"
   have 0: "finite St"
@@ -771,16 +770,16 @@ proof -
     by (intro Min.boundedI finite_imageI) auto
 
   thus ?thesis
-    unfolding edge_expansion_def St_def[symmetric] using assms by auto 
+    unfolding \<Lambda>\<^sub>e_def St_def[symmetric] using assms by auto 
 qed
 
 end
 
-lemma pre_expander_graphI:
+lemma regular_graphI:
   assumes "symmetric_multi_graph G"
   assumes "verts G \<noteq> {}" "d > 0"
   assumes "\<And>v. v \<in> verts G \<Longrightarrow> out_degree G v = d"
-  shows "pre_expander_graph G"
+  shows "regular_graph G"
 proof -
   obtain v where v_def: "v \<in> verts G"
     using assms(2) by auto
@@ -798,7 +797,7 @@ proof -
 
   thus ?thesis
     using assms symmetric_multi_graphD2[OF assms(1)]
-    unfolding pre_expander_graph_def pre_expander_graph_axioms_def
+    unfolding regular_graph_def regular_graph_axioms_def
     by simp
 qed
 
@@ -865,15 +864,14 @@ proof -
     using 0 unfolding symmetric_multi_graph_def by auto
 qed
 
-lemma (in pre_expander_graph)
+lemma (in regular_graph)
   assumes "digraph_iso G H"
-  shows pre_expander_graph_iso: "pre_expander_graph H" 
-    and pre_expander_graph_iso_size: "pre_expander_graph.n H = n"
-    and pre_expander_graph_iso_degree: "pre_expander_graph.d H = d"
-    and pre_expander_graph_iso_expansion_le:  "pre_expander_graph.\<Lambda> H \<le> \<Lambda>"
-    and pre_expander_graph_iso_os_expansion_le: "pre_expander_graph.\<Lambda>\<^sub>2 H \<le> \<Lambda>\<^sub>2"
-    and pre_expander_graph_iso_edge_expansion_ge: 
-    "pre_expander_graph.edge_expansion H \<ge> edge_expansion"
+  shows regular_graph_iso: "regular_graph H" 
+    and regular_graph_iso_size: "regular_graph.n H = n"
+    and regular_graph_iso_degree: "regular_graph.d H = d"
+    and regular_graph_iso_expansion_le:  "regular_graph.\<Lambda>\<^sub>a H \<le> \<Lambda>\<^sub>a"
+    and regular_graph_iso_os_expansion_le: "regular_graph.\<Lambda>\<^sub>2 H \<le> \<Lambda>\<^sub>2"
+    and regular_graph_iso_edge_expansion_ge: "regular_graph.\<Lambda>\<^sub>e H \<ge> \<Lambda>\<^sub>e"
 proof -
   obtain h where hom_iso: "digraph_isomorphism h" and H_alt: "H = app_iso h G"
     using assms unfolding digraph_iso_def by auto
@@ -898,9 +896,9 @@ proof -
     finally  show ?thesis by simp
   qed
 
-  thus 2:"pre_expander_graph H"
-    by (intro pre_expander_graphI[where d="d"] 0 d_gt_0 1) auto
-  interpret H:"pre_expander_graph" H
+  thus 2:"regular_graph H"
+    by (intro regular_graphI[where d="d"] 0 d_gt_0 1) auto
+  interpret H:"regular_graph" H
     using 2 by auto
 
   have "H.n = card (iso_verts h ` verts G)"
@@ -942,7 +940,7 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>2(/), \<sigma>\<^sub>1 f, \<sigma>\<^sub>1 of_nat]" more: 4 sum.reindex_cong[where l="iso_arcs h"])
   qed
 
-  show "H.\<Lambda> \<le> \<Lambda>"
+  show "H.\<Lambda>\<^sub>a \<le> \<Lambda>\<^sub>a"
     using expansionD1 by (intro H.expander_intro_1 \<Lambda>_ge_0) 
       (simp add:g_inner_conv g_step_conv H.g_norm_sq g_norm_sq cong:g_inner_cong)
 
@@ -960,12 +958,12 @@ proof -
       unfolding H.\<Lambda>\<^sub>2_def \<Lambda>\<^sub>2_def by (simp add:n_eq)
   qed
 
-  show "H.edge_expansion \<ge> edge_expansion"
+  show "H.\<Lambda>\<^sub>e \<ge> \<Lambda>\<^sub>e"
   proof (cases "n > 1")
     case True
     hence n_gt_1: "H.n  > 1"
       by (simp add:n_eq)
-    have "edge_expansion * real (card S) \<le> real (card (H.edges_betw S (- S)))" 
+    have "\<Lambda>\<^sub>e * real (card S) \<le> real (card (H.edges_betw S (- S)))" 
       if "S \<subseteq> verts H" "2 * card S \<le> H.n" "S \<noteq> {}" for S 
     proof -
       define T where "T = iso_verts h -` S \<inter> verts G"
@@ -993,7 +991,7 @@ proof -
 
       have 6: "T \<subseteq> verts G" unfolding T_def by simp
 
-      have "edge_expansion * real (card S) = edge_expansion * real (card T)"
+      have "\<Lambda>\<^sub>e * real (card S) = \<Lambda>\<^sub>e * real (card T)"
         unfolding 4 by simp
       also have "... \<le> real (card (edges_betw T (-T)))"
         using that(2) by (intro edge_expansionD 6) (simp add:4 n_eq)
@@ -1007,42 +1005,42 @@ proof -
   next
     case False
     thus ?thesis
-      unfolding H.edge_expansion_def edge_expansion_def by (simp add:n_eq)
+      unfolding H.\<Lambda>\<^sub>e_def \<Lambda>\<^sub>e_def by (simp add:n_eq)
   qed
 
 qed
 
-lemma (in pre_expander_graph)
+lemma (in regular_graph)
   assumes "digraph_iso G H"
-  shows pre_expander_graph_iso_expansion: "pre_expander_graph.\<Lambda> H = \<Lambda>"
-    and pre_expander_graph_iso_os_expansion: "pre_expander_graph.\<Lambda>\<^sub>2 H = \<Lambda>\<^sub>2"
-    and pre_expander_graph_iso_edge_expansion: "pre_expander_graph.edge_expansion H = edge_expansion"
+  shows regular_graph_iso_expansion: "regular_graph.\<Lambda>\<^sub>a H = \<Lambda>\<^sub>a"
+    and regular_graph_iso_os_expansion: "regular_graph.\<Lambda>\<^sub>2 H = \<Lambda>\<^sub>2"
+    and regular_graph_iso_edge_expansion: "regular_graph.\<Lambda>\<^sub>e H = \<Lambda>\<^sub>e"
 proof -
-  interpret H:"pre_expander_graph" "H"
-    by (intro pre_expander_graph_iso assms)
+  interpret H:"regular_graph" "H"
+    by (intro regular_graph_iso assms)
 
   have iso:"digraph_iso H G"
     using digraph_iso_swap assms wf_digraph_axioms by blast
 
-  hence "\<Lambda> \<le> H.\<Lambda>"
-    by (intro H.pre_expander_graph_iso_expansion_le)
-  moreover have "H.\<Lambda> \<le> \<Lambda>"
-    using pre_expander_graph_iso_expansion_le[OF assms] by auto
-  ultimately show "H.\<Lambda> = \<Lambda>"
+  hence "\<Lambda>\<^sub>a \<le> H.\<Lambda>\<^sub>a"
+    by (intro H.regular_graph_iso_expansion_le)
+  moreover have "H.\<Lambda>\<^sub>a \<le> \<Lambda>\<^sub>a"
+    using regular_graph_iso_expansion_le[OF assms] by auto
+  ultimately show "H.\<Lambda>\<^sub>a = \<Lambda>\<^sub>a"
     by auto
 
   have "\<Lambda>\<^sub>2 \<le> H.\<Lambda>\<^sub>2" using iso
-    by (intro H.pre_expander_graph_iso_os_expansion_le)
+    by (intro H.regular_graph_iso_os_expansion_le)
   moreover have "H.\<Lambda>\<^sub>2 \<le> \<Lambda>\<^sub>2"
-    using pre_expander_graph_iso_os_expansion_le[OF assms] by auto
+    using regular_graph_iso_os_expansion_le[OF assms] by auto
   ultimately show "H.\<Lambda>\<^sub>2 = \<Lambda>\<^sub>2"
     by auto
 
-  have "edge_expansion \<ge> H.edge_expansion" using iso
-    by (intro H.pre_expander_graph_iso_edge_expansion_ge)
-  moreover have "H.edge_expansion \<ge> edge_expansion"
-    using pre_expander_graph_iso_edge_expansion_ge[OF assms] by auto
-  ultimately show "H.edge_expansion = edge_expansion"
+  have "\<Lambda>\<^sub>e \<ge> H.\<Lambda>\<^sub>e" using iso
+    by (intro H.regular_graph_iso_edge_expansion_ge)
+  moreover have "H.\<Lambda>\<^sub>e \<ge> \<Lambda>\<^sub>e"
+    using regular_graph_iso_edge_expansion_ge[OF assms] by auto
+  ultimately show "H.\<Lambda>\<^sub>e = \<Lambda>\<^sub>e"
     by auto
 qed
 

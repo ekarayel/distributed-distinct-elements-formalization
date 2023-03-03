@@ -386,13 +386,13 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma  (in pre_expander_graph) graph_power_out_degree:
+lemma  (in regular_graph) graph_power_out_degree:
   assumes "v \<in> verts (graph_power G l)"
   shows "out_degree (graph_power G l) v = d ^ l"  (is "?L = ?R")
   by (intro graph_power_out_degree' assms reg) auto
 
-lemma (in pre_expander_graph) graph_power_regular: 
-  "pre_expander_graph (graph_power G l)"
+lemma (in regular_graph) graph_power_regular: 
+  "regular_graph (graph_power G l)"
 proof -
   interpret H:fin_digraph "graph_power G l" 
     using graph_power_fin by auto
@@ -405,13 +405,13 @@ proof -
 
   ultimately show ?thesis
     using graph_power_out_degree
-    by (intro pre_expander_graphI[where d="d^l"] graph_power_sym sym)
+    by (intro regular_graphI[where d="d^l"] graph_power_sym sym)
 qed
 
-lemma (in pre_expander_graph) graph_power_degree: 
-  "pre_expander_graph.d (graph_power G l) = d^l" (is "?L = ?R")
+lemma (in regular_graph) graph_power_degree: 
+  "regular_graph.d (graph_power G l) = d^l" (is "?L = ?R")
 proof -
-  interpret H:pre_expander_graph "graph_power G l" 
+  interpret H:regular_graph "graph_power G l" 
     using graph_power_regular by auto
   obtain v where v_set: "v \<in> verts (graph_power G l)"
     using H.verts_non_empty by auto
@@ -422,16 +422,16 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma (in pre_expander_graph) graph_power_step:
+lemma (in regular_graph) graph_power_step:
   assumes "x \<in> verts G"
-  shows "pre_expander_graph.g_step (graph_power G l) f x = (g_step^^l) f x"
+  shows "regular_graph.g_step (graph_power G l) f x = (g_step^^l) f x"
   using assms
 proof (induction l arbitrary: x)
   case 0
   let ?H = "graph_power G 0"
-  interpret H:pre_expander_graph "?H"
+  interpret H:regular_graph "?H"
     using graph_power_regular by auto
-  have "pre_expander_graph.g_step (graph_power G 0) f x = H.g_step f x"
+  have "regular_graph.g_step (graph_power G 0) f x = H.g_step f x"
     by simp
   have "H.g_step f x = (\<Sum>x\<in>in_arcs ?H x. f (tail ?H x))"
     unfolding H.g_step_def graph_power_degree by simp
@@ -449,10 +449,10 @@ proof (induction l arbitrary: x)
 next
   case (Suc l)
   let ?H = "graph_power G l"
-  interpret H:pre_expander_graph "?H"
+  interpret H:regular_graph "?H"
     using graph_power_regular by auto
   let ?HS = "graph_power G (l+1)"
-  interpret HS:pre_expander_graph "?HS"
+  interpret HS:regular_graph "?HS"
     using graph_power_regular by auto
 
   let ?bij = "(\<lambda>(x,(y1,y2)). (y1,y2@[x]))"
@@ -504,13 +504,13 @@ next
   finally show ?case by simp
 qed
 
-lemma (in pre_expander_graph) graph_power_expansion:
-  "pre_expander_graph.\<Lambda> (graph_power G l) \<le> \<Lambda>^l"
+lemma (in regular_graph) graph_power_expansion:
+  "regular_graph.\<Lambda>\<^sub>a (graph_power G l) \<le> \<Lambda>\<^sub>a^l"
 proof -
-  interpret H:pre_expander_graph "graph_power G l" 
+  interpret H:regular_graph "graph_power G l" 
     using graph_power_regular by auto
 
-  have "\<bar>H.g_inner f (H.g_step f)\<bar> \<le> \<Lambda> ^ l * (H.g_norm f)\<^sup>2" (is "?L \<le> ?R")
+  have "\<bar>H.g_inner f (H.g_step f)\<bar> \<le> \<Lambda>\<^sub>a ^ l * (H.g_norm f)\<^sup>2" (is "?L \<le> ?R")
     if "H.g_inner f (\<lambda>_. 1) = 0"  for f
   proof -
     have "g_inner f (\<lambda>_. 1) = H.g_inner f (\<lambda>_.1)"
@@ -522,7 +522,7 @@ proof -
     have 2: "g_inner ((g_step^^l) f) (\<lambda>_. 1) = 0" for l
       using g_step_remains_orth 1 by (induction l, auto)
 
-    have 0: "g_norm ((g_step^^l) f) \<le> \<Lambda> ^ l * g_norm f"
+    have 0: "g_norm ((g_step^^l) f) \<le> \<Lambda>\<^sub>a ^ l * g_norm f"
     proof (induction l)
       case 0
       then show ?case by simp
@@ -530,11 +530,11 @@ proof -
       case (Suc l)
       have "g_norm ((g_step ^^ Suc l) f) = g_norm (g_step ((g_step ^^ l) f))"
         by simp
-      also have "... \<le> \<Lambda> * g_norm (((g_step ^^ l) f))"
+      also have "... \<le> \<Lambda>\<^sub>a * g_norm (((g_step ^^ l) f))"
         by (intro expansionD2 2)
-      also have "... \<le> \<Lambda> * (\<Lambda>^l * g_norm f)"
+      also have "... \<le> \<Lambda>\<^sub>a * (\<Lambda>\<^sub>a^l * g_norm f)"
         by (intro mult_left_mono \<Lambda>_ge_0 Suc)
-      also have "... = \<Lambda>^(l+1) * g_norm f" by simp
+      also have "... = \<Lambda>\<^sub>a^(l+1) * g_norm f" by simp
       finally show ?case by simp
     qed
 
@@ -545,16 +545,16 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>1 abs]" more:g_inner_cong graph_power_step) auto
     also have "... \<le> g_norm f * g_norm ((g_step^^l) f)"
       by (intro g_inner_cauchy_schwartz)
-    also have "... \<le> g_norm f * (\<Lambda> ^ l * g_norm f)"
+    also have "... \<le> g_norm f * (\<Lambda>\<^sub>a ^ l * g_norm f)"
       by (intro mult_left_mono 0 g_norm_nonneg) 
-    also have "... = \<Lambda> ^ l * g_norm f^2"
+    also have "... = \<Lambda>\<^sub>a ^ l * g_norm f^2"
       by (simp add:power2_eq_square)
     also have "... = ?R" 
       unfolding g_norm_sq H.g_norm_sq g_inner_def H.g_inner_def
       by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong) (auto simp add:graph_power_def)
     finally show ?thesis by simp
   qed
-  moreover have " 0 \<le> \<Lambda> ^ l" 
+  moreover have " 0 \<le> \<Lambda>\<^sub>a ^ l" 
     using \<Lambda>_ge_0 by simp
 
   ultimately show ?thesis

@@ -159,7 +159,7 @@ lemma pmf_of_multiset_image_mset:
       image_mset_filter_mset_swap[symmetric])
 
 
-context pre_expander_graph 
+context regular_graph 
 begin
 
 lemma size_walks':
@@ -201,7 +201,7 @@ qed
 
 end
 
-context pre_expander_graph_tts
+context regular_graph_tts
 begin
 
 lemma g_step_remains_orth:
@@ -219,11 +219,11 @@ proof -
 qed
 
 lemma spec_bound:
-  "spec_bound A \<Lambda>"
+  "spec_bound A \<Lambda>\<^sub>a"
 proof -
-  have "norm (A *v v) \<le> \<Lambda> * norm v" if "v \<bullet> 1 = (0::real)" for v::"real^'n"
+  have "norm (A *v v) \<le> \<Lambda>\<^sub>a * norm v" if "v \<bullet> 1 = (0::real)" for v::"real^'n"
     unfolding \<Lambda>\<^sub>e_eq_\<Lambda>
-    by (intro \<gamma>\<^sub>2_real_bound that)
+    by (intro \<gamma>\<^sub>a_real_bound that)
   thus ?thesis
     unfolding spec_bound_def using \<Lambda>_ge_0 by auto
 qed
@@ -232,7 +232,7 @@ text \<open>A spectral expansion rule that does not require orthogonality of the
 distribution:\<close>
 
 lemma expansionD3:
-  "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda> * g_norm f^2 + (1-\<Lambda>) * g_inner f (\<lambda>_. 1)^2 / n" (is "?L \<le> ?R")
+  "\<bar>g_inner f (g_step f)\<bar> \<le> \<Lambda>\<^sub>a * g_norm f^2 + (1-\<Lambda>\<^sub>a) * g_inner f (\<lambda>_. 1)^2 / n" (is "?L \<le> ?R")
 proof -
   define v where "v = (\<chi> i. f (enum_verts i))"
   define v1 :: "real^ 'n" where "v1 = ((v \<bullet> 1) / n) *\<^sub>R 1"
@@ -266,11 +266,11 @@ proof -
 
   have "\<bar>v2 \<bullet> (A *v v2)\<bar> = \<bar>g_inner f2 (g_step f2)\<bar>"
     unfolding f2_def g_inner_conv g_step_conv by simp
-  also have "... \<le> \<Lambda> * (g_norm f2)\<^sup>2"
+  also have "... \<le> \<Lambda>\<^sub>a * (g_norm f2)\<^sup>2"
     by (intro expansionD1 6) 
-  also have "... = \<Lambda> * (norm v2)^2"
+  also have "... = \<Lambda>\<^sub>a * (norm v2)^2"
     unfolding g_norm_conv f2_def by simp
-  finally have 5:"\<bar>v2 \<bullet> (A *v v2)\<bar> \<le> \<Lambda> * (norm v2)\<^sup>2" by simp
+  finally have 5:"\<bar>v2 \<bullet> (A *v v2)\<bar> \<le> \<Lambda>\<^sub>a * (norm v2)\<^sup>2" by simp
 
   have 3: "norm (1 :: real^'n)^2 = n"
     unfolding power2_norm_eq_inner inner_1_1 card n_def by presburger 
@@ -285,15 +285,15 @@ proof -
     using 2 by (simp add:inner_commute)
   also have "... \<le> \<bar>norm v1^2\<bar> + \<bar>v2 \<bullet> (A *v v2)\<bar>"
     unfolding power2_norm_eq_inner by (intro abs_triangle_ineq)
-  also have "... \<le> norm v1^2 + \<Lambda> * norm v2^2"
+  also have "... \<le> norm v1^2 + \<Lambda>\<^sub>a * norm v2^2"
     by (intro add_mono 5) auto
-  also have "... = \<Lambda> * (norm v1^2 + norm v2^2) + (1 - \<Lambda>) * norm v1^2"
+  also have "... = \<Lambda>\<^sub>a * (norm v1^2 + norm v2^2) + (1 - \<Lambda>\<^sub>a) * norm v1^2"
     by (simp add:algebra_simps)
-  also have "... = \<Lambda> * norm v^2 + (1 - \<Lambda>) * norm v1^2"
+  also have "... = \<Lambda>\<^sub>a * norm v^2 + (1 - \<Lambda>\<^sub>a) * norm v1^2"
     unfolding v_eq pythagoras[OF 2] by simp
-  also have "... = \<Lambda> * norm v^2 + ((1 - \<Lambda>)) * ((v \<bullet> 1)^2*n)/n^2"
+  also have "... = \<Lambda>\<^sub>a * norm v^2 + ((1 - \<Lambda>\<^sub>a)) * ((v \<bullet> 1)^2*n)/n^2"
     unfolding v1_def by (simp add:power_divide power_mult_distrib 3)
-  also have "... = \<Lambda> * norm v^2 + ((1 - \<Lambda>)/n) * (v \<bullet> 1)^2"
+  also have "... = \<Lambda>\<^sub>a * norm v^2 + ((1 - \<Lambda>\<^sub>a)/n) * (v \<bullet> 1)^2"
     by (simp add:power2_eq_square)
   also have "... = ?R"
     unfolding g_norm_conv g_inner_conv v_def one_vec_def by (simp add:field_simps)
@@ -416,7 +416,7 @@ lemma hitting_property:
   assumes "S \<subseteq> verts G" 
   assumes "I \<subseteq> {..<l}"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
-  shows "measure (pmf_of_multiset (walks G l)) {w. set (nths w I) \<subseteq> S} \<le> (\<mu>+\<Lambda>*(1-\<mu>))^card I" 
+  shows "measure (pmf_of_multiset (walks G l)) {w. set (nths w I) \<subseteq> S} \<le> (\<mu>+\<Lambda>\<^sub>a*(1-\<mu>))^card I" 
     (is "?L \<le> ?R")
 proof -
   define T where "T = (\<lambda>i. if i \<in> I then S else UNIV)" 
@@ -424,7 +424,7 @@ proof -
   have 0: "ind_mat UNIV = mat 1"
     unfolding ind_mat_def diag_def ind_vec_def Finite_Cartesian_Product.mat_def by vector
 
-  have \<Lambda>_range: "\<Lambda> \<in> {0..1}"
+  have \<Lambda>_range: "\<Lambda>\<^sub>a \<in> {0..1}"
     using \<Lambda>_ge_0 \<Lambda>_le_1 by simp
 
   have "S \<subseteq> range enum_verts" 
@@ -477,27 +477,27 @@ qed
 
 end
 
-context pre_expander_graph
+context regular_graph
 begin
 
 lemmas expansionD3 =  
-  pre_expander_graph_tts.expansionD3[OF eg_tts_1,
-    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+  regular_graph_tts.expansionD3[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ regular_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas g_step_remains_orth =  
-  pre_expander_graph_tts.g_step_remains_orth[OF eg_tts_1,
-    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+  regular_graph_tts.g_step_remains_orth[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ regular_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas hitting_property =  
-  pre_expander_graph_tts.hitting_property[OF eg_tts_1,
-    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+  regular_graph_tts.hitting_property[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ regular_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 lemmas uniform_property_2 =  
-  pre_expander_graph_tts.uniform_property[OF eg_tts_1,
-    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+  regular_graph_tts.uniform_property[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ regular_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 theorem uniform_property:
@@ -549,13 +549,13 @@ theorem kl_chernoff_property:
   assumes "l > 0"
   assumes "S \<subseteq> verts G"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
-  assumes "\<gamma> \<le> 1" "\<mu> + \<Lambda> * (1-\<mu>) \<in> {0<..\<gamma>}"
+  assumes "\<gamma> \<le> 1" "\<mu> + \<Lambda>\<^sub>a * (1-\<mu>) \<in> {0<..\<gamma>}"
   shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l} 
-    \<le> exp (- real l * KL_div \<gamma> (\<mu>+\<Lambda>*(1-\<mu>)))" (is "?L \<le> ?R")
+    \<le> exp (- real l * KL_div \<gamma> (\<mu>+\<Lambda>\<^sub>a*(1-\<mu>)))" (is "?L \<le> ?R")
 proof -
-  let ?\<delta> = "(\<Sum>i<l. \<mu>+\<Lambda>*(1-\<mu>))/l"
+  let ?\<delta> = "(\<Sum>i<l. \<mu>+\<Lambda>\<^sub>a*(1-\<mu>))/l"
 
-  have a: "measure (pmf_of_multiset (walks G l)) {w. \<forall>i\<in>T. w ! i \<in> S} \<le> (\<mu> + \<Lambda>*(1-\<mu>)) ^ card T"
+  have a: "measure (pmf_of_multiset (walks G l)) {w. \<forall>i\<in>T. w ! i \<in> S} \<le> (\<mu> + \<Lambda>\<^sub>a*(1-\<mu>)) ^ card T"
     (is "?L1 \<le> ?R1") if "T \<subseteq> {..<l}" for T 
   proof -
     have "?L1 = measure (pmf_of_multiset (walks G l)) {w. set (nths w T) \<subseteq> S}"

@@ -10,16 +10,15 @@ begin
 unbundle intro_cong_syntax
 hide_const Quantum.T
 
-context pre_expander_graph
+context regular_graph
 begin
-
 
 lemma edge_expansionD2:
   assumes "m = card (S \<inter> verts G)" "2*m \<le> n"
-  shows "edge_expansion * m \<le> real (card (edges_betw S (-S)))"
+  shows "\<Lambda>\<^sub>e * m \<le> real (card (edges_betw S (-S)))"
 proof -
   define S' where "S' = S \<inter> verts G"
-  have "edge_expansion * m = edge_expansion * card S'"
+  have "\<Lambda>\<^sub>e * m = \<Lambda>\<^sub>e * card S'"
     using assms(1) S'_def by simp
   also have "... \<le> real (card (edges_betw S' (-S')))"
     using assms unfolding S'_def by (intro edge_expansionD) auto
@@ -70,7 +69,7 @@ text \<open>The following proof follows Hoory et al.~@{cite \<open>\S 4.5.1\<clo
 
 lemma cheeger_aux_2:
   assumes "n > 1"
-  shows "edge_expansion \<ge> d*(1-\<Lambda>\<^sub>2)/2"
+  shows "\<Lambda>\<^sub>e \<ge> d*(1-\<Lambda>\<^sub>2)/2"
 proof -
   have "real (card (edges_betw S (-S))) \<ge> (d * (1 - \<Lambda>\<^sub>2) / 2) * real (card S)" 
     if "S \<subseteq> verts G" "2 * card S \<le> n" for S
@@ -268,7 +267,7 @@ proof -
   ultimately show ?thesis by auto
 qed
 
-context pre_expander_graph_tts
+context regular_graph_tts
 begin
 
 text \<open>Normalized Laplacian of the graph\<close>
@@ -292,10 +291,10 @@ text \<open>The following proof follows Hoory et al.~@{cite \<open>\S 4.5.2\<clo
 
 lemma cheeger_aux_1:
   assumes "n > 1"
-  shows "edge_expansion \<le> d * sqrt (2 * (1-\<Lambda>\<^sub>2))"
+  shows "\<Lambda>\<^sub>e \<le> d * sqrt (2 * (1-\<Lambda>\<^sub>2))"
 proof -
   obtain v where v_def: "v \<bullet> 1 = 0" "v \<noteq> 0" "A *v v = \<Lambda>\<^sub>2 *s v"
-    using \<gamma>\<^sub>2_eq_\<Lambda>\<^sub>2 \<gamma>\<^sub>2_ev[OF assms] by auto
+    using \<Lambda>\<^sub>2_eq_\<gamma>\<^sub>2 \<gamma>\<^sub>2_ev[OF assms] by auto
 
   have "False" if "2*card {i. (1 *s v) $h i > 0} > n" "2*card {i. ((-1) *s v) $h i > 0} > n"
   proof -
@@ -618,28 +617,28 @@ proof -
       by simp
   qed
 
-  have "2 * edge_expansion * norm f^2 =  2 * edge_expansion * (g_norm f'^2)"
+  have "2 * \<Lambda>\<^sub>e * norm f^2 =  2 * \<Lambda>\<^sub>e * (g_norm f'^2)"
     unfolding g_norm_conv f'_alt by simp
-  also have "... \<le> 2 * edge_expansion * (\<Sum>v\<in> verts G. f' v^2)"
+  also have "... \<le> 2 * \<Lambda>\<^sub>e * (\<Sum>v\<in> verts G. f' v^2)"
     unfolding g_norm_sq g_inner_def by (simp add:power2_eq_square)
-  also have "... = 2 * edge_expansion * (\<Sum>i<n. f' (\<phi> i)^2)"
+  also have "... = 2 * \<Lambda>\<^sub>e * (\<Sum>i<n. f' (\<phi> i)^2)"
     by (intro arg_cong2[where f="(*)"] refl sum.reindex_bij_betw[symmetric] \<phi>_bij)
-  also have "... = 2 * edge_expansion * (\<Sum>i<n. \<tau> i^2)"
+  also have "... = 2 * \<Lambda>\<^sub>e * (\<Sum>i<n. \<tau> i^2)"
     unfolding \<tau>_def by (intro arg_cong2[where f="(*)"] refl sum.cong) auto
-  also have "... = 2 * edge_expansion * (\<Sum>i<m. \<tau> i^2)"
+  also have "... = 2 * \<Lambda>\<^sub>e * (\<Sum>i<m. \<tau> i^2)"
     using \<tau>_supp m_le_n by (intro sum.mono_neutral_cong_right arg_cong2[where f="(*)"] refl) auto
-  also have "... \<le> 2 * edge_expansion * ((\<Sum>i<m. \<tau> i^2) + (real 0 * \<tau> 0^2 - m * \<tau> m^2))"
+  also have "... \<le> 2 * \<Lambda>\<^sub>e * ((\<Sum>i<m. \<tau> i^2) + (real 0 * \<tau> 0^2 - m * \<tau> m^2))"
     using \<tau>_supp[of "m"] by simp
-  also have "... \<le> 2 * edge_expansion * ((\<Sum>i<m. \<tau> i^2) + (\<Sum>i<m. i*\<tau> i^2-(Suc i)*\<tau> (Suc i)^2))"
+  also have "... \<le> 2 * \<Lambda>\<^sub>e * ((\<Sum>i<m. \<tau> i^2) + (\<Sum>i<m. i*\<tau> i^2-(Suc i)*\<tau> (Suc i)^2))"
     by (subst sum_lessThan_telescope'[symmetric]) simp
-  also have "... \<le> 2 * (\<Sum>i<m. (edge_expansion * (i+1)) * (\<tau> i^2-\<tau> (i+1)^2))"
+  also have "... \<le> 2 * (\<Sum>i<m. (\<Lambda>\<^sub>e * (i+1)) * (\<tau> i^2-\<tau> (i+1)^2))"
     by (simp add:sum_distrib_left algebra_simps sum.distrib[symmetric])
   also have "... \<le> 2 * (\<Sum>i<m. real (card (edges_betw (\<phi>`{..i}) (-\<phi>`{..i}))) * (\<tau> i^2-\<tau> (i+1)^2))"
     using \<tau>_nonneg \<tau>_antimono power_mono 3 m2_le_n
     by (intro mult_left_mono sum_mono mult_right_mono edge_expansionD2) auto
   also have "... = B\<^sub>f"
     unfolding Bf_eq by simp
-  finally have hoory_4_13: "2 * edge_expansion * norm f^2 \<le> B\<^sub>f"
+  finally have hoory_4_13: "2 * \<Lambda>\<^sub>e * norm f^2 \<le> B\<^sub>f"
     by simp
   text \<open>Corresponds to Lemma 4.13 in Hoory et al.\<close>
 
@@ -664,9 +663,9 @@ proof -
   hence norm_f_gt_0: "norm f> 0"
     by simp
 
-  have "edge_expansion * norm f * norm f \<le> sqrt 2 * real d * norm f * sqrt (f \<bullet> (L *v f))"
+  have "\<Lambda>\<^sub>e * norm f * norm f \<le> sqrt 2 * real d * norm f * sqrt (f \<bullet> (L *v f))"
     using order_trans[OF hoory_4_13 hoory_4_12] by (simp add:power2_eq_square)
-  hence "edge_expansion \<le> real d * sqrt 2 * sqrt (f \<bullet> (L *v f)) / norm f"
+  hence "\<Lambda>\<^sub>e \<le> real d * sqrt 2 * sqrt (f \<bullet> (L *v f)) / norm f"
     using norm_f_gt_0 by (simp add:ac_simps divide_simps)
   also have "... \<le> real d * sqrt 2 * sqrt ((1 - \<Lambda>\<^sub>2) * (norm f)\<^sup>2) / norm f"
     by (intro mult_left_mono divide_right_mono real_sqrt_le_mono h_part_i) auto
@@ -680,19 +679,21 @@ qed
 
 end
 
-context pre_expander_graph
+context regular_graph
 begin 
 
-lemmas (in pre_expander_graph) cheeger_aux_1 =  
-  pre_expander_graph_tts.cheeger_aux_1[OF eg_tts_1,
-    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+lemmas (in regular_graph) cheeger_aux_1 =  
+  regular_graph_tts.cheeger_aux_1[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ regular_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 
 theorem cheeger_inequality:
   assumes "n > 1"
-  shows "edge_expansion \<in> {d * (1 - \<Lambda>\<^sub>2) / 2.. d * sqrt (2 * (1 - \<Lambda>\<^sub>2))}"
+  shows "\<Lambda>\<^sub>e \<in> {d * (1 - \<Lambda>\<^sub>2) / 2.. d * sqrt (2 * (1 - \<Lambda>\<^sub>2))}"
   using cheeger_aux_1 cheeger_aux_2 assms by auto
 
 unbundle no_intro_cong_syntax
+
+end
 
 end

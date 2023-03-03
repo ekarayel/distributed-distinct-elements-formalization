@@ -8,13 +8,13 @@ theory Expander_Graphs_TTS
 begin
 
 text \<open>This section sets up a sublocale with the assumption that there is a finite type with the same
-cardinality as the vertex set of an expander graph. This allows defining the adjacency matrix for 
+cardinality as the vertex set of a regular graph. This allows defining the adjacency matrix for 
 the graph using type-based linear algebra.
 
 Theorems shown in the sublocale that do not refer to the local type are then lifted to the
-@{locale pre_expander_graph} locale using the Types-To-Sets mechanism.\<close>
+@{locale regular_graph} locale using the Types-To-Sets mechanism.\<close>
 
-locale pre_expander_graph_tts = pre_expander_graph +
+locale regular_graph_tts = regular_graph +
   fixes n_itself :: "('n :: finite) itself"
   assumes td: "\<exists>(f :: ('n \<Rightarrow> 'a)) g. type_definition f g (verts G)"
 begin
@@ -96,13 +96,13 @@ qed
 end
 
 lemma eg_tts_1:
-  assumes "pre_expander_graph G"
+  assumes "regular_graph G"
   assumes "\<exists>(f::('n::finite) \<Rightarrow> 'a) g. type_definition f g (verts G)"
-  shows "pre_expander_graph_tts TYPE('n) G"
+  shows "regular_graph_tts TYPE('n) G"
   using assms  
-  unfolding pre_expander_graph_tts_def  pre_expander_graph_tts_axioms_def by auto
+  unfolding regular_graph_tts_def  regular_graph_tts_axioms_def by auto
 
-context pre_expander_graph 
+context regular_graph 
 begin
 
 lemma remove_finite_premise_aux:

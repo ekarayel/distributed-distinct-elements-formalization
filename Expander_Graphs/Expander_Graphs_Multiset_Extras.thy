@@ -1,6 +1,6 @@
 subsection \<open>Multisets\<close>
 
-text \<open>Some preliminary results about multiset\<close>
+text \<open>Some preliminary results about multisets.\<close>
 
 theory Expander_Graphs_Multiset_Extras
   imports Frequency_Moments.Frequency_Moments_Preliminary_Results Extra_Congruence_Method
@@ -38,7 +38,6 @@ lemma count_mset_exp: "count A x = size (filter_mset (\<lambda>y. y = x) A)"
 
 lemma mset_repl: "mset (replicate k x) = replicate_mset k x"
   by (induction k, auto)
-
 
 lemma count_image_mset_inj:
   assumes "inj f"
@@ -89,14 +88,12 @@ next
   finally show ?case by simp
 qed
 
-
 definition concat_mset :: "('a multiset) multiset \<Rightarrow> 'a multiset"
   where "concat_mset xss = fold_mset (\<lambda>xs ys. xs + ys) {#} xss"
 
 lemma image_concat_mset:
   "image_mset f (concat_mset xss) = concat_mset (image_mset (image_mset f) xss)"
   unfolding concat_mset_def by (induction xss, auto)
-
 
 lemma concat_add_mset:
   "concat_mset (image_mset (\<lambda>x. f x + g x) xs) = concat_mset (image_mset f xs) + concat_mset (image_mset g xs)"
@@ -185,7 +182,6 @@ next
     using insert(1,2) by (intro_cong "[\<sigma>\<^sub>1 concat_mset, \<sigma>\<^sub>2 image_mset]") auto
   finally show ?case by simp
 qed
-
 
 lemma sum_mset_repeat: 
   fixes f :: "'a \<Rightarrow> 'b :: {comm_monoid_add,semiring_1}"
