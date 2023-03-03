@@ -1415,11 +1415,51 @@ proof -
   finally show ?thesis by simp
 qed
 
+text \<open>The following implies that two-sided expanders are also one-sided expanders.\<close>
+
+lemma \<Lambda>\<^sub>2_range: "\<bar>\<Lambda>\<^sub>2\<bar> \<le> \<Lambda>"
+proof (cases "n > 1")
+  case True
+  hence 0:"set_mset (eigenvalues A - {#1::complex#}) \<noteq> {}"
+    using size_evs by auto
+
+  have "\<gamma>\<^sub>2 TYPE ('n) = Max (Re ` set_mset (eigenvalues A - {#1::complex#}))"
+    unfolding \<gamma>\<^sub>2_def using True by simp
+  also have "... \<in> Re ` set_mset (eigenvalues A - {#1::complex#})"
+    using Max_in 0 by simp
+  finally have "\<gamma>\<^sub>2 TYPE ('n) \<in> Re ` set_mset (eigenvalues A - {#1::complex#})"
+    by simp
+  then obtain \<alpha> where \<alpha>_def: "\<alpha> \<in> set_mset (eigenvalues A - {#1::complex#})" "\<gamma>\<^sub>2 TYPE ('n) = Re \<alpha>"
+    by auto
+
+  have "\<bar>\<Lambda>\<^sub>2\<bar> = \<bar>\<gamma>\<^sub>2 TYPE ('n) \<bar>"
+    using \<gamma>\<^sub>2_eq_\<Lambda>\<^sub>2 by simp
+  also have "... = \<bar>Re \<alpha>\<bar>" 
+    using \<alpha>_def by simp
+  also have "... \<le> cmod \<alpha>"
+    using abs_Re_le_cmod by simp
+  also have "... \<le> Max (cmod ` set_mset (eigenvalues A - {#1#}))"
+    using \<alpha>_def(1) by (intro Max_ge) auto
+  also have "... \<le> \<Lambda>\<^sub>e TYPE('n)" 
+    unfolding \<Lambda>\<^sub>e_def using True by simp
+  also have "... = \<Lambda>"
+    using \<Lambda>\<^sub>e_eq_\<Lambda> by simp
+  finally show ?thesis by simp
+next 
+  case False
+  thus ?thesis 
+    unfolding \<Lambda>\<^sub>2_def \<Lambda>_def by simp
+qed
 
 end
 
 lemmas (in pre_expander_graph) expansionD2 =  
   pre_expander_graph_tts.expansionD2[OF eg_tts_1,
+    internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
+    unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
+
+lemmas (in pre_expander_graph) \<Lambda>\<^sub>2_range =  
+  pre_expander_graph_tts.\<Lambda>\<^sub>2_range[OF eg_tts_1,
     internalize_sort "'n :: finite", OF _ pre_expander_graph_axioms, 
     unfolded remove_finite_premise, cancel_type_definition, OF verts_non_empty]
 

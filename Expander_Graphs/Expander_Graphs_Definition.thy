@@ -7,7 +7,13 @@ theory Expander_Graphs_Definition
     Extra_Congruence_Method
     Expander_Graphs_Multiset_Extras
     Jordan_Normal_Form.Conjugate
+    Interpolation_Polynomials_HOL_Algebra.Interpolation_Polynomial_Cardinalities
 begin
+
+lemma restr_Collect_cong:
+  assumes "\<And>x. x \<in> A \<Longrightarrow> P x = Q x"
+  shows "{x \<in> A. P x} = {x \<in> A. Q x}"
+  using assms by auto
 
 unbundle intro_cong_syntax
 
@@ -534,20 +540,6 @@ next
   thus ?thesis unfolding \<Lambda>\<^sub>2_def by simp
 qed
 
-lemma \<Lambda>\<^sub>2_range: "\<bar>\<Lambda>\<^sub>2\<bar> \<le> \<Lambda>"
-proof (cases "n > 1")
-  case True
-
-  have "\<Lambda>\<^sub>2 \<le> 1"
-    sorry
-
-  show ?thesis sorry
-next 
-  case False
-  thus ?thesis 
-    unfolding \<Lambda>\<^sub>2_def \<Lambda>_def by simp
-qed
-
 lemma \<Lambda>_ge_0: "\<Lambda> \<ge> 0"
 proof (cases "n > 1")
   case True
@@ -711,6 +703,77 @@ proof -
   finally show ?thesis by simp
 qed
 
+definition edges_betw where "edges_betw S T = {a \<in> arcs G. tail G a \<in> S \<and> head G a \<in> T}"
+
+definition edge_expansion where "edge_expansion = (if n > 1 then
+  (MIN S\<in>{S. S\<subseteq>verts G\<and>2*card S\<le>n\<and>S\<noteq>{}}. real (card (edges_betw S (-S)))/card S) else 0)"
+
+lemma edge_expansionD:
+  assumes "S \<subseteq> verts G" "2*card S \<le> n"
+  shows "edge_expansion * card S \<le> real (card (edges_betw S (-S)))"
+proof (cases "S \<noteq> {}")
+  case True
+  moreover have "finite S" 
+    using finite_subset[OF assms(1)] by simp
+  ultimately have "card S > 0" by auto
+  hence 1: "real (card S) > 0" by simp
+  hence 2: "n > 1" using assms(2) by simp
+
+  let ?St = "{S. S \<subseteq> verts G \<and> 2 * card S \<le> n \<and> S \<noteq> {}}"
+
+  have 0: "finite ?St"
+    by (rule finite_subset[where B="Pow (verts G)"]) auto
+  have "edge_expansion = (MIN S\<in>?St. real (card (edges_betw S (-S)))/card S)"
+    using 2 unfolding edge_expansion_def by simp
+
+  also have "... \<le> real (card (edges_betw S (-S))) / card S"
+    using assms True by (intro Min_le finite_imageI imageI) auto
+  finally have "edge_expansion \<le> real (card (edges_betw S (-S))) / card S" by simp
+  thus ?thesis using 1 by (simp add:divide_simps)
+next
+  case False
+  hence "card S = 0" by simp
+  thus ?thesis by simp
+qed
+
+lemma edge_expansionI:
+  fixes \<alpha> :: real
+  assumes "n > 1"
+  assumes "\<And>S. S \<subseteq> verts G \<Longrightarrow> 2*card S \<le> n \<Longrightarrow> S \<noteq> {} \<Longrightarrow> card (edges_betw S (-S)) \<ge> \<alpha> * card S" 
+  shows "edge_expansion \<ge> \<alpha>"
+proof -
+  define St where "St = {S. S \<subseteq> verts G \<and> 2*card S \<le> n \<and> S \<noteq> {}}"
+  have 0: "finite St"
+    unfolding St_def
+    by (rule finite_subset[where B="Pow (verts G)"]) auto 
+
+  obtain v where v_def: "v \<in> verts G" using verts_non_empty by auto 
+
+  have "{v} \<in> St" 
+    using assms v_def unfolding St_def n_def by auto
+  hence 1: "St \<noteq> {}" by auto
+
+  have 2: "\<alpha> \<le> real (card (edges_betw S (- S))) / real (card S)" if "S \<in> St" for S 
+  proof -
+    have "real (card (edges_betw S (- S)))  \<ge> \<alpha> * card S" 
+      using assms(2) that unfolding St_def by simp
+    moreover have "finite S" 
+      using that unfolding St_def
+      by (intro finite_subset[OF _ finite_verts]) auto
+    hence "card S > 0" 
+      using that unfolding St_def by auto
+    ultimately show ?thesis 
+      by (simp add:divide_simps)
+  qed
+
+  have "\<alpha> \<le> (MIN S\<in>St. real (card (edges_betw S (- S))) / real (card S))"
+    using 0 1 2
+    by (intro Min.boundedI finite_imageI) auto
+
+  thus ?thesis
+    unfolding edge_expansion_def St_def[symmetric] using assms by auto 
+qed
+
 end
 
 lemma pre_expander_graphI:
@@ -739,8 +802,8 @@ proof -
     by simp
 qed
 
-text \<open>The following theorems verify that a graph isomorphisms preserve symmetry, regularity and
-spectral expansion.\<close>
+text \<open>The following theorems verify that a graph isomorphisms preserve symmetry, regularity and all
+the expansion coefficients.\<close>
 
 lemma (in fin_digraph) symmetric_graph_iso:
   assumes "digraph_iso G H"
@@ -809,6 +872,8 @@ lemma (in pre_expander_graph)
     and pre_expander_graph_iso_degree: "pre_expander_graph.d H = d"
     and pre_expander_graph_iso_expansion_le:  "pre_expander_graph.\<Lambda> H \<le> \<Lambda>"
     and pre_expander_graph_iso_os_expansion_le: "pre_expander_graph.\<Lambda>\<^sub>2 H \<le> \<Lambda>\<^sub>2"
+    and pre_expander_graph_iso_edge_expansion_ge: 
+    "pre_expander_graph.edge_expansion H \<ge> edge_expansion"
 proof -
   obtain h where hom_iso: "digraph_isomorphism h" and H_alt: "H = app_iso h G"
     using assms unfolding digraph_iso_def by auto
@@ -894,12 +959,64 @@ proof -
     thus ?thesis
       unfolding H.\<Lambda>\<^sub>2_def \<Lambda>\<^sub>2_def by (simp add:n_eq)
   qed
+
+  show "H.edge_expansion \<ge> edge_expansion"
+  proof (cases "n > 1")
+    case True
+    hence n_gt_1: "H.n  > 1"
+      by (simp add:n_eq)
+    have "edge_expansion * real (card S) \<le> real (card (H.edges_betw S (- S)))" 
+      if "S \<subseteq> verts H" "2 * card S \<le> H.n" "S \<noteq> {}" for S 
+    proof -
+      define T where "T = iso_verts h -` S \<inter> verts G"
+      have 4:"card T = card S"
+        using that(1) unfolding T_def H_alt verts_app_iso
+        by (intro card_vimage_inj_on digraph_isomorphism_inj_on_verts[OF hom_iso]) auto
+
+      have "card (H.edges_betw S (-S))=card {a\<in>iso_arcs h`arcs G. iso_tail h a\<in>S\<and>iso_head h a\<in> -S}"
+        unfolding H.edges_betw_def unfolding H_alt tail_app_iso head_app_iso arcs_app_iso
+        by simp
+      also have "...=
+        card(iso_arcs h` {a \<in> arcs G. iso_tail h (iso_arcs h a)\<in>S\<and> iso_head h (iso_arcs h a)\<in>-S})"
+        by (intro arg_cong[where f="card"]) auto
+      also have "... = card {a \<in> arcs G. iso_tail h (iso_arcs h a)\<in>S\<and> iso_head h (iso_arcs h a)\<in>-S}"
+        by (intro card_image inj_on_subset[OF digraph_isomorphism_inj_on_arcs[OF hom_iso]]) auto
+      also have "... = card {a \<in> arcs G. iso_verts h (tail G a) \<in> S \<and> iso_verts h (head G a) \<in> -S}"
+        by (intro restr_Collect_cong arg_cong[where f="card"])
+         (simp add: iso_verts_tail[OF hom_iso] iso_verts_head[OF hom_iso])
+      also have "... = card {a \<in> arcs G. tail G a \<in> T \<and> head G a \<in> -T }"
+        unfolding T_def by (intro_cong "[\<sigma>\<^sub>1(card),\<sigma>\<^sub>2 (\<and>)]" more: restr_Collect_cong) auto
+      also have "... = card (edges_betw T (-T))"
+        unfolding edges_betw_def by simp
+      finally have 5:"card (edges_betw T (-T)) = card (H.edges_betw S (-S))" 
+        by simp
+
+      have 6: "T \<subseteq> verts G" unfolding T_def by simp
+
+      have "edge_expansion * real (card S) = edge_expansion * real (card T)"
+        unfolding 4 by simp
+      also have "... \<le> real (card (edges_betw T (-T)))"
+        using that(2) by (intro edge_expansionD 6) (simp add:4 n_eq)
+      also have "... = real (card (H.edges_betw S (-S)))"
+        unfolding 5 by simp
+      finally show ?thesis by simp
+    qed
+
+    thus ?thesis
+      by (intro H.edge_expansionI n_gt_1) auto
+  next
+    case False
+    thus ?thesis
+      unfolding H.edge_expansion_def edge_expansion_def by (simp add:n_eq)
+  qed
+
 qed
 
 lemma (in pre_expander_graph)
   assumes "digraph_iso G H"
   shows pre_expander_graph_iso_expansion: "pre_expander_graph.\<Lambda> H = \<Lambda>"
-  and pre_expander_graph_iso_os_expansion: "pre_expander_graph.\<Lambda>\<^sub>2 H = \<Lambda>\<^sub>2"
+    and pre_expander_graph_iso_os_expansion: "pre_expander_graph.\<Lambda>\<^sub>2 H = \<Lambda>\<^sub>2"
+    and pre_expander_graph_iso_edge_expansion: "pre_expander_graph.edge_expansion H = edge_expansion"
 proof -
   interpret H:"pre_expander_graph" "H"
     by (intro pre_expander_graph_iso assms)
@@ -919,6 +1036,13 @@ proof -
   moreover have "H.\<Lambda>\<^sub>2 \<le> \<Lambda>\<^sub>2"
     using pre_expander_graph_iso_os_expansion_le[OF assms] by auto
   ultimately show "H.\<Lambda>\<^sub>2 = \<Lambda>\<^sub>2"
+    by auto
+
+  have "edge_expansion \<ge> H.edge_expansion" using iso
+    by (intro H.pre_expander_graph_iso_edge_expansion_ge)
+  moreover have "H.edge_expansion \<ge> edge_expansion"
+    using pre_expander_graph_iso_edge_expansion_ge[OF assms] by auto
+  ultimately show "H.edge_expansion = edge_expansion"
     by auto
 qed
 

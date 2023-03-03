@@ -45,6 +45,11 @@ begin
   no_notation cong_tag_3 ("\<sigma>\<^sub>3")
 end
 
+lemma restr_Collect_cong:
+  assumes "\<And>x. x \<in> A \<Longrightarrow> P x = Q x"
+  shows "{x \<in> A. P x} = {x \<in> A. Q x}"
+  using assms by auto
+
 end
 
 

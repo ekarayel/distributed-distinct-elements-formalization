@@ -1,4 +1,4 @@
-section \<open>Cheeger Inequality\<close>
+section \<open>Cheeger Inequality\label{sec:cheeger_ineq}\<close>
 
 text \<open>The Cheeger inequality relates edge expansion (a combinatorial property) with the second
 largest eigenvalue.\<close>
@@ -13,31 +13,6 @@ hide_const Quantum.T
 context pre_expander_graph
 begin
 
-definition edges_betw where "edges_betw S T = {a \<in> arcs G. tail G a \<in> S \<and> head G a \<in> T}"
-
-definition edge_expansion where "edge_expansion = 
-  (MIN S\<in>{S. S\<subseteq>verts G\<and>2*card S\<le>n\<and>S\<noteq>{}}. real (card (edges_betw S (-S)))/card S)"
-
-lemma edge_expansionD:
-  assumes "S \<subseteq> verts G" "2*card S \<le> n"
-  shows "edge_expansion * card S \<le> real (card (edges_betw S (-S)))"
-proof (cases "S \<noteq> {}")
-  case True
-  moreover have "finite S" 
-    using finite_subset[OF assms(1)] by simp
-  ultimately have "card S > 0" by auto
-  hence 1: "real (card S) > 0" by simp
-  have 0: "finite {S. S \<subseteq> verts G \<and> 2 * card S \<le> n \<and> S \<noteq> {}}"
-    by (rule finite_subset[where B="Pow (verts G)"]) auto
-  have "real (card (edges_betw S (-S))) / card S \<ge> edge_expansion"
-    unfolding edge_expansion_def using assms True
-    by (intro Min_le finite_imageI imageI) auto
-  thus ?thesis using 1 by (simp add:divide_simps)
-next
-  case False
-  hence "card S = 0" by simp
-  thus ?thesis by simp
-qed
 
 lemma edge_expansionD2:
   assumes "m = card (S \<inter> verts G)" "2*m \<le> n"
@@ -97,23 +72,9 @@ lemma cheeger_aux_2:
   assumes "n > 1"
   shows "edge_expansion \<ge> d*(1-\<Lambda>\<^sub>2)/2"
 proof -
-  define St where "St = {S. S \<subseteq> verts G \<and> 2*card S \<le> n \<and> S \<noteq> {}}"
-  have 0: "finite St"
-    unfolding St_def
-    by (rule finite_subset[where B="Pow (verts G)"]) auto 
-
-  obtain v where v_def: "v \<in> verts G" using verts_non_empty by auto 
-
-  have "{v} \<in> St" 
-    using assms v_def unfolding St_def n_def by auto
-  hence 1: "St \<noteq> {}" by auto
-
-  have 2: "real (card (edges_betw S (-S))) / real (card S) \<ge> d * (1 - \<Lambda>\<^sub>2) / 2" 
-    if "S \<in> St" for S
+  have "real (card (edges_betw S (-S))) \<ge> (d * (1 - \<Lambda>\<^sub>2) / 2) * real (card S)" 
+    if "S \<subseteq> verts G" "2 * card S \<le> n" for S
   proof -
-    have 3:"S \<subseteq> verts G"
-      using that unfolding St_def by simp
-
     let ?ct = "real (card (verts G - S))" 
     let ?cs = "real (card S)" 
 
@@ -122,7 +83,7 @@ proof -
     also have "... = card (edges_betw S UNIV)"
       unfolding edges_betw_def by (intro arg_cong[where f="card"]) auto
     also have "... = d * ?cs"
-      using edges_betw_reg[OF 3] by simp
+      using edges_betw_reg[OF that(1)] by simp
     finally have "card (edges_betw S S) + card (edges_betw S (-S)) = d * ?cs" by simp 
     hence 4: "card (edges_betw S S) = d * ?cs - card (edges_betw S (-S))"
       by simp
@@ -141,22 +102,18 @@ proof -
     have 6: "card (edges_betw (-S) S) = card (edges_betw S (-S))" 
       by (intro edges_betw_sym)
 
-    have "card S > 0" 
-      using that finite_subset[OF 3] unfolding St_def by auto
-    hence cs_gt_0: "?cs > 0" by simp
-
     have "?cs + ?ct =real (card (S \<union> (verts G- S)))"
-      unfolding of_nat_add[symmetric] using finite_subset[OF 3]
+      unfolding of_nat_add[symmetric] using finite_subset[OF that(1)]
       by (intro_cong "[\<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]" more:card_Un_disjoint[symmetric]) auto
     also have "... = real n"
-      unfolding n_def  using 3 by (intro_cong "[\<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") auto 
+      unfolding n_def  using that(1) by (intro_cong "[\<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") auto 
     finally have 7: "?cs + ?ct = n"  by simp
 
     define f  where 
       "f x = real (card (verts G - S)) * of_bool (x \<in> S) - card S * of_bool (x \<notin> S)" for x
 
     have "g_inner f (\<lambda>_. 1) = ?cs * ?ct - real (card (verts G \<inter> {x. x \<notin> S})) * ?cs"
-      unfolding g_inner_def f_def using Int_absorb1[OF 3] by (simp add:sum_subtractf)
+      unfolding g_inner_def f_def using Int_absorb1[OF that(1)] by (simp add:sum_subtractf)
     also have "... = ?cs * ?ct - ?ct * ?cs"
       by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") auto
     also have "... = 0" by simp
@@ -169,7 +126,7 @@ proof -
     also have "... = real (card (verts G \<inter> S))*?ct^2 + real (card (verts G \<inter> {v. v \<notin> S})) * ?cs^2"
       unfolding of_bool_def by (simp add:if_distrib if_distribR sum.If_cases)
     also have "... = real(card S)*(real(card(verts G-S)))\<^sup>2 + real(card(verts G-S))*(real(card S))\<^sup>2"
-      using 3 by (intro_cong "[\<sigma>\<^sub>2(+), \<sigma>\<^sub>2 (*), \<sigma>\<^sub>2 power, \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") auto
+      using that(1) by (intro_cong "[\<sigma>\<^sub>2(+), \<sigma>\<^sub>2 (*), \<sigma>\<^sub>2 power, \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") auto
     also have "...  = real(card S)*real (card (verts G -S))*(?cs + ?ct)"
       by (simp add:power2_eq_square algebra_simps)
     also have "...  = real(card S)*real (card (verts G -S))*n"
@@ -206,25 +163,23 @@ proof -
     hence 10:"n * card (edges_betw S (-S)) \<ge> d * ?cs * ?ct * ( 1-\<Lambda>\<^sub>2)"
       using n_gt_0 by simp 
 
-    have "d * (1 - \<Lambda>\<^sub>2) / 2 = d * (1-\<Lambda>\<^sub>2) * (1 - 1 / 2)"
+    have "(d * (1 - \<Lambda>\<^sub>2) / 2) * ?cs = (d * (1-\<Lambda>\<^sub>2) * (1 - 1 / 2)) * ?cs"
       by simp
-    also have "... \<le> d * (1-\<Lambda>\<^sub>2) * ((n - ?cs) / n)"
-      using that n_gt_0 \<Lambda>\<^sub>2_le_1 unfolding St_def
-      by (intro mult_left_mono mult_nonneg_nonneg) auto
-    also have "... = d * (1-\<Lambda>\<^sub>2) * ?ct / n"
+    also have "... \<le> d * (1-\<Lambda>\<^sub>2) * ((n - ?cs) / n) * ?cs"
+      using that n_gt_0 \<Lambda>\<^sub>2_le_1 
+      by (intro mult_left_mono mult_right_mono mult_nonneg_nonneg) auto
+    also have "... = (d * (1-\<Lambda>\<^sub>2) * ?ct / n) * ?cs"
       using 7 by simp
-    also have "... = d * ?cs * ?ct * (1-\<Lambda>\<^sub>2) / (n * ?cs)"
-      using cs_gt_0 by simp
-    also have "... \<le> n * card (edges_betw S (-S)) / (n * ?cs)"
+    also have "... = d * ?cs * ?ct * (1-\<Lambda>\<^sub>2) / n"
+      by simp
+    also have "... \<le> n * card (edges_betw S (-S)) / n"
       by (intro divide_right_mono 10) auto
-    also have "... = card (edges_betw S (-S)) / ?cs"
+    also have "... = card (edges_betw S (-S))"
       using n_gt_0 by simp
     finally show ?thesis by simp
   qed
-
-  thus "edge_expansion \<ge> d*(1-\<Lambda>\<^sub>2)/2"
-    unfolding edge_expansion_def St_def[symmetric] using 0 1 2
-    by (intro Min.boundedI) auto
+  thus ?thesis
+    by (intro edge_expansionI assms) auto
 qed
 
 end
@@ -233,11 +188,6 @@ lemma surj_onI:
   assumes "\<And>x. x \<in> B \<Longrightarrow> g x \<in> A \<and> f (g x) = x"
   shows "B \<subseteq> f ` A"
   using assms by force
-
-lemma restr_Collect_cong:
-  assumes "\<And>x. x \<in> A \<Longrightarrow> P x = Q x"
-  shows "{x \<in> A. P x} = {x \<in> A. Q x}"
-  using assms by auto
 
 lemma find_sorted_bij_1:
   fixes g :: "'a \<Rightarrow> ('b :: linorder)"
