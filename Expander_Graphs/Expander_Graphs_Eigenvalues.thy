@@ -21,6 +21,7 @@ hide_fact Matrix.vec_eq_iff
 hide_fact Matrix.mat_def
 hide_fact Matrix.row_def
 no_notation Matrix.scalar_prod  (infix "\<bullet>" 70)
+no_notation Ordered_Semiring.max ("Max\<index>")
 
 lemma mult_right_mono': "y \<ge> (0::real) \<Longrightarrow> x \<le> z \<or> y = 0 \<Longrightarrow> x * y \<le> z * y"  
   by (metis mult_cancel_right mult_right_mono)
@@ -796,57 +797,24 @@ proof -
 qed
 
 definition \<Lambda>\<^sub>e :: "'n itself \<Rightarrow> real" where
-  "\<Lambda>\<^sub>e _ = Max_mset (image_mset cmod (eigenvalues A - {#(1::complex)#})+{#0::real#})"
+  "\<Lambda>\<^sub>e _ = (if n > 1 then Max_mset (image_mset cmod (eigenvalues A - {#1#})) else 0)"
 
 definition \<gamma>\<^sub>2 :: "'n itself \<Rightarrow> real" where
-  "\<gamma>\<^sub>2 _ = Max_mset (image_mset Re (eigenvalues A - {#(1::complex)#}))"
+  "\<gamma>\<^sub>2 _ = (if n > 1 then Max_mset {# Re x. x \<in># (eigenvalues A - {#1#})#} else 0)"
+
 
 lemma J_sym: "hermitian_hma J"
   unfolding J_def hermitian_hma_def
   by (intro  iffD2[OF vec_eq_iff] allI) (simp add: adjoint_hma_eq)
 
-lemma \<Lambda>\<^sub>e_ge_0: "\<Lambda>\<^sub>e TYPE('n) \<ge> 0"
-  unfolding \<Lambda>\<^sub>e_def by (intro Max_ge) auto
-
-lemma 
-  assumes "n > 1" "(1::complex) \<in># eigenvalues A"
-  shows \<gamma>\<^sub>2_iff_n_gt_1: "\<Lambda>\<^sub>e TYPE('n) = Max_mset (image_mset norm (eigenvalues A - {#1::complex#}))"
-    and find_\<gamma>\<^sub>2: "\<Lambda>\<^sub>e TYPE('n) \<in># image_mset norm (eigenvalues A - {#1::complex#})"
-proof -
-  have "size (eigenvalues A :: complex multiset) = n"
-    using eigvals_poly_length card_n[symmetric] by auto
-  hence "size (eigenvalues A - {#(1::complex)#}) = n -1"
-    using assms(2) by (simp add: size_Diff_singleton)
-  hence "set_mset (eigenvalues A - {#(1::complex)#}) \<noteq> {}"
-    using assms by auto
-  hence 2: "norm ` set_mset (eigenvalues A - {#(1::complex)#}) \<noteq> {}"
-    by simp
-  have "\<Lambda>\<^sub>e TYPE('n) = Lattices_Big.Max ((norm ` set_mset (eigenvalues A - {#(1::complex)#})) \<union> {0})"
-    unfolding \<Lambda>\<^sub>e_def by simp
-  also have "... = max (Lattices_Big.Max (norm ` set_mset (eigenvalues A - {#(1::complex)#}))) (Lattices_Big.Max {0})"
-    using 2 by (intro Max_Un finite_imageI) auto
-  also have "... = max (Lattices_Big.Max (norm ` set_mset (eigenvalues A - {#(1::complex)#}))) 0"
-    by simp
-  also have "... = Lattices_Big.Max (norm ` set_mset (eigenvalues A - {#(1::complex)#}))"
-    using Max_in[OF _ 2] by (intro max_absorb1) auto
-  also have "... = Max_mset (image_mset norm (eigenvalues A - {#(1::complex)#}))"
-    by simp
-  finally show 3:"\<Lambda>\<^sub>e TYPE('n) = Max_mset (image_mset norm (eigenvalues A - {#(1::complex)#}))"
-    by simp
-  have "\<Lambda>\<^sub>e TYPE('n) \<in> set_mset (image_mset norm (eigenvalues A - {#1::complex#}))"
-    unfolding 3 using 2 by (intro Max_in) auto
-  thus "\<Lambda>\<^sub>e TYPE('n) \<in># image_mset norm (eigenvalues A - {#1::complex#})"
-    by simp
-qed
 
 lemma
   shows evs_real: "set_mset (eigenvalues A::complex multiset) \<subseteq> \<real>" (is "?R1")
     and ev_1: "(1::complex) \<in># eigenvalues A"
-    and \<gamma>\<^sub>2_ev: 
-    "n > 1 \<Longrightarrow> \<exists>v. (\<exists>\<alpha>\<in>\<real>. norm \<alpha>=\<Lambda>\<^sub>e TYPE('n)\<and> cinner v 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v)"  
-      (is "_ \<Longrightarrow> ?R2")
+    and \<Lambda>\<^sub>e_ge_0: "\<Lambda>\<^sub>e TYPE ('n) \<ge> 0"
+    and find_any_ev: "\<forall>\<alpha> \<in># eigenvalues A - {#1#}. \<exists>v. cinner v 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v" 
     and \<gamma>\<^sub>2_bound: "\<forall>v. cinner v 1 = 0 \<longrightarrow> norm (A *v v) \<le> \<Lambda>\<^sub>e TYPE('n) * norm v"
-      (is "?R3")
+    and \<gamma>\<^sub>2'_bound: "\<forall>(v::real^'n). v \<bullet> 1 = 0 \<longrightarrow> v \<bullet> (A *v v) \<le> \<gamma>\<^sub>2 TYPE ('n) * norm v^2"
 proof -
   have "\<exists> U. \<forall> A\<in> {J,A}. \<exists>B. real_diag_decomp_hma A B U"  
     using J_sym hermitian_A J_A_comm
@@ -959,25 +927,39 @@ proof -
   finally have 4:"eigenvalues A - {#1#} = {#Ad $h j. j \<in># mset_set (UNIV - {i})#}" by simp
 
   have "cmod (Ad $h k) \<le> \<Lambda>\<^sub>e TYPE ('n)" if "n > 1" "k \<noteq> i" for k
-    unfolding \<gamma>\<^sub>2_iff_n_gt_1[OF that(1) ev_1] 4 using that by (intro Max_ge) auto
+    unfolding \<Lambda>\<^sub>e_def 4 using that Max_ge by auto
   moreover have "k = i" if "n = 1" for k
     using that to_nat_less_n by simp 
   ultimately have norm_Ad: "norm (Ad $h k) \<le> \<Lambda>\<^sub>e TYPE ('n) \<or> k = i" for k
     using n_gt_0 by (cases "n = 1", auto) 
-   
-  show "n > 1 \<Longrightarrow> ?R2"
+
+  have "Re (Ad $h k) \<le> \<gamma>\<^sub>2 TYPE ('n)" if "n > 1" "k \<noteq> i" for k
+    unfolding \<gamma>\<^sub>2_def 4 using that Max_ge by auto
+  moreover have "k = i" if "n = 1" for k
+    using that to_nat_less_n by simp 
+  ultimately have Re_Ad: "Re (Ad $h k) \<le> \<gamma>\<^sub>2 TYPE ('n) \<or> k = i" for k
+    using n_gt_0 by (cases "n = 1", auto) 
+
+  show \<Lambda>\<^sub>e_ge_0: "\<Lambda>\<^sub>e TYPE ('n) \<ge> 0"
+  proof (cases "n > 1")
+    case True
+    then obtain k where k_def: "k \<noteq> i"
+      by (metis (full_types) card_n from_nat_inj n_gt_0 one_neq_zero)
+    have "0 \<le> cmod (Ad $h k)" 
+      by simp
+    also have "... \<le> \<Lambda>\<^sub>e TYPE ('n)" 
+      using norm_Ad k_def by auto
+    finally show ?thesis by auto
+  next
+    case False
+    thus ?thesis unfolding \<Lambda>\<^sub>e_def by simp
+  qed
+
+  have "\<exists>v. cinner v 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<beta> *s v" if \<beta>_ran: "\<beta> \<in># eigenvalues A - {#1#}" for \<beta>
   proof -
-    assume n_gt_1: "n > 1"
-    have "\<Lambda>\<^sub>e TYPE('n) \<in># image_mset cmod ({#Ad $h j. j \<in># mset_set (UNIV - {i})#})"
-      unfolding 4[symmetric] using find_\<gamma>\<^sub>2[OF n_gt_1 ev_1] by simp
-    then obtain j where j_def: "\<Lambda>\<^sub>e TYPE('n) = cmod (Ad $h j)" "j \<noteq> i"
-      by auto
-
-    define \<beta> where "\<beta> = Ad $h j"
-    define v :: "complex^'n" where "v = U *v axis j 1" 
-
-    have \<beta>_real: "\<beta> \<in> \<real>" 
-      using Ad_real unfolding \<beta>_def by simp
+    obtain j where j_def: "\<beta> = Ad $h j" "j \<noteq> i"
+      using \<beta>_ran unfolding 4 by auto
+    define v where "v = U *v axis j 1" 
 
     have "A *v v = A ** U *v axis j 1" 
       unfolding v_def by (simp add:matrix_vector_mul_assoc)
@@ -990,10 +972,10 @@ proof -
     also have "... = U *v (Ad * axis j 1)"
       by (simp add:matrix_vector_mul_assoc[symmetric] diag_vec_mult_eq)
     also have "... = U *v (\<beta> *s axis j 1)"
-      by (intro arg_cong2[where f="(*v)"] iffD2[OF vec_eq_iff]) (auto simp:\<beta>_def axis_def) 
+      by (intro arg_cong2[where f="(*v)"] iffD2[OF vec_eq_iff]) (auto simp:j_def axis_def) 
     also have "... = \<beta> *s v"
       unfolding v_def by (simp add:vector_scalar_commute) 
-    finally have 5:"A *v v  = \<beta> *s v" by simp
+    finally have 5:"A *v v = \<beta> *s v" by simp
 
     have "cinner v 1 = cinner (axis j 1) (adjoint_hma U *v 1)"
       unfolding v_def adjoint_def_alter_hma by simp
@@ -1017,10 +999,12 @@ proof -
     hence 7:"v \<noteq> 0"
       by (cases "v=0") (auto simp add:cinner_0)
 
-  show ?R2
-    using j_def(1) \<beta>_def \<beta>_real
-    by (intro exI[where x="v"] bexI[where x="\<beta>"] conjI 5 6 7) auto
+    show ?thesis
+      by (intro exI[where x="v"] conjI 6 7 5)
   qed
+
+  thus "\<forall>\<alpha> \<in># eigenvalues A - {#1#}. \<exists>v. cinner v 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v"
+    by simp
 
   have "norm (A *v v) \<le> \<Lambda>\<^sub>e TYPE('n) * norm v" if "cinner v 1 = 0" for v 
   proof -
@@ -1064,24 +1048,105 @@ proof -
       by simp
   qed
 
-  thus ?R3 by auto
+  thus "\<forall>v. cinner v 1 = 0 \<longrightarrow> norm (A *v v) \<le> \<Lambda>\<^sub>e TYPE('n) * norm v" by auto
+
+  have "v \<bullet> (A *v v) \<le> \<gamma>\<^sub>2 TYPE ('n) * norm v^2" if "v \<bullet> 1 = 0" for v :: "real^'n"
+  proof -
+    define v' where "v' = map_vector complex_of_real v"
+    define w where "w= adjoint_hma U *v v'"
+
+    have "w $h i = cinner w (axis i 1)"
+      unfolding cinner_def axis_def scalar_product_def map_vector_def 
+      by (auto simp:if_distrib if_distribR sum.If_cases)
+    also have "... = cinner v' (U *v axis i 1)"
+      unfolding w_def adjoint_def_alter_hma by simp
+    also have "... = cinner v' ((1 / \<alpha>) *s (U *v u))"
+      unfolding vector_scalar_commute[symmetric] u_alt using \<alpha>_nz
+      by (intro_cong "[\<sigma>\<^sub>2 cinner, \<sigma>\<^sub>2 (*v)]") (auto simp add:axis_def vec_eq_iff)
+    also have "... = cinner v' ((1 / \<alpha>) *s 1)"
+      unfolding u_def matrix_vector_mul_assoc unitary_hmaD[OF unit_U] by simp
+    also have "... = cnj (1 / \<alpha>) * cinner v' 1"
+      unfolding cinner_scale_right by simp
+    also have "... = cnj (1 / \<alpha>) * complex_of_real (v \<bullet> 1)"
+      unfolding cinner_def scalar_product_def map_vector_def inner_vec_def v'_def
+      by (intro arg_cong2[where f="(*)"] refl) (simp)
+    also have "... = 0"
+      unfolding that by simp
+    finally have w_orth: "w $h i = 0" by simp
+
+    have "complex_of_real (norm v^2) = complex_of_real (v \<bullet> v)" 
+      by (simp add: power2_norm_eq_inner)
+    also have "... = cinner v' v'"
+      unfolding v'_def cinner_def scalar_product_def inner_vec_def map_vector_def by simp
+    also have "... = norm v'^2"
+      unfolding cinner_self by simp
+    also have "... = norm w^2"
+      unfolding w_def unitary_iso[OF unitary_hma_adjoint[OF unit_U]] by simp
+    also have "... = cinner w w"
+      unfolding cinner_self by simp
+    also have "... = (\<Sum>j\<in>UNIV. complex_of_real (cmod (w $h j)^2))"
+      unfolding cinner_def scalar_product_def map_vector_def 
+      cmod_power2 complex_mult_cnj[symmetric] by simp
+    also have "... = complex_of_real (\<Sum>j\<in>UNIV.  (cmod (w $h j)^2))"
+      by simp
+    finally have "complex_of_real (norm v^2) = complex_of_real (\<Sum>j\<in>UNIV.  (cmod (w $h j)^2))"
+      by simp
+    hence norm_v: "norm v^2 = (\<Sum>j\<in>UNIV.  (cmod (w $h j)^2))"
+      using of_real_hom.injectivity by blast
+
+    have "complex_of_real (v \<bullet> (A *v v)) = cinner v' (map_vector of_real (A *v v))"
+      unfolding v'_def cinner_def scalar_product_def inner_vec_def map_vector_def
+      by simp
+    also have "... = cinner v' (map_matrix of_real A *v v')" 
+      unfolding v'_def of_real_hom.mult_mat_vec_hma by simp
+    also have "... = cinner v' (A *v v')"
+      unfolding map_matrix_def map_vector_def A_def by auto
+    also have "... = cinner v' (U ** diag Ad ** adjoint_hma U *v v')"
+      using A_sim unfolding similar_matrix_wit_def by simp
+    also have "... = cinner (adjoint_hma U *v v') (diag Ad ** adjoint_hma U *v v')"
+      unfolding adjoint_def_alter_hma adjoint_adjoint adjoint_adjoint_id
+      by (simp add:matrix_vector_mul_assoc matrix_mul_assoc)
+    also have "... = cinner w (diag Ad *v w)"
+      unfolding w_def by (simp add:matrix_vector_mul_assoc)
+    also have "... = cinner w (Ad * w)"
+      unfolding diag_vec_mult_eq by simp
+    also have "... = (\<Sum>j\<in>UNIV. cnj (Ad $h j) * cmod (w $h j)^2)"
+      unfolding cinner_def map_vector_def scalar_product_def cmod_power2 complex_mult_cnj[symmetric]
+      by (simp add:algebra_simps)
+    also have "... = (\<Sum>j\<in>UNIV. Ad $h j * cmod (w $h j)^2)"
+      using Ad_real by (intro sum.cong refl arg_cong2[where f="(*)"] iffD1[OF Reals_cnj_iff]) auto
+    also have "... = (\<Sum>j\<in>UNIV. complex_of_real (Re (Ad $h j) * cmod (w $h j)^2))"
+      using Ad_real by (intro sum.cong refl) simp
+    also have "... = complex_of_real (\<Sum>j\<in> UNIV. Re (Ad $h j) * cmod (w $h j)^2)"
+      by simp
+    finally have "complex_of_real (v\<bullet>(A *v v)) = of_real(\<Sum>j\<in>UNIV. Re (Ad $h j) * cmod (w $h j)^2)"
+      by simp
+    hence "v\<bullet>(A *v v) = (\<Sum>j\<in>UNIV. Re (Ad $h j) * cmod (w $h j)^2)" 
+      using of_real_hom.injectivity by blast
+    also have "... \<le> (\<Sum>j\<in>UNIV. \<gamma>\<^sub>2 TYPE ('n) * cmod (w $h j)^2)"
+      using w_orth Re_Ad by (intro sum_mono mult_right_mono') auto
+    also have "... = \<gamma>\<^sub>2 TYPE ('n) * (\<Sum>j\<in>UNIV. cmod (w $h j)^2)"
+      by (simp add:sum_distrib_left)
+    also have "... = \<gamma>\<^sub>2 TYPE ('n) * norm v^2"
+      unfolding norm_v by simp
+    finally show ?thesis by simp
+  qed
+
+  thus "\<forall>(v::real^'n). v \<bullet> 1 = 0 \<longrightarrow> v \<bullet> (A *v v) \<le> \<gamma>\<^sub>2 TYPE ('n) * norm v^2"
+    by auto
 qed
 
-lemma \<gamma>\<^sub>2_real_ev:
-  assumes "n > 1"
-  shows "\<exists>v. (\<exists>\<alpha>. abs \<alpha>=\<Lambda>\<^sub>e TYPE('n) \<and> v \<bullet> 1=0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v)"  
+lemma find_any_real_ev:
+  assumes "complex_of_real \<alpha> \<in># eigenvalues A - {#1#}"
+  shows "\<exists>v. v \<bullet> 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v"
 proof -
-  obtain w \<beta> where w_def:
-     "\<beta> \<in> \<real>" "cmod \<beta> = \<Lambda>\<^sub>e TYPE('n)" "cinner w 1 = 0" "w\<noteq> 0" "A *v w = \<beta> *s w"
-    using \<gamma>\<^sub>2_ev[OF assms] Reals_cases by auto
-
-  obtain \<alpha> where \<alpha>_def: "\<beta> = of_real \<alpha>"
-    using w_def(1) Reals_cases by auto
+  obtain w where w_def: "cinner w 1 = 0" "w \<noteq> 0" "A *v w = \<alpha> *s w"
+    using find_any_ev assms by auto
 
   have "w = 0" if "map_vector Re (1 *s w) = 0" "map_vector Re (\<i> *s w) = 0"
     using that by (simp add:vec_eq_iff map_vector_def complex_eq_iff) 
   then obtain c where c_def: "map_vector Re (c *s w) \<noteq> 0"
-    using w_def(4) by blast
+    using w_def(2) by blast
 
   define u where "u = c *s w"
 
@@ -1090,7 +1155,7 @@ proof -
   hence "v \<bullet> 1 = Re (cinner u 1)"
     unfolding cinner_def inner_vec_def scalar_product_def map_vector_def by simp
   also have "... = 0"
-    unfolding u_def cinner_scale_left w_def(3) by simp
+    unfolding u_def cinner_scale_left w_def(1) by simp
   finally have 1:"v \<bullet> 1 = 0" by simp
 
   have "A *v v = (\<chi> i. \<Sum>j\<in>UNIV. A $h i $h j * Re (u $h j))"
@@ -1102,7 +1167,7 @@ proof -
   also have "... = map_vector Re (A *v u)"
     unfolding map_vector_def matrix_vector_mult_def by simp
   also have "... = map_vector Re (of_real \<alpha> *s u)"
-    unfolding u_def vector_scalar_commute w_def(5) \<alpha>_def 
+    unfolding u_def vector_scalar_commute w_def(3)  
     by (simp add:ac_simps)
   also have "... = \<alpha> *s v"
     unfolding v_def by (simp add:vec_eq_iff map_vector_def)
@@ -1111,11 +1176,51 @@ proof -
   have 3:"v \<noteq> 0" 
     unfolding v_def u_def using c_def by simp
 
-  have 4: "\<bar>\<alpha>\<bar> =\<Lambda>\<^sub>e TYPE('n)" 
-    using \<alpha>_def w_def(2,3) by simp
-
   show ?thesis
-    by (intro exI[where x="v"] exI[where x="\<alpha>"] conjI 1 2 3 4)
+    by (intro exI[where x="v"] conjI 1 2 3)
+qed
+
+lemma size_evs:
+  "size (eigenvalues A - {#1::complex#}) = n-1"
+proof -
+  have "size (eigenvalues A :: complex multiset) = n"
+    using eigvals_poly_length card_n[symmetric] by auto
+  thus "size (eigenvalues A - {#(1::complex)#}) = n -1"
+    using ev_1 by (simp add: size_Diff_singleton)
+qed
+
+lemma find_\<gamma>\<^sub>2:
+  assumes "n > 1"
+  shows "\<Lambda>\<^sub>e TYPE('n) \<in># image_mset cmod (eigenvalues A - {#1::complex#})"
+proof -
+  have "set_mset (eigenvalues A - {#(1::complex)#}) \<noteq> {}"
+    using assms size_evs by auto
+  hence 2: "cmod ` set_mset (eigenvalues A - {#1#}) \<noteq> {}"
+    by simp
+  have "\<Lambda>\<^sub>e TYPE('n) \<in> set_mset (image_mset cmod (eigenvalues A - {#1#}))"
+    unfolding \<Lambda>\<^sub>e_def using assms 2 Max_in by auto
+  thus "\<Lambda>\<^sub>e TYPE('n) \<in># image_mset cmod (eigenvalues A - {#1#})"
+    by simp
+qed
+
+lemma \<gamma>\<^sub>2_real_ev:
+  assumes "n > 1"
+  shows "\<exists>v. (\<exists>\<alpha>. abs \<alpha>=\<Lambda>\<^sub>e TYPE('n) \<and> v \<bullet> 1=0 \<and> v \<noteq> 0 \<and> A *v v = \<alpha> *s v)"  
+proof -
+  obtain \<alpha> where \<alpha>_def: "cmod \<alpha> = \<Lambda>\<^sub>e TYPE('n)" "\<alpha> \<in># eigenvalues A - {#1#}"
+    using find_\<gamma>\<^sub>2[OF assms] by auto
+  have "\<alpha> \<in> \<real>"
+    using in_diffD[OF \<alpha>_def(2)] evs_real by auto
+  then obtain \<beta> where \<beta>_def: "\<alpha> = of_real \<beta>" 
+    using Reals_cases by auto
+
+  have 0:"complex_of_real \<beta> \<in># eigenvalues A-{#1#}"
+    using \<alpha>_def unfolding \<beta>_def by auto
+
+  have 1: "\<bar>\<beta>\<bar> = \<Lambda>\<^sub>e TYPE('n)"
+    using \<alpha>_def unfolding \<beta>_def by simp
+  show ?thesis
+    using find_any_real_ev[OF 0] 1 by auto
 qed
 
 lemma \<gamma>\<^sub>2_real_bound: 
@@ -1198,18 +1303,77 @@ proof -
   next
     case False
     hence "n = 1" using n_gt_0 by simp
-    hence "size (eigenvalues A :: complex multiset) = 1"
-      using eigvals_poly_length(2) card_n by metis
-    hence "size (eigenvalues A - {#1::complex#}) = 0"
-      using ev_1 by (subst size_Diff_submset) auto
-    hence "eigenvalues A - {#1::complex#} = {#}" 
-      by simp
     hence "\<Lambda>\<^sub>e TYPE('n) = 0"
       unfolding \<Lambda>\<^sub>e_def by simp
 
     then show ?thesis using \<Lambda>_ge_0 by simp
   qed
   ultimately show ?thesis by simp
+qed
+
+lemma \<gamma>\<^sub>2_ev: 
+  assumes "n > 1"
+  shows "\<exists>v. v \<bullet> 1 = 0 \<and> v \<noteq> 0 \<and> A *v v = \<gamma>\<^sub>2 TYPE('n) *s v"
+proof -
+  have "set_mset (eigenvalues A - {#1::complex#}) \<noteq> {}"
+    using size_evs assms by auto
+  hence "Max (Re ` set_mset (eigenvalues A - {#1#})) \<in> Re ` set_mset (eigenvalues A - {#1#})"
+    by (intro Max_in) auto
+  hence "\<gamma>\<^sub>2 TYPE ('n) \<in> Re ` set_mset (eigenvalues A - {#1#})" 
+    unfolding \<gamma>\<^sub>2_def using assms by simp
+  then obtain \<alpha> where \<alpha>_def: "\<alpha> \<in> set_mset (eigenvalues A - {#1#})" "\<gamma>\<^sub>2 TYPE ('n) = Re \<alpha>"
+    by auto
+  have \<alpha>_real: "\<alpha> \<in> \<real>"
+    using evs_real in_diffD[OF \<alpha>_def(1)] by auto
+  have "complex_of_real (\<gamma>\<^sub>2 TYPE ('n)) = of_real (Re \<alpha>)"
+    unfolding \<alpha>_def by simp
+  also have "... = \<alpha>"
+    using \<alpha>_real by simp
+  also have "... \<in># eigenvalues A - {#1#}"
+    using \<alpha>_def(1) by simp
+  finally have 0:"complex_of_real (\<gamma>\<^sub>2 TYPE ('n)) \<in># eigenvalues A - {#1#}" by simp
+  thus ?thesis
+    using find_any_real_ev[OF 0] by auto
+qed
+
+lemma \<gamma>\<^sub>2_eq_\<Lambda>\<^sub>2: "\<gamma>\<^sub>2 TYPE ('n) = \<Lambda>\<^sub>2"
+proof (cases "n > 1")
+  case True
+
+  obtain v where v_def: "v \<bullet> 1 = 0" "v \<noteq> 0" "A *v v = \<gamma>\<^sub>2 TYPE('n) *s v" 
+    using \<gamma>\<^sub>2_ev[OF True] by auto
+
+  define f where "f x = v $h enum_verts_inv x" for x
+  have v_alt: "v = (\<chi> i. f (enum_verts i))"
+    unfolding f_def Rep_inverse by simp
+
+  have "g_inner f (\<lambda>_. 1) = v \<bullet> 1"
+    unfolding g_inner_conv v_alt one_vec_def by simp
+  also have "... = 0" unfolding v_def(1) by simp
+  finally have f_orth: "g_inner f (\<lambda>_. 1) = 0" by simp
+
+  have "\<gamma>\<^sub>2 TYPE('n) * norm v^2= v \<bullet> (\<gamma>\<^sub>2 TYPE('n) *s v)"
+    unfolding power2_norm_eq_inner by (simp add:algebra_simps scalar_mult_eq_scaleR)
+  also have "... = v \<bullet> (A *v v)"
+    unfolding v_def by simp
+  also have "... = g_inner f (g_step f)"
+    unfolding v_alt g_inner_conv g_step_conv by simp
+  also have "... \<le> \<Lambda>\<^sub>2 * g_norm f^2"
+    by (intro os_expanderD f_orth) 
+  also have "... = \<Lambda>\<^sub>2 * norm v^2"
+    unfolding v_alt g_norm_conv by simp
+  finally have "\<gamma>\<^sub>2 TYPE('n) * norm v^2 \<le> \<Lambda>\<^sub>2 * norm v^2" by simp
+  hence "\<gamma>\<^sub>2 TYPE('n) \<le> \<Lambda>\<^sub>2"
+    using v_def(2) by simp
+  moreover have "\<Lambda>\<^sub>2 \<le> \<gamma>\<^sub>2 TYPE ('n)"
+    using \<gamma>\<^sub>2'_bound  
+    by (intro os_expanderI[OF True]) 
+      (simp add: g_inner_conv g_step_conv g_norm_conv one_vec_def)
+  ultimately show ?thesis by simp
+next
+  case False
+  then show ?thesis 
+    unfolding \<Lambda>\<^sub>2_def \<gamma>\<^sub>2_def by simp
 qed
 
 lemma expansionD2:
@@ -1229,6 +1393,28 @@ proof -
     unfolding g_norm_conv v_def by simp
   finally show ?thesis by simp
 qed
+
+lemma rayleigh_bound: 
+  fixes v :: "real^'n"
+  shows "\<bar>v \<bullet> (A *v v)\<bar> \<le> norm v^2"
+proof -
+  define f where "f x = v $h enum_verts_inv x" for x
+  have v_alt: "v = (\<chi> i. f (enum_verts i))"
+    unfolding f_def Rep_inverse by simp
+
+  have "\<bar>v \<bullet> (A *v v)\<bar> = \<bar>g_inner f (g_step f)\<bar>"
+    unfolding v_alt g_inner_conv g_step_conv by simp
+  also have "... = \<bar>(\<Sum>a\<in>arcs G. f (head G a) * f (tail G a))\<bar>/d"
+    unfolding g_inner_step_eq by simp
+  also have "... \<le> (d * (g_norm f)\<^sup>2) / d"
+    by (intro divide_right_mono bdd_above_aux) auto
+  also have "... = g_norm f^2" 
+    using d_gt_0 by simp
+  also have "... = norm v^2"
+    unfolding g_norm_conv v_alt by simp
+  finally show ?thesis by simp
+qed
+
 
 end
 

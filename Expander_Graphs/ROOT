@@ -10,6 +10,7 @@ session Expander_Graphs (AFP) = "Frequency_Moments" +
   theories
     Constructive_Chernoff_Bound
     Expander_Graphs_Algebra
+    Expander_Graphs_Cheeger_Inequality
     Expander_Graphs_Definition
     Expander_Graphs_Eigenvalues
     Expander_Graphs_MGG
