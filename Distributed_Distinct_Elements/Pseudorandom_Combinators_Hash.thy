@@ -473,7 +473,7 @@ sublocale sample_space "S"
 
 lemma \<G>_prob:
   assumes "x < n"
-  shows "prob {f.  f x \<ge> j} = of_bool (j \<le> (max (nat \<lceil>log 2 n\<rceil>) 1)) / 2^j" (is "?L = ?R")
+  shows "prob {f. f x \<ge> j} = of_bool (j \<le> (max (nat \<lceil>log 2 n\<rceil>) 1)) / 2^j" (is "?L = ?R")
 proof -
   have "?L = measure (map_pmf (\<lambda>f. f x) (sample_pmf S)) {x. x \<ge> j}"
     unfolding M_def by simp

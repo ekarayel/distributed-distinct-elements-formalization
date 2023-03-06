@@ -471,7 +471,7 @@ proof -
   also have "... = 
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
     (\<Sum>i \<in> B. (\<integral>\<omega>. (1 - Z i \<omega>) \<partial>\<Omega>))^2"
-    by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>2 power]" more: integral_sum int) auto
+    by (intro_cong "[\<sigma>\<^sub>2 (-), \<sigma>\<^sub>2 power]" more: integral_sum int)
   also have "... = 
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega> - Z (snd i) \<omega> + Z (fst i) \<omega> * Z (snd i) \<omega>) \<partial>\<Omega>)) -
     (\<Sum>i \<in> B \<times> B. (\<integral>\<omega>. (1 - Z (fst i) \<omega>) \<partial>\<Omega>) * (\<integral>\<omega>. (1 - Z (snd i) \<omega>) \<partial>\<Omega>))"

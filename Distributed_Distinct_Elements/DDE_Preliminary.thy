@@ -8,6 +8,12 @@ begin
 
 unbundle intro_cong_syntax
 
+lemma pmf_mono':
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<Longrightarrow> x \<in> Q"
+  shows "measure (measure_pmf p) P \<le> measure (measure_pmf p) Q"
+  sorry
+
+
 lemma (in prob_space) AE_pmfI:
   assumes "M = measure_pmf p"
   assumes "\<And>\<omega>. \<omega> \<in> set_pmf p \<Longrightarrow> P \<omega>"
@@ -27,11 +33,17 @@ proof -
     using assms(2,3)
     by (intro integral_measure_pmf_real) auto
   also have " ... = (\<Sum>y \<in> A. f y * prob (g -` {y}))"
-    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) auto
+    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) 
   also have "... = ?R"
     by (intro sum.cong) (auto simp add: vimage_def) 
   finally show ?thesis by simp
 qed
+
+lemma measure_pmf_cong:
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<longleftrightarrow> x \<in> Q"
+  shows "measure (measure_pmf p) P = measure (measure_pmf p)  Q"
+  using assms
+  by (intro finite_measure.finite_measure_eq_AE AE_pmfI) auto
 
 lemma (in prob_space) pmf_rev_mono:
   assumes "M = measure_pmf p"
@@ -63,6 +75,23 @@ proof -
     using assms(1) by simp
   also have "... \<le>  expectation f / c"
     by (intro integral_Markov_inequality_measure[OF _ b] assms a)
+  finally show ?thesis by simp
+qed
+
+lemma  pmf_markov':
+  assumes "integrable (measure_pmf p) f" "c > 0"
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0" 
+  shows "measure p {\<omega>. f \<omega> \<ge> c} \<le> (\<integral>\<omega>. f \<omega> \<partial>p)/ c" (is "?L \<le> ?R")
+proof -
+  have a:"AE \<omega> in (measure_pmf p). 0 \<le> f \<omega>" 
+    by (intro AE_pmfI assms(3)) 
+  have b:"{} \<in> measure_pmf.events p" 
+    unfolding assms(1) by simp
+
+  have "?L = \<P>(\<omega> in (measure_pmf p). f \<omega> \<ge> c)"
+    using assms(1) by simp
+  also have "... \<le>  ?R"
+    by (intro  integral_Markov_inequality_measure[OF _ b] assms a)
   finally show ?thesis by simp
 qed
 

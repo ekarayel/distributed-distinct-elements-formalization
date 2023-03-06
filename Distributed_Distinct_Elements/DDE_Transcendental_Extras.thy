@@ -1,23 +1,6 @@
 theory DDE_Transcendental_Extras
-  imports "Stirling_Formula.Stirling_Formula" 
+  imports "Stirling_Formula.Stirling_Formula" "Expander_Graphs.Constructive_Chernoff_Bound"
 begin
-
-lemma powr_mono_rev:
-  fixes x :: real
-  assumes "a \<le> b" and  "x > 0" "x \<le> 1"
-  shows "x powr b \<le> x powr a"
-proof -
-  have "x powr b = (1/x) powr (-b)"
-    using assms by (simp add: powr_divide powr_minus_divide)
-  also have "... \<le> (1/x) powr (-a)"
-    using assms by (intro powr_mono) auto
-  also have "... = x powr a"
-    using assms by (simp add: powr_divide powr_minus_divide)
-  finally show ?thesis by simp
-qed
-
-lemma exp_powr: "(exp x) powr y = exp (x*y)" for x :: real
-  unfolding powr_def by simp
 
 lemma fact_lower_bound:
   "sqrt(2*pi*n)*(n/exp(1))^n \<le> fact n" (is "?L \<le> ?R")
@@ -26,7 +9,7 @@ proof (cases "n > 0")
   have "ln ?L = ln (2*pi*n)/2 + n * ln n - n"
     using True by (simp add: ln_mult ln_sqrt ln_realpow ln_div algebra_simps)
   also have "... \<le> ln ?R" 
-    by (intro ln_fact_bounds True)
+    by (intro Stirling_Formula.ln_fact_bounds True)
   finally show ?thesis 
     using iffD1[OF ln_le_cancel_iff] True by simp
 next

@@ -23,6 +23,7 @@ begin
 
 definition b_exp :: nat 
   where "b_exp = nat (\<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
+
 definition b :: nat 
   where "b = 2^b_exp"
 
@@ -34,6 +35,7 @@ definition \<rho>' :: "real \<Rightarrow> real"
 
 definition l :: nat 
   where "l = nat \<lceil>ln (1/real_of_rat \<epsilon>)\<rceil>"
+
 definition k :: nat 
   where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
 
@@ -369,7 +371,7 @@ lemma is_too_large_antimono:
   assumes "is_too_large (\<tau>\<^sub>2 \<omega> A x)" 
   shows "is_too_large (\<tau>\<^sub>2 \<omega> B x)"
 proof -
-  have "C3 * b * l < (\<Sum> (i,j) \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> A x i j) (-1) + 2)\<rfloor>)"
+  have "C3 * b * l < (\<Sum> (i,j) \<in> {..<l} \<times> {..<b}. \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> A x i j) (-1) + 2)\<rfloor>)"
     using assms(2) by simp
   also have "... = (\<Sum> y \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> A x (fst y) (snd y)) (-1) + 2)\<rfloor>)" 
     by (simp add:case_prod_beta del:\<tau>\<^sub>2.simps) 

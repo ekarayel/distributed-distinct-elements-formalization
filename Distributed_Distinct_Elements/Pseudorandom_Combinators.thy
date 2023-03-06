@@ -37,7 +37,7 @@ lemma integrable_M[simp]:
   fixes f :: "'a \<Rightarrow> 'c::{banach, second_countable_topology}"
   shows "integrable M f"
 proof -
-  have " finite (set_pmf (sample_pmf S))" 
+  have "finite (set_pmf (sample_pmf S))" 
     unfolding set_pmf_sample_pmf sample_set_def 
     by (intro finite_imageI) simp
   thus ?thesis
