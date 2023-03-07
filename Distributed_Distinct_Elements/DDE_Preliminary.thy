@@ -8,12 +8,6 @@ begin
 
 unbundle intro_cong_syntax
 
-lemma pmf_mono':
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<Longrightarrow> x \<in> Q"
-  shows "measure (measure_pmf p) P \<le> measure (measure_pmf p) Q"
-  sorry
-
-
 lemma (in prob_space) AE_pmfI:
   assumes "M = measure_pmf p"
   assumes "\<And>\<omega>. \<omega> \<in> set_pmf p \<Longrightarrow> P \<omega>"
@@ -44,6 +38,17 @@ lemma measure_pmf_cong:
   shows "measure (measure_pmf p) P = measure (measure_pmf p)  Q"
   using assms
   by (intro finite_measure.finite_measure_eq_AE AE_pmfI) auto
+
+lemma pmf_mono':
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<Longrightarrow> x \<in> Q"
+  shows "measure (measure_pmf p) P \<le> measure (measure_pmf p) Q"
+proof -
+  have "measure (measure_pmf p) P = measure (measure_pmf p) (P \<inter> (set_pmf p))"
+    by (intro measure_pmf_cong) auto
+  also have "... \<le> measure (measure_pmf p) Q"
+    using assms by (intro finite_measure.finite_measure_mono) auto
+  finally show ?thesis by simp
+qed
 
 lemma (in prob_space) pmf_rev_mono:
   assumes "M = measure_pmf p"

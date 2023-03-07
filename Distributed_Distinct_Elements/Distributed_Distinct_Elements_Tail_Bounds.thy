@@ -211,7 +211,7 @@ next
   thus ?thesis using 0 by simp
 qed
 
-definition C\<^sub>1 :: real where "C\<^sub>1 = 2*exp 2 + (exp 1 - 1)"
+definition C\<^sub>1 :: real where "C\<^sub>1 = exp 2 + exp 3 + (exp 1 - 1)"
 
 
 lemma (in regular_graph) deviation_bound:
@@ -224,7 +224,7 @@ lemma (in regular_graph) deviation_bound:
 proof -
   let ?w = "pmf_of_multiset (walks G l)"
   let ?p = "pmf_of_set (verts G)"
-  let ?a = "real l*(2*exp 2)"
+  let ?a = "real l*(exp 2 + exp 3)"
 
   define b :: real where "b = exp 1 - 1"
   have b_gt_0: "b > 0"
@@ -247,38 +247,36 @@ proof -
     unfolding k_max_def by simp
   have k_max_gt_3: "k_max \<ge> 3"
     unfolding k_max_def by simp
-  have k_max_gt_2: "k_max \<ge> 2"
-    unfolding k_max_def by simp
 
-  have 1:"of_bool(\<lfloor>ln(max x (exp 1.5))\<rfloor>+1=int k) = 
+  have 1:"of_bool(\<lfloor>ln(max x (exp 1))\<rfloor>+1=int k) = 
     (of_bool(x \<ge> exp (real k-1)) - of_bool(x \<ge> exp k)::real)" 
     (is "?L1 = ?R1") if "k \<ge> 3" for k x
   proof -
     have a1: "real k - 1 \<le> k" by simp
-    have "?L1 = of_bool(\<lfloor>ln(max x (exp 1.5))\<rfloor>=int k-1)"
+    have "?L1 = of_bool(\<lfloor>ln(max x (exp 1))\<rfloor>=int k-1)"
       by simp
-    also have "... = of_bool(ln(max x (exp 1.5))\<in>{real k-1..<real k})"
+    also have "... = of_bool(ln(max x (exp 1))\<in>{real k-1..<real k})"
       unfolding floor_eq_iff by simp
-    also have "... = of_bool(exp(ln(max x (exp 1.5)))\<in>{exp (real k-1)..<exp (real k)})"
+    also have "... = of_bool(exp(ln(max x (exp 1)))\<in>{exp (real k-1)..<exp (real k)})"
       by simp
-    also have "... = of_bool(max x (exp 1.5) \<in>{exp (real k-1)..<exp (real k)})"
+    also have "... = of_bool(max x (exp 1) \<in>{exp (real k-1)..<exp (real k)})"
       by (subst exp_ln) (auto intro!:max.strict_coboundedI2)
     also have "... = of_bool(x \<in>{exp (real k-1)..<exp (real k)})"
-    proof (cases "x \<ge> exp 1.5")
+    proof (cases "x \<ge> exp 1")
       case True
       then show ?thesis by simp
     next 
       case False
       have "{exp (real k - 1)..<exp (real k)} \<subseteq> {exp (real k - 1)..}"
         by auto
-      also have "... \<subseteq> {exp 1.5..}"
+      also have "... \<subseteq> {exp 1..}"
         using that by simp
-      finally have "{exp (real k - 1)..<exp (real k)} \<subseteq> {exp 1.5..}" by simp
-      moreover have "x \<notin> {exp 1.5..}"
+      finally have "{exp (real k - 1)..<exp (real k)} \<subseteq> {exp 1..}" by simp
+      moreover have "x \<notin> {exp 1..}"
         using False by simp
       ultimately have "x \<notin> {exp (real k - 1)..<exp (real k)}" by blast      
       hence "of_bool(x \<in>{exp (real k-1)..<exp (real k)}) = 0" by simp
-      also have "... = of_bool(max x (exp 1.5) \<in>{exp (real k-1)..<exp (real k)})"
+      also have "... = of_bool(max x (exp 1) \<in>{exp (real k-1)..<exp (real k)})"
         using False that by simp
       finally show ?thesis by metis
     qed
@@ -287,9 +285,9 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have 0: "{nat \<lfloor>ln (max (f x) (exp 1.5))\<rfloor>+1} \<subseteq> {2..k_max}" (is "{?L1} \<subseteq> ?R2")
-    if "x \<in> verts G" for x 
-  proof (cases "f x \<ge> exp 1.5")
+  have 0: "{nat \<lfloor>ln (max (f x) (exp 1))\<rfloor>+1} \<subseteq> {2..k_max}" (is "{?L1} \<subseteq> ?R2")
+    if "x \<in> verts G" for x
+  proof (cases "f x \<ge> exp 1")
     case True
     hence "?L1 = nat \<lfloor>ln (f x)\<rfloor>+1"
       by simp
@@ -299,7 +297,7 @@ proof -
       unfolding k_max_def by simp
     finally have le_0: "?L1 \<le> k_max"
       by simp
-    have "(1::nat) \<le> nat \<lfloor>ln (exp (1.5::real))\<rfloor>"
+    have "(1::nat) \<le> nat \<lfloor>ln (exp (1::real))\<rfloor>"
       by simp
     also have "... \<le> nat \<lfloor>ln (f x)\<rfloor>"
       using True order_less_le_trans[OF exp_gt_zero]
@@ -315,11 +313,11 @@ proof -
     hence "{?L1} = {2}"
       by simp
     also have "... \<subseteq> ?R2"
-      using k_max_gt_2 by simp
+      using k_max_gt_3 by simp
     finally show ?thesis by simp
   qed
 
-  have 2:"(\<Sum>i\<leftarrow>w. f i) \<le> ?a+b*(\<Sum>k=2..<k_max. exp k * card {i\<in>{..<l}. f (w!i)\<ge>exp k})" 
+  have 2:"(\<Sum>i\<leftarrow>w. f i) \<le> ?a+b*(\<Sum>k=3..<k_max. exp k * card {i\<in>{..<l}. f (w!i)\<ge>exp k})" 
     (is "?L1 \<le> ?R1") if "w \<in># walks G l" for w
   proof -
     have l_w: "length w = l"
@@ -327,22 +325,22 @@ proof -
     have s_w: "set w \<subseteq> verts G"
       using set_walks that by auto
 
-    have "?L1 \<le> (\<Sum>i\<leftarrow>w. exp( ln (max (f i) (exp 1.5))))"
+    have "?L1 \<le> (\<Sum>i\<leftarrow>w. exp( ln (max (f i) (exp 1))))"
       by (intro sum_list_mono) (simp add:less_max_iff_disj)
-    also have "... \<le> (\<Sum>i\<leftarrow>w. exp (of_nat (nat \<lfloor>ln (max (f i) (exp 1.5))\<rfloor>+1)))"
+    also have "... \<le> (\<Sum>i\<leftarrow>w. exp (of_nat (nat \<lfloor>ln (max (f i) (exp 1))\<rfloor>+1)))"
       by (intro sum_list_mono iffD2[OF exp_le_cancel_iff]) linarith
-    also have "... = (\<Sum>i\<leftarrow>w. (\<Sum>k=2..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1.5))\<rfloor>+1)))"
+    also have "... = (\<Sum>i\<leftarrow>w. (\<Sum>k=2..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1)))"
       using Int_absorb1[OF 0] subsetD[OF s_w] by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong) 
         (simp add:of_bool_def if_distrib if_distribR sum.If_cases)
     also have "...=
-      (\<Sum>i\<leftarrow>w.(\<Sum>k\<in>(insert 2{3..k_max}). exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1.5))\<rfloor>+1)))"
-      using k_max_gt_2 by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong sum.cong) auto
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2* of_bool (2=nat \<lfloor>ln (max (f i)(exp 1.5))\<rfloor>+1) + 
-      (\<Sum>k=3..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1.5))\<rfloor>+1)))"
+      (\<Sum>i\<leftarrow>w.(\<Sum>k\<in>(insert 2{3..k_max}). exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1)))"
+      using k_max_gt_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong sum.cong) auto
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2* of_bool (2=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1) + 
+      (\<Sum>k=3..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1)))"
       by (subst sum.insert) auto
-    also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2*1+(\<Sum>k=3..k_max. exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1.5))\<rfloor>+1)))"
+    also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2*1+(\<Sum>k=3..k_max. exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1)))"
       by (intro sum_list_mono add_mono mult_left_mono) auto
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=3..k_max. exp k* of_bool(\<lfloor>ln(max(f i)(exp 1.5))\<rfloor>+1=int k)))"
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=3..k_max. exp k* of_bool(\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1=int k)))"
       by (intro_cong "[\<sigma>\<^sub>1 sum_list,\<sigma>\<^sub>1 of_bool, \<sigma>\<^sub>2(+),\<sigma>\<^sub>2(*)]" more:map_cong sum.cong) auto
     also have "... = 
       (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=3..k_max. exp k*(of_bool(f i\<ge>exp (real k-1))-of_bool(f i\<ge>exp k))))"
@@ -351,56 +349,73 @@ proof -
       (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=2+1..<k_max+1. exp k*(of_bool(f i\<ge>exp(real k-1))-of_bool(f i\<ge>exp k))))"
       by (intro_cong "[\<sigma>\<^sub>1 sum_list,\<sigma>\<^sub>2(+)]" more:map_cong sum.cong) auto
     also have "... =
-      (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=2..<k_max. exp (Suc k)*(of_bool(f i\<ge>exp k)-of_bool(f i\<ge>exp (Suc k)))))"
+      (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=2..<k_max. exp (k+1)*(of_bool(f i\<ge>exp k)-of_bool(f i\<ge>exp (Suc k)))))"
       by (subst sum.shift_bounds_nat_ivl) simp
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k=2..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))+
-      (\<Sum>k=2..<k_max. (-exp (Suc k))* of_bool(f i\<ge>exp (Suc k))-(-exp k* of_bool(f i\<ge>exp k))))"
-      by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong) (simp add:algebra_simps sum_subtractf)
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k=2..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))+
-      exp 2 * of_bool (exp 2 \<le> f i) - exp (real k_max) * of_bool (exp (real k_max) \<le> f i))"
-      by (subst sum_Suc_diff'[OF k_max_gt_2]) (simp add:algebra_simps)
-    also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k=2..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))+
-      exp 2 * 1 - 0)"
-      by (intro sum_list_mono add_mono diff_mono mult_left_mono mult_nonneg_nonneg) auto
-    also have "... = (\<Sum>i\<leftarrow>w. 2*exp 2+ (\<Sum>k=2..<k_max. (exp 1-1)*(exp k* of_bool(f i\<ge>exp k))))"
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k=2..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
+      (\<Sum>k=2..<k_max. exp (k+1)* of_bool(f i\<ge>exp (k+1))))"
+      by (simp add:sum_subtractf algebra_simps)
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k=2..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
+      (\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
+      by (subst sum.shift_bounds_nat_ivl[symmetric]) (simp cong:sum.cong)
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k\<in> insert 2 {3..<k_max}. exp (k+1)* of_bool(f i\<ge>exp k))-
+      (\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
+      using k_max_gt_3
+      by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ exp 3 * of_bool (f i \<ge> exp 2) + 
+      (\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-(\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
+      by (subst sum.insert) (simp_all add:algebra_simps)
+    also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
+      (\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
+      by (intro sum_list_mono add_mono diff_mono) auto
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
+      (\<Sum>k\<in> insert k_max {3..<k_max}. exp k* of_bool(f i\<ge>exp k)))"
+      using k_max_gt_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))-
+      (exp k_max * of_bool (f i\<ge> exp k_max)))"
+      by (subst sum.insert) (auto simp add:sum_subtractf algebra_simps)
+    also have "...\<le>(\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))-0)"
+      by (intro sum_list_mono add_mono diff_mono) auto
+    also have "... \<le>(\<Sum>i\<leftarrow>w. exp 2+exp 3+ (\<Sum>k=3..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k)))"
+      by auto
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+ (\<Sum>k=3..<k_max. (exp 1-1)*(exp k* of_bool(f i\<ge>exp k))))"
       by (simp add:exp_add algebra_simps)
-    also have "... = (\<Sum>i\<leftarrow>w. 2*exp 2+b*(\<Sum>k=2..<k_max. exp k* of_bool(f i\<ge>exp k)))"
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+b*(\<Sum>k=3..<k_max. exp k* of_bool(f i\<ge>exp k)))"
       unfolding b_def
       by (subst sum_distrib_left) simp
-    also have "... = ?a+b*(\<Sum>i=0..<l. (\<Sum>k=2..<k_max. exp k* of_bool(f (w ! i)\<ge>exp k)))"
+    also have "... = ?a+b*(\<Sum>i=0..<l. (\<Sum>k=3..<k_max. exp k* of_bool(f (w ! i)\<ge>exp k)))"
       unfolding sum_list_sum_nth by (simp add:l_w sum_distrib_left[symmetric])
     also have "... = ?R1"
       by (subst sum.swap) (simp add:ac_simps Int_def)
     finally show ?thesis by simp
   qed
 
-  have 3: "\<exists>k\<in>{2..<k_max}. g k \<ge> l/real k^2" if "(\<Sum>k=2..<k_max. g k) \<ge> real l" for g
+  have 3: "\<exists>k\<in>{3..<k_max}. g k \<ge> l/real k^2" if "(\<Sum>k=3..<k_max. g k) \<ge> real l" for g
   proof (rule ccontr)
-    assume a3: "\<not>(\<exists>k\<in>{2..<k_max}. g k \<ge> l/real k^2)"
-    hence "g k < l/real k^2" if "k \<in>{2..<k_max}" for k 
+    assume a3: "\<not>(\<exists>k\<in>{3..<k_max}. g k \<ge> l/real k^2)"
+    hence "g k < l/real k^2" if "k \<in>{3..<k_max}" for k 
       using that by force
-    hence "(\<Sum>k=2..<k_max. g k) < (\<Sum>k=2..<k_max. l/real k^2)"
-      using k_max_gt_3 by (intro sum_strict_mono) auto
-    also have "... \<le> (\<Sum>k=2..<k_max. l/ (real k*(real k-1)))" 
+    hence "(\<Sum>k=3..<k_max. g k) < (\<Sum>k=3..<k_max. l/real k^2)"
+      using k_max_gt_4 by (intro sum_strict_mono) auto
+    also have "... \<le> (\<Sum>k=3..<k_max. l/ (real k*(real k-1)))" 
       by (intro sum_mono divide_left_mono) (auto simp:power2_eq_square)
-    also have "... = l * (\<Sum>k=2..<k_max. 1 / (real k-1) - 1/k)"
+    also have "... = l * (\<Sum>k=3..<k_max. 1 / (real k-1) - 1/k)"
       by (simp add:sum_distrib_left field_simps)
-    also have "... = l * (\<Sum>k=1+1..<(k_max-1)+1. (-1)/k - (-1) / (real k-1))"
+    also have "... = l * (\<Sum>k=2+1..<(k_max-1)+1. (-1)/k - (-1) / (real k-1))"
       by (intro sum.cong arg_cong2[where f="(*)"]) auto
-    also have "... = l * (\<Sum>k=1..<(k_max-1). (-1)/(Suc k) - (-1) / k)"
+    also have "... = l * (\<Sum>k=2..<(k_max-1). (-1)/(Suc k) - (-1) / k)"
       by (subst sum.shift_bounds_nat_ivl) auto
-    also have "... = l * (1 - 1 / real (k_max - 1))"
-      using k_max_gt_2 by (subst sum_Suc_diff') auto
+    also have "... = l * (1/2 - 1 / real (k_max - 1))"
+      using k_max_gt_3 by (subst sum_Suc_diff') auto
     also have "... \<le> real l * (1 - 0)"
-      using k_max_gt_2 by (intro mult_left_mono diff_mono) auto
+       by (intro mult_left_mono diff_mono) auto
     also have "... = l"
       by simp
-    finally have "(\<Sum>k=2..<k_max. g k) < l" by simp
+    finally have "(\<Sum>k=3..<k_max. g k) < l" by simp
     thus "False"
       using that by simp
   qed
 
-  have 4: "L k \<le> exp(-real l-k+2)" if "k \<ge> 2" for k
+  have 4: "L k \<le> exp(-real l-k+2)" if "k \<ge> 3" for k
   proof (cases "k \<le> ln l")
     case True
     define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)" 
@@ -606,46 +621,45 @@ proof -
   qed
 
   have "?L \<le> measure ?w 
-    {w. ?a+b*(\<Sum>k=2..<k_max. exp (real k) * card {i\<in>{..<l}. f (w!i)\<ge>exp (real k)}) \<ge> C\<^sub>1*l}"
+    {w. ?a+b*(\<Sum>k=3..<k_max. exp (real k) * card {i\<in>{..<l}. f (w!i)\<ge>exp (real k)}) \<ge> C\<^sub>1*l}"
     using order_trans[OF _ 2] walks_nonempty by (intro pmf_mono') simp
   also have "... = measure ?w 
-    {w. (\<Sum>k=2..<k_max. exp(real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)})\<ge>l}"
+    {w. (\<Sum>k=3..<k_max. exp(real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)})\<ge>l}"
     unfolding C\<^sub>1_def b_def[symmetric] using b_gt_0
     by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:algebra_simps)
   also have "... \<le> measure ?w 
-    {w. (\<exists>k\<in>{2..<k_max}. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2)}"
+    {w. (\<exists>k\<in>{3..<k_max}. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2)}"
     using 3 by (intro pmf_mono') simp
   also have "... = measure ?w 
-    (\<Union>k\<in>{2..<k_max}. {w. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2})"
+    (\<Union>k\<in>{3..<k_max}. {w. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2})"
     by (intro_cong "[\<sigma>\<^sub>2 measure]") auto
-  also have "... \<le> (\<Sum>k=2..<k_max. L k)"
+  also have "... \<le> (\<Sum>k=3..<k_max. L k)"
     unfolding L_def
     by (intro finite_measure.finite_measure_subadditive_finite) auto
-  also have "... \<le> (\<Sum>k=2..<k_max. exp (- real l - real k + 2))"
+  also have "... \<le> (\<Sum>k=3..<k_max. exp (- real l - real k + 2))"
     by (intro sum_mono 4) auto
-  also have "... = (\<Sum>k=0+2..<(k_max-2)+2. exp (- real l - real k + 2))"
-    using k_max_gt_2 by (intro sum.cong) auto
-  also have "... = (\<Sum>k=0..<k_max-2. exp (- real l - real k))"
-    by (subst sum.shift_bounds_nat_ivl) auto
-  also have "... = exp(-real l) * (\<Sum>k<k_max-2. exp (real k*(-1)))"
+  also have "... = (\<Sum>k=0+3..<(k_max-3)+3. exp (- real l - real k + 2))"
+    using k_max_gt_3 by (intro sum.cong) auto
+  also have "... = (\<Sum>k=0..<k_max-3. exp (-1 - real l - real k))"
+    by (subst sum.shift_bounds_nat_ivl) ( simp add:algebra_simps)
+  also have "... = exp(-1-real l) * (\<Sum>k<k_max-3. exp (real k*(-1)))"
     using atLeast0LessThan
     by (simp add:exp_diff exp_add sum_distrib_left exp_minus inverse_eq_divide)
-  also have "... = exp(-real l) * ((exp (- 1) ^ (k_max - 2) - 1) / (exp (- 1) - 1))"
+  also have "... = exp (-1-real l) * ((exp (- 1) ^ (k_max - 3) - 1) / (exp (- 1) - 1))"
     unfolding exp_of_nat_mult by (subst geometric_sum) auto 
-  also have "... = exp(-real l) * (1-exp (- 1) ^ (k_max - 2)) / (1-exp (- 1))"
+  also have "... = exp(-1-real l) * (1-exp (- 1) ^ (k_max - 3)) / (1-exp (- 1))"
     by (simp add:field_simps)
-  also have "... \<le> exp(-real l) * (1-0) / (1-exp (- 1))"
+  also have "... \<le> exp(-1-real l) * (1-0) / (1-exp (- 1))"
     using k_max_gt_3
     by (intro mult_left_mono divide_right_mono diff_mono) auto
-  also have "... \<le> exp(-real l) / (1- exp (- 1))"
-    by auto
-
-  show ?thesis
-    sorry
-
+  also have "... = exp (-real l) * (exp (-1) / (1-exp(-1)))"
+    by (simp add:exp_diff exp_minus inverse_eq_divide)
+  also have "... \<le> exp (-real l) * 1"
+    by (intro mult_left_mono exp_ge_zero) (approximation 10)
+  finally show ?thesis
+    by simp
 qed
 
 unbundle no_intro_cong_syntax
-
 
 end
