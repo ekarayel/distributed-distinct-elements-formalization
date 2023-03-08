@@ -3,13 +3,16 @@ theory F0
     "HOL-Library.Log_Nat"
     "Median_Method.Median"
     "Pseudorandom_Combinators_Hash"
+    "Pseudorandom_Combinators_Expander"
     "DDE_Preliminary"
 begin
+
+hide_const Discrete_Topology.discrete
 
 section \<open>Algorithm\<close>
 
 definition C2 :: real where "C2 = 3^2*2^23"
-definition C3 :: int where "C3 = 34"
+definition C3 :: int where "C3 = 33"
 definition C6 :: nat where "C6 = 2^5"
 
 locale inner_algorithm =
@@ -39,24 +42,22 @@ definition l :: nat
 definition k :: nat 
   where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
 
+definition \<Lambda> :: real
+  where "\<Lambda> = min (1/16) (exp (-l * ln l^3))"
+
 lemma k_min: "7.5 * ln (real b) + 16 \<le> real k"
   unfolding k_def by linarith
 
+lemma \<Lambda>_gt_0: "\<Lambda> > 0" sorry
 
 lemma l_gt_0: "l > 0" sorry
 
-
-
 lemma b_exp_ge_26: "b_exp \<ge> 26"
 proof -
-  have powr_less_1: "x > 0 \<Longrightarrow> x < 1 \<Longrightarrow> x^2 < 1" for x :: real
-    using power_strict_decreasing
-    by (metis pos2 power_0)
-
-  have "2 powr 25 < C2" unfolding C2_def by simp
-  also have "... < (C2*1) / (real_of_rat \<delta>)\<^sup>2"
+  have "2 powr 25 < C2 / 1 " unfolding C2_def by simp
+  also have "... \<le> C2 / (real_of_rat \<delta>)\<^sup>2"
     using \<delta>_gt_0 \<delta>_lt_1 unfolding C2_def
-    by (intro iffD2[OF pos_less_divide_eq] zero_less_power mult_strict_left_mono powr_less_1) auto
+    by (intro divide_left_mono power_le_one) auto
   finally have "2 powr 25 < C2 / (real_of_rat \<delta>)\<^sup>2" by simp
   hence "log 2 (C2 / (real_of_rat \<delta>)\<^sup>2) > 25" 
     using \<delta>_gt_0 unfolding C2_def
@@ -100,11 +101,18 @@ proof -
   finally show ?thesis by simp
 qed
 
-definition \<Psi> where 
-  "\<Psi> = (\<G> 2 n) \<times>\<^sub>S (\<H> 2 n [C6*b\<^sup>2]\<^sub>S) \<times>\<^sub>S (\<H> k (C6*b\<^sup>2) [b]\<^sub>S)"
+definition n_exp where "n_exp = max (nat \<lceil>log 2 n\<rceil>) 1"
 
-definition \<Omega> where
-  "\<Omega> = \<E> l 0.1 \<Psi>"
+lemma n_exp_gt_0: "n_exp > 0"
+  unfolding n_exp_def by simp
+
+abbreviation \<Psi>\<^sub>1 where "\<Psi>\<^sub>1 \<equiv> \<H> 2 n (\<G> n_exp)"
+abbreviation \<Psi>\<^sub>2 where "\<Psi>\<^sub>2 \<equiv> \<H> 2 n [C6*b\<^sup>2]\<^sub>S"
+abbreviation \<Psi>\<^sub>3 where "\<Psi>\<^sub>3 \<equiv> \<H> k (C6*b\<^sup>2) [b]\<^sub>S"
+
+definition \<Psi> where "\<Psi> = \<Psi>\<^sub>1 \<times>\<^sub>S \<Psi>\<^sub>2 \<times>\<^sub>S \<Psi>\<^sub>3"
+
+abbreviation \<Omega> where "\<Omega> \<equiv> \<E> l \<Lambda> \<Psi>"
 
 type_synonym f0_state = "(nat \<Rightarrow> nat \<Rightarrow> int) \<times> (nat)"
 
@@ -205,24 +213,23 @@ lemma \<tau>\<^sub>2_step: "\<tau>\<^sub>2 \<omega> A (x+y) = (\<lambda>i j. max
 lemma \<tau>\<^sub>3_step: "compress_step (\<tau>\<^sub>3 \<omega> A x) = \<tau>\<^sub>3 \<omega> A (x+1)"
   using \<tau>\<^sub>2_step[where y="1"] by (simp del:\<tau>\<^sub>2.simps)
 
-lemma prod_right_mono: "B \<subseteq> C \<Longrightarrow> A \<times> B \<subseteq> A \<times> C"
+lemma prod_right_mono: "B \<subseteq> C \<Longrightarrow> A \<times> B \<subseteq> A \<times> C" (* REMOVE? *)
   by auto
 
-lemma sample_set_\<Psi>:
-  "sample_set \<Psi> \<subseteq> sample_set (\<G> 2 n) \<times> sample_set (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S) \<times> sample_set (\<H> k (C6*b\<^sup>2) [b]\<^sub>S)" (is "_ \<subseteq> ?R")
+sublocale \<Psi>\<^sub>1: \<H>_locale "2" "n" "\<G> n_exp" "\<Psi>\<^sub>1"
 proof -
-  have "sample_set \<Psi> \<subseteq> sample_set (\<G> 2 n) \<times> sample_set (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S \<times>\<^sub>S (\<H> k (C6*b\<^sup>2) [b]\<^sub>S))"
-    unfolding \<Psi>_def by (intro prod_sample_set)
-  also have "... \<subseteq> ?R"
-    by (intro prod_right_mono prod_sample_set)
-  finally show ?thesis
-    by simp
+  have 0:"size (\<G> n_exp) = 2 ^ n_exp"
+    unfolding \<G>_def by simp
+
+  have "is_prime_power (size (\<G> n_exp))"
+    unfolding 0 by (intro is_prime_power n_exp_gt_0) auto
+
+  thus "\<H>_locale 2 (\<G> n_exp)"
+    unfolding \<H>_locale_def by simp
+  show "\<Psi>\<^sub>1 \<equiv> \<Psi>\<^sub>1" by simp
 qed
 
-sublocale \<Psi>\<^sub>1: \<G>_locale "2" "n" "\<G> 2 n"
-  unfolding \<G>_locale_def using n_gt_0 by auto
-
-sublocale \<Psi>\<^sub>2: \<H>_locale "2" "n" "[(C6*b\<^sup>2)]\<^sub>S" "(\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S)"
+sublocale \<Psi>\<^sub>2: \<H>_locale "2" "n" "[(C6*b\<^sup>2)]\<^sub>S" "\<Psi>\<^sub>2"
 proof -
   have a:"C6 * b^2 = 2^(5 + b_exp*2)" 
     unfolding C6_def b_def by (simp add: power_mult power_add) 
@@ -246,42 +253,71 @@ proof -
   show "\<H> k (C6*b\<^sup>2) [b]\<^sub>S \<equiv> \<H> k (C6*b\<^sup>2) [b]\<^sub>S" by simp
 qed
 
-sublocale \<Psi>: "sample_space" \<Psi>
+lemma sample_pmf_\<Psi>: "sample_pmf \<Psi> = pair_pmf \<Psi>\<^sub>1 (pair_pmf \<Psi>\<^sub>2 \<Psi>\<^sub>3)" 
   unfolding \<Psi>_def
-  by (intro prod_sample_space \<Psi>\<^sub>1.sample_space_axioms \<Psi>\<^sub>2.sample_space_axioms \<Psi>\<^sub>3.sample_space_axioms)
+  using \<Psi>\<^sub>1.sample_space \<Psi>\<^sub>2.sample_space \<Psi>\<^sub>3.sample_space
+  by (simp add:prod_sample_pmf)
 
-lemma sample_pmf_\<Psi>: "sample_pmf \<Psi> = pair_pmf (sample_pmf (\<G> 2 n)) 
-  (pair_pmf (sample_pmf (\<H> 2 n [C6 * b\<^sup>2]\<^sub>S)) (sample_pmf (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S)))" 
-proof -
-  have a:"sample_space ((\<H> 2 n [C6 * b\<^sup>2]\<^sub>S) \<times>\<^sub>S (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S))"
-    by (intro prod_sample_space \<Psi>\<^sub>2.sample_space_axioms \<Psi>\<^sub>3.sample_space_axioms)
-  show ?thesis
-    using \<Psi>\<^sub>1.sample_space_axioms \<Psi>\<^sub>2.sample_space_axioms \<Psi>\<^sub>3.sample_space_axioms a
-    by (auto simp add: prod_sample_pmf \<Psi>_def) 
-qed
+lemma sample_set_\<Psi>:
+  "sample_set \<Psi> = sample_set \<Psi>\<^sub>1 \<times> sample_set \<Psi>\<^sub>2 \<times> sample_set \<Psi>\<^sub>3"
+  using \<Psi>\<^sub>1.sample_space \<Psi>\<^sub>2.sample_space \<Psi>\<^sub>3.sample_space unfolding \<Psi>_def
+  by (simp add: prod_sample_set)
+
+lemma sample_space_\<Psi>: "sample_space \<Psi>"
+  unfolding \<Psi>_def
+  using \<Psi>\<^sub>1.sample_space \<Psi>\<^sub>2.sample_space \<Psi>\<^sub>3.sample_space
+  by simp
 
 lemma f_range: 
   assumes "(f,g,h) \<in> sample_set \<Psi>"
-  shows "f x \<le> max (nat \<lceil>log 2 n\<rceil>) 1"
+  shows "f x \<le> n_exp"
 proof -
-  have "f \<in> sample_set (\<G> 2 n)"
+  have "f \<in> sample_set \<Psi>\<^sub>1"
     using sample_set_\<Psi> assms by auto
-  then obtain i where f_def:"f = select (\<G> 2 n) i" unfolding sample_set_def by auto
-  show ?thesis
-    unfolding f_def by (intro \<Psi>\<^sub>1.\<G>_range) 
+  then obtain i where f_def:"f = select \<Psi>\<^sub>1 i" unfolding sample_set_def by auto
+  hence "f x \<in> sample_set (\<G> n_exp)"
+    using \<Psi>\<^sub>1.\<H>_range by auto
+  also have "... \<subseteq> {..n_exp}"
+    by (intro \<G>_range)
+  finally have "f x \<in> {..n_exp}" 
+    by simp
+  thus ?thesis by simp
+qed
+
+lemma g_range_1: 
+  assumes "g \<in> sample_set \<Psi>\<^sub>2"
+  shows "g x < C6*b^2"
+proof -
+  obtain i where f_def:"g = select (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S) i"
+    using assms unfolding sample_set_def by auto
+  hence "range g \<subseteq> sample_set ([(C6*b\<^sup>2)]\<^sub>S)"
+    unfolding f_def by (intro \<Psi>\<^sub>2.\<H>_range) 
+  thus ?thesis
+    unfolding sample_set_alt[OF \<Psi>\<^sub>2.sample_space_R] 
+    unfolding nat_sample_space_def by auto
+qed
+
+lemma h_range_1: 
+  assumes "h \<in> sample_set \<Psi>\<^sub>3"
+  shows "h x < b"
+proof -
+  obtain i where f_def:"h = select \<Psi>\<^sub>3 i"
+    using assms unfolding sample_set_def by auto
+  hence "range h \<subseteq> sample_set ([b]\<^sub>S)"
+    unfolding f_def by (intro \<Psi>\<^sub>3.\<H>_range) 
+  thus ?thesis
+    unfolding sample_set_alt[OF \<Psi>\<^sub>3.sample_space_R] 
+    unfolding nat_sample_space_def by auto
 qed
 
 lemma g_range: 
   assumes "(f,g,h) \<in> sample_set \<Psi>"
   shows "g x < C6*b^2"
 proof -
-  have "g \<in> sample_set (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S)"
+  have "g \<in> sample_set \<Psi>\<^sub>2"
     using sample_set_\<Psi> assms by auto
-  then obtain i where f_def:"g = select (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S) i" unfolding sample_set_def by auto
-  hence "range g \<subseteq> sample_set ([(C6*b\<^sup>2)]\<^sub>S)"
-    unfolding f_def by (intro \<Psi>\<^sub>2.\<H>_range) 
   thus ?thesis
-    unfolding sample_set_def nat_sample_space_def by auto
+    using g_range_1 by simp
 qed
 
 lemma fin_f:
@@ -301,20 +337,11 @@ qed
 lemma Max_int_range: "x \<le> (y::int) \<Longrightarrow> Max {x..y} = y"
   by auto
 
-lemma select_\<Omega>_range: "select \<Omega> \<omega> i \<in> sample_set \<Psi>"
-proof -
-  have "size (\<G> 2 n) > 0" 
-    using \<Psi>\<^sub>1.\<G>_size by simp
-  moreover have "size  (\<H> 2 n [(C6*b\<^sup>2)]\<^sub>S) > 0" 
-    using \<Psi>\<^sub>2.\<H>_size by simp
-  moreover have "size (\<H> k (C6*b\<^sup>2) [b]\<^sub>S) > 0"
-    using \<Psi>\<^sub>3.\<H>_size by simp
-  ultimately have "size \<Psi> > 0" 
-    unfolding \<Psi>_def by (simp add:prod_sample_space_def) 
+sublocale \<Omega>: expander_sample_space l \<Lambda> \<Psi>
+  unfolding expander_sample_space_def using sample_space_\<Psi> l_gt_0 \<Lambda>_gt_0 by auto
 
-  thus ?thesis
-    unfolding \<Omega>_def by (intro \<E>_range) auto
-qed
+lemma select_\<Omega>_range: "select \<Omega> \<omega> i \<in> sample_set \<Psi>"
+  using \<Omega>.range by simp
 
 lemma max_s': "\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2) i j = (-1)"
 proof -
@@ -327,9 +354,9 @@ proof -
     using w_i select_\<Omega>_range by metis
   have a:"int (f x) \<le> ?max_s" for x 
   proof -
-    have "int (f x) \<le> int (max (nat \<lceil>log 2 n\<rceil>) 1)" 
-      by (intro of_nat_mono f_range[OF c])
-    also have "... = ?max_s" by simp
+    have "int (f x) \<le> int n_exp"
+      using f_range[OF c] by auto
+    also have "... = ?max_s" unfolding n_exp_def by simp
     finally show ?thesis by simp
   qed
   have "\<tau>\<^sub>0 (select \<Omega> \<omega> i) A j \<le> Max {(-1)..?max_s}"
@@ -481,8 +508,12 @@ proof -
     by (metis add.commute nat_minus_add_max)
 
   have "u = 0 \<or> v = 0" using u_def v_def by linarith
-  hence a:"max (\<tau>\<^sub>2 \<omega> A (s \<omega> A) i j - u) (\<tau>\<^sub>2 \<omega> B (s \<omega> B) i j - v) \<ge> (-1)" for i j
-    by (auto simp del:s.simps)
+  moreover have "\<tau>\<^sub>2 \<omega> A (s \<omega> A) i j - u \<ge> (-1)" if "u = 0" for i j
+    using that by (simp del:s.simps)
+  moreover have "\<tau>\<^sub>2 \<omega> B (s \<omega> B) i j - v \<ge> (-1)" if "v = 0" for i j
+    using that by (simp del:s.simps)
+  ultimately have a:"max (\<tau>\<^sub>2 \<omega> A (s \<omega> A) i j - u) (\<tau>\<^sub>2 \<omega> B (s \<omega> B) i j - v) \<ge> (-1)" for i j
+    unfolding le_max_iff_disj by blast 
 
   have "\<tau>\<^sub>2 \<omega> (A \<union> B) ?smax = (\<lambda> i j.  max (\<tau>\<^sub>2 \<omega> A ?smax i j) (\<tau>\<^sub>2 \<omega> B ?smax i j))"
     using \<tau>\<^sub>2_merge by (intro ext)
@@ -546,11 +577,12 @@ qed
 end 
 
 locale inner_algorithm_fix_A = inner_algorithm +
-  fixes A Y
+  fixes A
   assumes A_range: "A \<subseteq> {..<n}"
   assumes A_nonempty: "{} \<noteq> A"
-  defines "Y \<equiv> card A"
 begin
+
+definition Y where "Y = card A"
 
 definition s\<^sub>M where "s\<^sub>M = nat (\<lceil>log 2 Y\<rceil> - b_exp)"
 
@@ -596,55 +628,56 @@ lemma r_eq: "r x f = (\<Sum> a \<in> A.( of_bool( x \<le> f a) :: real))"
 
 lemma 
   shows 
-    r_exp: "\<Psi>\<^sub>1.expectation (r x) = Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)" and
-    r_var: "\<Psi>\<^sub>1.variance (r x) \<le> \<Psi>\<^sub>1.expectation (r x)"
+    r_exp: "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)" and
+    r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
 proof -
   define V :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> real" where "V = (\<lambda>a f. of_bool (x \<le> f a))"
 
-  have V_exp: "\<Psi>\<^sub>1.expectation (V a) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x" 
+  have V_exp: "(\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x" 
     (is "?L = ?R") if "a \<in> A" for a
   proof -
     have a_le_n: "a < n"
       using that A_range by auto
 
-    have "?L = \<Psi>\<^sub>1.expectation (indicator {f. x \<le> f a})"
-      unfolding V_def by (intro arg_cong[where f="\<Psi>\<^sub>1.expectation"]) auto
-    also have "... = \<Psi>\<^sub>1.prob {f. x \<le> f a}"
-      by (simp add:\<Psi>\<^sub>1.M_def)
+    have "?L = (\<integral>\<omega>. indicator {f. x \<le> f a} \<omega> \<partial> \<Psi>\<^sub>1)"
+      unfolding V_def by (intro integral_cong_AE) auto
+    also have "... = measure (map_pmf (\<lambda>\<omega>. \<omega> a) (sample_pmf \<Psi>\<^sub>1)) {f. x \<le> f}"
+      by simp
+    also have "... = measure (\<G> n_exp) {f. x \<le> f}"
+      unfolding \<Psi>\<^sub>1.\<H>_single[OF a_le_n] by simp
     also have "... = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x"
-      using \<Psi>\<^sub>1.\<G>_prob[OF a_le_n] by simp
+      unfolding \<G>_prob n_exp_def by simp
     finally show ?thesis by simp
   qed
 
-  have b:"\<Psi>\<^sub>1.expectation (r x) = (\<Sum> a \<in> A. \<Psi>\<^sub>1.expectation (V a))" 
-    unfolding r_eq V_def 
-    by (subst Bochner_Integration.integral_sum[OF \<Psi>\<^sub>1.integrable_M]) simp
+  have b:"(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1))" 
+    unfolding r_eq V_def  using \<Psi>\<^sub>1.sample_space
+    by (intro Bochner_Integration.integral_sum) auto 
   also have "... = (\<Sum> a \<in> A.  of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x)"
     using V_exp by (intro sum.cong) auto
   also have "... = Y * ( of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)"
     using Y_def by simp
-  finally show "\<Psi>\<^sub>1.expectation (r x) = Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/ 2^x)" by simp
+  finally show "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/ 2^x)"
+    by simp
 
-  have "\<Psi>\<^sub>1.expectation(\<lambda>x. (V a x)^2) = \<Psi>\<^sub>1.expectation (V a)" for a
+  have "(\<integral>\<omega>. (V a \<omega>)^2 \<partial> \<Psi>\<^sub>1) = (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1)" for a
     unfolding V_def of_bool_square by simp
 
-  hence a:"\<Psi>\<^sub>1.variance (V a) \<le> \<Psi>\<^sub>1.expectation (V a)"  for a 
-    by (subst \<Psi>\<^sub>1.variance_eq) auto
+  hence a:"measure_pmf.variance \<Psi>\<^sub>1 (V a) \<le> measure_pmf.expectation \<Psi>\<^sub>1 (V a)"  for a 
+    using \<Psi>\<^sub>1.sample_space by (subst measure_pmf.variance_eq) auto
 
-  have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> \<Psi>\<^sub>1.indep_vars (\<lambda>_. borel) V J" for J
-    unfolding V_def using A_range fin_A finite_subset
-    by (intro 
-        \<Psi>\<^sub>1.indep_vars_compose2[where Y="\<lambda>i y. of_bool(x \<le> y)" and M'="\<lambda>_. discrete"]
-        \<Psi>\<^sub>1.k_wise_indep_vars_subset[OF \<Psi>\<^sub>1.\<G>_indep]) auto
-  hence "\<Psi>\<^sub>1.variance (r x) = (\<Sum> a \<in> A. \<Psi>\<^sub>1.variance (V a))"
-    unfolding r_eq V_def
-    by (intro \<Psi>\<^sub>1.var_sum_pairwise_indep_2 fin_A \<Psi>\<^sub>1.integrable_M)
-      (auto simp add:\<Psi>\<^sub>1.M_def)
-  also have "... \<le> (\<Sum> a \<in> A. \<Psi>\<^sub>1.expectation (\<lambda>x. (V a x)))"
+  have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> prob_space.indep_vars \<Psi>\<^sub>1 (\<lambda>_. borel) V J" for J
+    unfolding V_def using A_range finite_subset[OF _ fin_A]
+    by (intro prob_space.indep_vars_compose2[where Y="\<lambda>i y. of_bool(x \<le> y)" and M'="\<lambda>_. discrete"]
+        prob_space.k_wise_indep_vars_subset[OF _ \<Psi>\<^sub>1.\<H>_indep]) (auto simp:prob_space_measure_pmf)
+  hence "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) = (\<Sum> a \<in> A. measure_pmf.variance \<Psi>\<^sub>1 (V a))"
+    unfolding r_eq V_def using \<Psi>\<^sub>1.sample_space
+    by (intro measure_pmf.var_sum_pairwise_indep_2 fin_A) (simp_all)
+  also have "... \<le> (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1))"
     by (intro sum_mono a) 
-  also have "... = \<Psi>\<^sub>1.expectation (r x)"
+  also have "... = (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
     unfolding b by simp
-  finally show "\<Psi>\<^sub>1.variance (r x) \<le> \<Psi>\<^sub>1.expectation (r x)" by simp
+  finally show "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)" by simp
 qed
 
 end

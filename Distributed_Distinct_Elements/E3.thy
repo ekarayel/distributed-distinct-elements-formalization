@@ -33,17 +33,18 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma e_3: "\<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
+lemma e_3: "measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
   let ?\<alpha> = "(\<lambda>(z,x,y) f. z < C6*b^2 \<and> x \<in> R f \<and> y \<in> R f \<and> x < y)"
   let ?\<beta> = "(\<lambda>(z,x,y) g. g x = z \<and> g y = z)"
 
-  have \<beta>_prob: "\<Psi>\<^sub>2.prob {g. ?\<beta> \<omega> g} \<le> (1/(C6*b^2)^2)" 
+  have \<beta>_prob: "measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g} \<le> (1/real (C6*b^2)^2)" 
     if "?\<alpha> \<omega> f" for \<omega> f
   proof -
     obtain x y z where \<omega>_def: "\<omega> = (z,x,y)" by (metis prod_cases3)
-    have a:"\<Psi>\<^sub>2.k_wise_indep_vars 2 (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x = z) {..<n}"
-      by (intro \<Psi>\<^sub>2.k_wise_indep_vars_compose[OF \<Psi>\<^sub>2.\<H>_indep]) simp
+    have a:"prob_space.k_wise_indep_vars \<Psi>\<^sub>2 2 (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x = z) {..<n}"
+      by (intro prob_space.k_wise_indep_vars_compose[OF _ \<Psi>\<^sub>2.\<H>_indep]) 
+       (simp_all add:prob_space_measure_pmf)
 
     have "u \<in> R f \<Longrightarrow> u < n" for u
       unfolding R_def using A_range by auto
@@ -51,19 +52,18 @@ proof -
       using that \<omega>_def by auto
     have c: "z < C6*b\<^sup>2" using \<omega>_def that by simp
 
-    have "\<Psi>\<^sub>2.prob {g. ?\<beta> \<omega> g} = \<Psi>\<^sub>2.prob {g. (\<forall>\<xi> \<in> {x,y}. g \<xi> = z)}"
+    have "measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g} = measure \<Psi>\<^sub>2 {g. (\<forall>\<xi> \<in> {x,y}. g \<xi> = z)}"
       by (simp add:\<omega>_def)
-    also have "... = (\<Prod>\<xi> \<in> {x,y}. \<Psi>\<^sub>2.prob {g. g \<xi> = z})"
-      using b
-      by (intro \<Psi>\<^sub>2.split_indep_events[OF \<Psi>\<^sub>2.M_def, where I="{x,y}"] \<Psi>\<^sub>2.k_wise_indep_vars_subset[OF a])
-       auto
-    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure_pmf.prob (map_pmf (\<lambda>\<omega>. \<omega> \<xi>) (sample_pmf (\<H> 2 n [C6 * b\<^sup>2]\<^sub>S))) {g. g = z}) "
-      unfolding \<Psi>\<^sub>2.M_def by (simp add:vimage_def) 
-    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure_pmf.prob (sample_pmf ([C6 * b\<^sup>2]\<^sub>S)) {g. g=z})"
+    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure \<Psi>\<^sub>2 {g. g \<xi> = z})"
+      using b by (intro measure_pmf.split_indep_events[OF refl, where I="{x,y}"] 
+          prob_space.k_wise_indep_vars_subset[OF _ a]) (simp_all add:prob_space_measure_pmf)
+    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (map_pmf (\<lambda>\<omega>. \<omega> \<xi>) (sample_pmf \<Psi>\<^sub>2)) {g. g = z}) "
+      by (simp add:vimage_def) 
+    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure [C6 * b\<^sup>2]\<^sub>S {g. g=z})"
       using b \<Psi>\<^sub>2.\<H>_single by (intro prod.cong) fastforce+ 
-    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure_pmf.prob (pmf_of_set {..<C6 * b\<^sup>2}) {z})"
+    also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (pmf_of_set {..<C6 * b\<^sup>2}) {z})"
       by (subst nat_sample_pmf) simp
-    also have "... = (measure_pmf.prob (pmf_of_set {..<C6 * b\<^sup>2}) {z})^2"
+    also have "... = (measure (pmf_of_set {..<C6 * b\<^sup>2}) {z})^2"
       using b by simp
     also have "... \<le> (1 /(C6*b\<^sup>2))^2"
       using c by (subst measure_pmf_of_set) auto
@@ -92,12 +92,12 @@ proof -
       using finite_subset[OF t1 t2] by simp
   qed
 
-  have "?L \<le> \<Psi>.prob {(f,g,h). card (R f) \<le> b \<and> (\<exists> x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)}"
-  proof (rule \<Psi>.pmf_mono[OF \<Psi>.M_def])
+  have "?L \<le> measure \<Psi> {(f,g,h). card (R f) \<le> b \<and> (\<exists> x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)}"
+  proof (rule pmf_mono')
     fix \<psi> assume b:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def:"\<psi> = (f,g,h)" by (metis prod_cases3)
     have "(f,g,h) \<in> sample_set \<Psi>"
-      using \<psi>_def \<Psi>.set_pmf_sample_pmf b by simp
+      using sample_space_alt[OF sample_space_\<Psi>] b \<psi>_def by simp
     hence c:"g x < C6*b^2" for x
       using g_range by simp
 
@@ -113,34 +113,32 @@ proof -
     ultimately show "\<psi> \<in> {(f, g, h). card (R f) \<le> b \<and> (\<exists> x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)}"
       unfolding \<psi>_def by auto
   qed
-  also have "... = \<Psi>\<^sub>1.expectation (\<lambda>f. measure_pmf.prob 
-     (pair_pmf (sample_pmf (\<H> 2 n [C6 * b\<^sup>2]\<^sub>S)) (sample_pmf (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S)))
-     {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) (fst g))})"
-    by (simp add:\<Psi>.M_def \<Psi>\<^sub>1.M_def sample_pmf_\<Psi> case_prod_beta split_pair_pmf[where A="sample_pmf (\<G> 2 n)"])
+  also have "... = (\<integral>f. measure (pair_pmf \<Psi>\<^sub>2 \<Psi>\<^sub>3)
+     {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) (fst g))} \<partial>\<Psi>\<^sub>1)"
+    unfolding sample_pmf_\<Psi> split_pair_pmf by (simp add: case_prod_beta)
   also have 
-    "... = \<Psi>\<^sub>1.expectation (\<lambda>f. \<Psi>\<^sub>2.prob {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)})"
-    by (subst pair_pmf_prob_left)  (simp add:\<Psi>\<^sub>2.M_def)
-  also have "... \<le> \<Psi>\<^sub>1.expectation (\<lambda>f. 1/(2*C6))"
-  proof (rule \<Psi>\<^sub>1.pmf_exp_mono[OF \<Psi>\<^sub>1.M_def \<Psi>\<^sub>1.integrable_M \<Psi>\<^sub>1.integrable_M]) 
-    fix f assume "f \<in> set_pmf (sample_pmf (\<G> 2 n))"
-    show "\<Psi>\<^sub>2.prob {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<le> 1 / (2 * C6)" 
+    "... = (\<integral>f. measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<partial>\<Psi>\<^sub>1)"
+    by (subst pair_pmf_prob_left) simp
+  also have "... \<le> (\<integral>f. 1/real (2*C6) \<partial>\<Psi>\<^sub>1)"
+  proof (rule pmf_exp_mono[OF integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space] integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]]) 
+    fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
+    show "measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<le> 1 / real (2 * C6)" 
       (is "?L1 \<le> ?R1")
     proof (cases "card (R f) \<le> b")
       case True
-      have "?L1 \<le> \<Psi>\<^sub>2.prob (\<Union> \<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. {g. ?\<beta> \<omega> g})"
-        by (intro \<Psi>\<^sub>2.pmf_mono[OF \<Psi>\<^sub>2.M_def]) auto
-      also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. \<Psi>\<^sub>2.prob {g. ?\<beta> \<omega> g})"
-        unfolding \<Psi>\<^sub>2.M_def 
+      have "?L1 \<le> measure \<Psi>\<^sub>2 (\<Union> \<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. {g. ?\<beta> \<omega> g})"
+        by (intro pmf_mono') auto
+      also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g})"
         by (intro measure_UNION_le fin_\<alpha>) auto
-      also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. (1/(C6*b^2)^2))"
+      also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. (1/real (C6*b^2)^2))"
         by (intro sum_mono \<beta>_prob) auto
       also have "... = card {\<omega>. ?\<alpha> \<omega> f} /(C6*b^2)^2"
         by simp
       also have "... \<le> (C6*b^2) * (card (R f) * (card (R f)-1)/2) / (C6*b^2)^2"
         by (intro \<alpha>_card divide_right_mono) simp
       also have "... \<le> (C6*b^2) * (b * b / 2)  / (C6*b^2)^2"
-        unfolding C6_def using True
-        by (intro divide_right_mono of_nat_mono mult_mono) auto
+        unfolding C6_def using True 
+        by (intro divide_right_mono Nat.of_nat_mono mult_mono) auto
       also have "... = 1/(2*C6)"
         using b_min by (simp add:algebra_simps power2_eq_square)
       finally show ?thesis by simp
@@ -150,7 +148,7 @@ proof -
     qed
   qed
   also have "... \<le> 1/2^6"
-    unfolding \<Psi>\<^sub>1.M_def C6_def by simp
+    unfolding C6_def by simp
   finally show ?thesis by simp
 qed
 

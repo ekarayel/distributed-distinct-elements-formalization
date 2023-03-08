@@ -79,7 +79,7 @@ proof -
     using b_min
     by (subst ln_less_zero_iff) auto
   hence d:"real b * (1 - x / real b) * ln (1 - 1 / real b) < 0"
-    using b_min assms by (intro mult_pos_neg mult_pos_pos) auto
+    using b_min assms by (intro Rings.mult_pos_neg) auto
 
   have "(1::real) \<le> 31/30" by simp
   also have "... \<le> (31/30) * (b * -(- 1 / real b))" 
@@ -118,11 +118,11 @@ proof -
     by (simp add:\<rho>'_deriv_def algebra_simps)
 qed
 
-lemma l_6_8: "\<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
+lemma l_6_8: "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
-  have "?L \<le> \<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"
-  proof (rule \<Psi>.pmf_rev_mono[OF  \<Psi>.M_def])
+  have "?L \<le> measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"
+  proof (rule pmf_rev_mono)
     fix \<psi> assume "\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
     
@@ -236,12 +236,12 @@ proof -
       unfolding \<psi>_def by auto
   qed
   also have "... \<le> 
-    \<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi> \<or> \<not>E\<^sub>3 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>}"
-    by (intro \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
-  also have "... \<le> (\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>}) + 1/2^6"
-    by (intro add_mono e_4 \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
-  also have "... \<le> ((\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi>} + \<Psi>.prob {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>}) + 1/2^6) + 1/2^6"
-    by (intro add_mono e_3 \<Psi>.pmf_add[OF \<Psi>.M_def]) auto
+    measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi> \<or> \<not>E\<^sub>3 \<psi>} + measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>}"
+    by (intro pmf_add) auto
+  also have "... \<le> (measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi>} + measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>}) + 1/2^6"
+    by (intro add_mono e_4 pmf_add) auto
+  also have "... \<le> ((measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi>} + measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>}) + 1/2^6) + 1/2^6"
+    by (intro add_mono e_3 pmf_add) auto
   also have "... \<le> ((1/2^6 + 1/2^6) + 1/2^6) + 1/2^6"
     by (intro add_mono e_2 e_1) auto
   also have "... = ?R" by simp

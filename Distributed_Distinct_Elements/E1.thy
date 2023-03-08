@@ -11,7 +11,7 @@ definition E\<^sub>1 where
   "E\<^sub>1 = (\<lambda>(f,g,h). 2 powr (-t\<^sub>1 f) * Y \<in> {b/2^16..b/2})"
 
 lemma t\<^sub>1_low: 
-  "\<Psi>\<^sub>1.prob {f. of_int (t\<^sub>1 f) < log 2 (real Y) + 1 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
+  "measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) < log 2 (real Y) + 1 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
 proof (cases "log 2 (real Y) \<ge> 8")
   case True
   define Z :: "(nat \<Rightarrow> nat) \<Rightarrow> real" where "Z = r (nat \<lceil>log 2 (real Y) - 8\<rceil>)"
@@ -36,18 +36,17 @@ proof (cases "log 2 (real Y) \<ge> 8")
   also have "... = real Y / 2 ^ nat \<lceil>log 2 (real Y) - 8\<rceil>"
     by (subst powr_realpow) auto
   finally have "2 ^ 7 \<le> real Y / 2 ^ nat \<lceil>log 2 (real Y) - 8\<rceil>" by simp
-  hence exp_Z_gt_2_7: "\<Psi>\<^sub>1.expectation Z \<ge> 2^7" 
+  hence exp_Z_gt_2_7: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<ge> 2^7" 
     using a unfolding Z_def r_exp by simp
 
-  have var_Z_le_exp_Z: "\<Psi>\<^sub>1.variance Z \<le> \<Psi>\<^sub>1.expectation Z" 
+  have var_Z_le_exp_Z: "measure_pmf.variance \<Psi>\<^sub>1 Z \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)" 
     unfolding Z_def by (intro r_var)
 
-  have "?L \<le> \<Psi>\<^sub>1.prob {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
-    unfolding t\<^sub>1_def 
-    by (intro \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def]) (auto simp add:int_of_nat_def)
-  also have "... \<le> \<Psi>\<^sub>1.prob {f.  \<Psi>\<^sub>1.expectation Z \<le> \<bar>Z f - \<Psi>\<^sub>1.expectation Z \<bar>}"
-  proof (rule \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def])
-    fix f assume "f \<in> set_pmf (sample_pmf (\<G> 2 n))"
+  have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
+    unfolding t\<^sub>1_def by (intro pmf_mono') (auto simp add:int_of_nat_def)
+  also have "... \<le> measure \<Psi>\<^sub>1 {f \<in> space \<Psi>\<^sub>1.  (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> \<bar>Z f - (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<bar>}"
+  proof (rule pmf_mono')
+    fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
     have fin_f_A: "finite (f ` A)" using fin_A finite_imageI by blast
     assume " f \<in> {f. real (Max (f ` A)) < log 2 (real Y) - 8}"
     hence "real (Max (f ` A)) < log 2 (real Y) - 8" by auto
@@ -61,27 +60,24 @@ proof (cases "log 2 (real Y) \<ge> 8")
       unfolding r_def card_eq_0_iff using not_less by auto
     hence "Z f = 0"
       unfolding Z_def by simp
-    thus "f \<in> {f. \<Psi>\<^sub>1.expectation Z \<le> \<bar>Z f - \<Psi>\<^sub>1.expectation Z \<bar>}"
+    thus "f \<in> {f \<in> space \<Psi>\<^sub>1.  (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> \<bar>Z f - (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)\<bar>}"
       by auto
   qed
-  also have "... \<le> \<Psi>\<^sub>1.variance Z / (\<Psi>\<^sub>1.expectation Z)^2" 
-    using \<Psi>\<^sub>1.second_moment_method
-    using \<Psi>\<^sub>1.Chebyshev_inequality[OF _ \<Psi>\<^sub>1.integrable_M] exp_Z_gt_2_7
-    unfolding \<Psi>\<^sub>1.M_def by simp
-  also have "... \<le> \<Psi>\<^sub>1.expectation Z / (\<Psi>\<^sub>1.expectation Z)^2" 
+  also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 Z / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2" 
+    using exp_Z_gt_2_7 \<Psi>\<^sub>1.sample_space by (intro measure_pmf.second_moment_method) simp_all
+  also have "... \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2" 
     by (intro divide_right_mono var_Z_le_exp_Z) simp
-  also have "... = 1 / \<Psi>\<^sub>1.expectation Z" 
+  also have "... = 1 / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)" 
     using exp_Z_gt_2_7 by (simp add:power2_eq_square)
   also have "... \<le> ?R" 
     using exp_Z_gt_2_7 by (intro divide_left_mono) auto
   finally show ?thesis by simp
 next
   case "False"
-  have "?L \<le> \<Psi>\<^sub>1.prob {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
-    unfolding t\<^sub>1_def 
-    by (intro \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def]) (auto simp add:int_of_nat_def)
-  also have "... \<le> \<Psi>\<^sub>1.prob {}"
-    using False by (intro \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def]) simp
+  have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
+    unfolding t\<^sub>1_def by (intro pmf_mono') (auto simp add:int_of_nat_def)
+  also have "... \<le> measure \<Psi>\<^sub>1 {}"
+    using False by (intro pmf_mono') simp
   also have "... = 0"
     by simp
   also have "... \<le> ?R" by simp
@@ -89,14 +85,14 @@ next
 qed
 
 lemma t\<^sub>1_high: 
-  "\<Psi>\<^sub>1.prob {f. of_int (t\<^sub>1 f) > log 2 (real Y) + 16 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
+  "measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) > log 2 (real Y) + 16 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
 proof -
   define Z :: "(nat \<Rightarrow> nat) \<Rightarrow> real" where "Z = r (nat \<lfloor>log 2 (real Y) + 8\<rfloor>)"
 
   have Z_nonneg: "Z f \<ge> 0" for f
     unfolding Z_def r_def by simp
 
-  have "\<Psi>\<^sub>1.expectation Z \<le> real Y /(2 ^ nat \<lfloor>log 2 (real Y) + 8\<rfloor>)"
+  have "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> real Y /(2 ^ nat \<lfloor>log 2 (real Y) + 8\<rfloor>)"
     unfolding Z_def r_exp by simp
   also have "... \<le> real Y / (2 powr (real (nat \<lfloor>log 2 (real Y) + 8\<rfloor>)))"
     by (subst powr_realpow) auto
@@ -108,15 +104,14 @@ proof -
     by (subst powr_add) simp
   also have "... \<le> 1/2 powr 7"
     using Y_ge_1 by (subst powr_log_cancel) auto
-  finally have Z_exp: "\<Psi>\<^sub>1.expectation Z \<le> 1/2^7" 
+  finally have Z_exp: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> 1/2^7" 
     by simp
 
-  have "?L \<le> \<Psi>\<^sub>1.prob {f. of_nat (Max (f ` A)) > log 2 (real Y) + 7}"
-    unfolding t\<^sub>1_def 
-    by (intro \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def]) (auto simp add:int_of_nat_def)
-  also have "... \<le> \<Psi>\<^sub>1.prob {f. Z f \<ge> 1}"
-  proof (rule \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def])
-    fix f assume "f \<in> set_pmf (sample_pmf (\<G> 2 n))"
+  have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) > log 2 (real Y) + 7}"
+    unfolding t\<^sub>1_def  by (intro pmf_mono') (auto simp add:int_of_nat_def)
+  also have "... \<le> measure \<Psi>\<^sub>1 {f. Z f \<ge> 1}"
+  proof (rule pmf_mono')
+    fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
     assume " f \<in> {f. real (Max (f ` A)) > log 2 (real Y) + 7}"
     hence "real (Max (f ` A)) > log 2 (real Y) + 7" by simp
     hence "int (Max (f ` A)) \<ge> \<lfloor>log 2 (real Y) + 8\<rfloor>"
@@ -135,23 +130,25 @@ proof -
       unfolding Z_def by simp
     thus "f \<in> {f. 1 \<le> Z f}" by simp
   qed
-  also have "... \<le> \<Psi>\<^sub>1.expectation Z / 1"
-    using Z_nonneg
-    by (intro \<Psi>\<^sub>1.pmf_markov[OF \<Psi>\<^sub>1.M_def \<Psi>\<^sub>1.integrable_M]) auto
+  also have "... \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) / 1"
+    using Z_nonneg using \<Psi>\<^sub>1.sample_space by (intro pmf_markov') auto
   also have "... \<le> ?R"
     using Z_exp by simp
   finally show ?thesis by simp
 qed
 
-lemma e_1: "\<Psi>.prob {\<psi>. \<not>E\<^sub>1 \<psi>} \<le> 1/2^6"
+lemma e_1: "measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi>} \<le> 1/2^6"
 proof -
-  have "\<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y \<notin> {b/2^16..b/2}} \<le> 
-    \<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y < b/2^16} + \<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y > b/2}"
-    by (intro \<Psi>\<^sub>1.pmf_add[OF \<Psi>\<^sub>1.M_def]) auto
-  also have "... \<le> \<Psi>\<^sub>1.prob {f. t\<^sub>1 f > log 2 Y + 16 - b_exp} + \<Psi>\<^sub>1.prob {f. t\<^sub>1 f < log 2 Y + 1 - b_exp}"
+  have "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t\<^sub>1 f)) * real Y \<notin> {real b/2^16..real b/2}} \<le> 
+    measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t\<^sub>1 f)) * real Y < real b/2^16} + 
+    measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t\<^sub>1 f)) * real Y > real b/2}"
+    by (intro pmf_add) auto
+  also have "... \<le> measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) > log 2 Y + 16 - b_exp} + 
+                   measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) < log 2 Y + 1 - b_exp}"
   proof (rule add_mono)
-    show "\<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y < b/2^16} \<le> \<Psi>\<^sub>1.prob {f. t\<^sub>1 f > log 2 Y + 16 - b_exp}"
-    proof (rule \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def])
+    show "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t\<^sub>1 f)) * real Y < real b/2^16} \<le> 
+    measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) > log 2 Y + 16 - b_exp}"
+    proof (rule pmf_mono')
       fix f assume "f \<in> {f. 2 powr real_of_int (- t\<^sub>1 f) * real Y < real b / 2 ^ 16}"
       hence "2 powr real_of_int (- t\<^sub>1 f) * real Y < real b / 2 ^ 16"
         by simp
@@ -168,8 +165,9 @@ proof -
         by simp
     qed
   next
-    show "\<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y > b/2} \<le> \<Psi>\<^sub>1.prob {f. t\<^sub>1 f < log 2 Y + 1 - b_exp}"
-    proof (rule \<Psi>\<^sub>1.pmf_mono[OF \<Psi>\<^sub>1.M_def])
+    show "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t\<^sub>1 f) *real Y >real b/2} \<le> 
+      measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) < log 2 Y + 1 - b_exp}"
+    proof (rule pmf_mono')
       fix f assume "f \<in> {f. 2 powr real_of_int (- t\<^sub>1 f) * real Y > real b / 2}"
       hence "2 powr real_of_int (- t\<^sub>1 f) * real Y > real b / 2"
         by simp
@@ -188,13 +186,12 @@ proof -
   also have "... \<le> 1/2^7 + 1/2^7"
     by (intro add_mono t\<^sub>1_low t\<^sub>1_high)
   also have "... = 1/2^6" by simp
-  finally have "\<Psi>\<^sub>1.prob {f. 2 powr (-t\<^sub>1 f) * Y \<notin> {b/2^16..b/2}} \<le> 1/2^6" by simp
+  finally have "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t\<^sub>1 f) * real Y \<notin> {real b/2^16..real b/2}} \<le> 1/2^6" by simp
 
   thus ?thesis
-    unfolding \<Psi>.M_def sample_pmf_\<Psi> E\<^sub>1_def \<Psi>\<^sub>1.M_def
-    by (simp only:case_prod_beta) (subst pair_pmf_prob_left)
+    unfolding sample_pmf_\<Psi> E\<^sub>1_def case_prod_beta
+    by (subst pair_pmf_prob_left)
 qed
-
 
 end
 

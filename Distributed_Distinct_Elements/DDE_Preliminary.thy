@@ -50,20 +50,17 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma (in prob_space) pmf_rev_mono:
-  assumes "M = measure_pmf p"
+lemma  pmf_rev_mono:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<notin> Q \<Longrightarrow> x \<notin> P"
-  shows "prob P \<le> prob Q"
-  using assms pmf_mono by blast
+  shows "measure p P \<le> measure p Q"
+  using assms by (intro pmf_mono') blast
 
-lemma (in prob_space) pmf_exp_mono:
+lemma pmf_exp_mono:
   fixes f g :: "'a \<Rightarrow> real"
-  assumes "M = measure_pmf p"
-  assumes "integrable M f" "integrable M g"
+  assumes "integrable (measure_pmf p) f" "integrable (measure_pmf p) g"
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<le> g x"
-  shows "integral\<^sup>L M f \<le> integral\<^sup>L M g"
-  using assms(2,3,4) 
-  by (intro integral_mono_AE AE_pmfI[OF assms(1)]) auto
+  shows "integral\<^sup>L (measure_pmf p) f \<le> integral\<^sup>L (measure_pmf p) g"
+  using assms  by (intro integral_mono_AE AE_pmfI) auto
 
 lemma (in prob_space) pmf_markov:
   assumes "M = measure_pmf p"
@@ -97,6 +94,17 @@ proof -
     using assms(1) by simp
   also have "... \<le>  ?R"
     by (intro  integral_Markov_inequality_measure[OF _ b] assms a)
+  finally show ?thesis by simp
+qed
+
+lemma pmf_add:
+  assumes  "\<And>x. x \<in> P \<Longrightarrow> x \<in> set_pmf p \<Longrightarrow> x \<in> Q \<or> x \<in> R"
+  shows "measure p P \<le> measure p Q + measure p R"
+proof -
+  have "measure p P \<le> measure p (Q \<union> R)"
+    using assms by (intro pmf_mono', blast)
+  also have "... \<le> measure p Q + measure p R"
+    by (rule measure_subadditive, auto)
   finally show ?thesis by simp
 qed
 

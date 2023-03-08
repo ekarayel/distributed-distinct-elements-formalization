@@ -2,6 +2,8 @@ theory DDE_Accuracy_With_Cutoff
   imports DDE_Accuracy_Without_Cutoff
 begin
 
+hide_const Quantum.Z
+
 lemma (in semilattice_set) Union:
   assumes "finite I" "I \<noteq> {}"
   assumes "\<And>i. i \<in> I \<Longrightarrow> finite (Z i)"
@@ -76,10 +78,8 @@ proof -
 
   have c:"h \<in> sample_set (\<H> k (C6 * b\<^sup>2) [b]\<^sub>S)"
     using assms(1) sample_set_\<Psi> by auto
-  hence "range h \<subseteq> sample_set [b]\<^sub>S"
-    using \<Psi>\<^sub>3.\<H>_range sample_set_def by (metis imageE)
   hence h_range: "h x < b" for x
-    unfolding sample_set_def nat_sample_space_def by auto
+    using h_range_1 by simp
 
   have "(MAX j\<in>{..<b}. \<tau>\<^sub>1 (f, g, h) A \<sigma> j + int \<sigma>) =
     (MAX x\<in>{..<b}. Max ({int (f a) |a. a \<in> A \<and> h (g a) = x} \<union> {-1} \<union> {int \<sigma> -1}))"
@@ -108,7 +108,7 @@ lemma p_1_eq_p:
 proof -
   have "{j \<in> {..<b}. int (t f) \<le> max (\<tau>\<^sub>0 (f, g, h) A j) (int \<sigma> - 1)} = 
     {j \<in> {..<b}. int (t f) \<le> max (\<tau>\<^sub>0 (f, g, h) A j) (- 1)}"
-    using assms(2) by auto
+    using assms(2) unfolding le_max_iff_disj by simp
   thus ?thesis
     unfolding p_1_def p_def t_2_eq_t[OF assms(1,2)] 
     by (simp add:max_add_distrib_left del:\<tau>\<^sub>0.simps)
@@ -120,12 +120,12 @@ lemma A_1_eq_A\<^sub>S:
   shows "A_1 (f,g,h) \<sigma> = A\<^sub>S (f,g,h)"
   unfolding A_1_def  A\<^sub>S_def t_2_eq_t[OF assms(1,2)] p_1_eq_p[OF assms(1,2)] by simp
 
-lemma l_6_9: "\<Psi>.prob {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > real_of_rat \<delta> * Y} \<le> 1/2^4" 
+lemma l_6_9: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > real_of_rat \<delta> * Y} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
-  have "\<Psi>.prob {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > of_rat \<delta> * Y} \<le>
-    \<Psi>.prob {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > of_rat \<delta> * Y \<or> t f < s\<^sub>M}"
-  proof (rule \<Psi>.pmf_mono[OF \<Psi>.M_def])
+  have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > of_rat \<delta> * real Y} \<le>
+    measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > of_rat \<delta> * real Y \<or> t f < s\<^sub>M}"
+  proof (rule pmf_mono')
     fix \<psi> 
     assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M. real_of_rat \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>}"
     assume d:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
@@ -133,7 +133,7 @@ proof -
       using a by auto
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
     hence e:"(f,g,h) \<in> sample_set \<Psi>"
-      using d \<psi>_def \<Psi>.set_pmf_sample_pmf by simp
+      using d unfolding sample_space_alt[OF sample_space_\<Psi>] by simp
 
     show "\<psi> \<in> {(f, g, h). real_of_rat \<delta> * real Y < \<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<or> t f < s\<^sub>M}" 
     proof (cases "t f \<ge> s\<^sub>M")
