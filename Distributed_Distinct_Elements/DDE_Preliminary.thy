@@ -4,6 +4,7 @@ theory DDE_Preliminary
     Frequency_Moments.Product_PMF_Ext
     Median_Method.Median
     Expander_Graphs.Extra_Congruence_Method
+    Expander_Graphs.Constructive_Chernoff_Bound
 begin
 
 unbundle intro_cong_syntax
@@ -14,19 +15,17 @@ lemma (in prob_space) AE_pmfI:
   shows "AE \<omega> in M. P \<omega>"
   unfolding assms(1) by (intro AE_pmfI assms(2)) auto
 
-lemma (in prob_space) pmf_exp_of_fin_function:
-  assumes "M = measure_pmf p"
+lemma pmf_exp_of_fin_function:
   assumes "finite A" "g ` set_pmf p \<subseteq> A"
-  shows "expectation (\<lambda>\<omega>. f (g \<omega>)) = (\<Sum>y \<in> A. f y * prob {\<omega>. g \<omega> = y})"
+  shows "(\<integral>\<omega>. f (g \<omega>) \<partial>p) = (\<Sum>y \<in> A. f y * measure p {\<omega>. g \<omega> = y})"
     (is "?L = ?R")
 proof -
-
   have "?L = integral\<^sup>L (map_pmf g p) f"
     using integral_map_pmf assms by simp
   also have "... = (\<Sum>a\<in>A. f a * pmf (map_pmf g p) a)"
-    using assms(2,3)
+    using assms
     by (intro integral_measure_pmf_real) auto
-  also have " ... = (\<Sum>y \<in> A. f y * prob (g -` {y}))"
+  also have " ... = (\<Sum>y \<in> A. f y * measure p (g -` {y}))"
     unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) 
   also have "... = ?R"
     by (intro sum.cong) (auto simp add: vimage_def) 
@@ -117,59 +116,6 @@ proof -
     by (subst map_fst_pair_pmf) simp
   finally show ?thesis by simp
 qed
-
-lemma integrable_pmf_iff_bounded:
-  fixes f :: "'a \<Rightarrow> real"
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> abs (f x) \<le> C"
-  shows "integrable (measure_pmf p) f"
-proof -
-  obtain x where "x \<in> set_pmf p"
-    using set_pmf_not_empty by fast
-  hence "C \<ge> 0" using assms(1) by fastforce
-  hence " (\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) \<le> (\<integral>\<^sup>+ x. C \<partial>measure_pmf p)" 
-    using assms ennreal_le_iff
-    by (intro nn_integral_mono_AE AE_pmfI) auto
-  also have "... = C"
-    by simp
-  also have "... < Orderings.top"
-    by simp
-  finally have "(\<integral>\<^sup>+ x. ennreal (abs (f x)) \<partial>measure_pmf p) < Orderings.top" by simp
-  thus ?thesis 
-    by (intro iffD2[OF integrable_iff_bounded]) auto
-qed
-
-lemma split_pair_pmf: 
-  "measure_pmf.prob (pair_pmf A B) S = integral\<^sup>L A (\<lambda>a. measure_pmf.prob B {b. (a,b) \<in> S})" 
-  (is "?L = ?R")
-proof -
-  have a:"integrable (measure_pmf A) (\<lambda>x. measure_pmf.prob B {b. (x, b) \<in> S})"
-    by (intro integrable_pmf_iff_bounded[where C="1"]) simp
-
-  have "?L = (\<integral>\<^sup>+x. indicator S x \<partial>(measure_pmf (pair_pmf A B)))"
-    by (simp add: measure_pmf.emeasure_eq_measure)
-  also have "... = (\<integral>\<^sup>+x. (\<integral>\<^sup>+y. indicator S (x,y) \<partial>B) \<partial>A)"
-    by (simp add: nn_integral_pair_pmf')  
-  also have "... = (\<integral>\<^sup>+x. (\<integral>\<^sup>+y. indicator {b. (x,b) \<in> S} y \<partial>B) \<partial>A)"
-    by (simp add:indicator_def)
-  also have "... = (\<integral>\<^sup>+x. (measure_pmf.prob B {b. (x,b) \<in> S}) \<partial>A)"
-    by (simp add: measure_pmf.emeasure_eq_measure)
-  also have "... = ?R"
-    using a
-    by (subst nn_integral_eq_integral) auto
-  finally show ?thesis by simp
-qed
-
-lemma split_pair_pmf_2: 
-  "measure(pair_pmf A B) S = integral\<^sup>L B (\<lambda>a. measure_pmf.prob A {b. (b,a) \<in> S})" 
-  (is "?L = ?R")
-proof -
-  have "?L = measure (pair_pmf B A) {\<omega>. (snd \<omega>, fst \<omega>) \<in> S}"
-    by (subst pair_commute_pmf) (simp add:vimage_def case_prod_beta)
-  also have "... = ?R"
-    unfolding split_pair_pmf by simp
-  finally show ?thesis by simp
-qed
-
 
 lemma card_distinct_pairs:
   "card {x \<in> B \<times> B. fst x \<noteq> snd x} = card B^2 - card B" (is "card ?L = ?R")

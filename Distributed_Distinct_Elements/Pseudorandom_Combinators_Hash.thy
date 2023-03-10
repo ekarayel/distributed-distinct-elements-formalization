@@ -400,4 +400,21 @@ next
     by simp
 qed
 
+lemma \<G>_prob_single:
+  "measure  (sample_pmf (\<G> n)) {j} \<le> 1 / 2^j" (is "?L \<le> ?R")
+proof -
+  have "?L = measure (sample_pmf (\<G> n)) ({j..}-{j+1..})"
+    by (intro measure_pmf_cong) auto
+  also have "... = measure (sample_pmf (\<G> n)) {j..} - measure (sample_pmf (\<G> n)) {j+1..}"
+    by (intro measure_Diff) auto
+  also have "... = measure (sample_pmf (\<G> n)) {\<omega>. \<omega> \<ge> j}-measure (sample_pmf (\<G> n)) {\<omega>. \<omega> \<ge> (j+1)}"
+    by (intro arg_cong2[where f="(-)"] measure_pmf_cong) auto
+  also have "... = of_bool (j \<le> n) * 1 / 2 ^ j - of_bool (j + 1 \<le> n) / 2 ^ (j + 1)"
+    unfolding \<G>_prob by simp
+  also have "... \<le> 1/2^j - 0"
+    by (intro diff_mono) auto
+  also have "... = ?R" by simp
+  finally show ?thesis by simp
+qed
+
 end

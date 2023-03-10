@@ -1194,7 +1194,7 @@ proof -
     have "?L \<le> (\<integral>\<omega>. \<bar>g (f \<omega>)\<bar> \<partial>p)"
       by (intro integral_abs_bound)
     also have "... = (\<Sum>y\<in>real ` {..m}. \<bar>g y\<bar> * measure p {\<omega>. f \<omega> = y})"
-      using that by (intro measure_pmf.pmf_exp_of_fin_function[OF refl]) auto
+      using that by (intro pmf_exp_of_fin_function) auto
     also have "... = (\<Sum>y\<in>{..m}. \<bar>g (real y)\<bar> * measure p {\<omega>. f \<omega> = real y})"
       by (subst sum.reindex) (auto simp add:comp_def)
     also have "... = (\<Sum>y\<in>{..m}. \<bar>g (real y)\<bar> * 

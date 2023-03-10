@@ -13,6 +13,7 @@ section \<open>Algorithm\<close>
 
 definition C2 :: real where "C2 = 3^2*2^23"
 definition C3 :: int where "C3 = 33"
+definition C5 :: real where "C5 = 5"
 definition C6 :: nat where "C6 = 2^5"
 
 locale inner_algorithm =
@@ -37,7 +38,12 @@ definition \<rho>' :: "real \<Rightarrow> real"
   where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
 
 definition l :: nat 
-  where "l = nat \<lceil>ln (1/real_of_rat \<epsilon>)\<rceil>"
+  where "l = nat \<lceil>C5 * ln (2/real_of_rat \<epsilon>)\<rceil>"
+
+lemma l_lbound: "C5 * ln (2 /real_of_rat \<epsilon>) \<le> l"
+  unfolding l_def by linarith
+
+
 
 definition k :: nat 
   where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
@@ -320,6 +326,16 @@ proof -
     using g_range_1 by simp
 qed
 
+lemma h_range: 
+  assumes "(f,g,h) \<in> sample_set \<Psi>"
+  shows "h x < b"
+proof -
+  have "h \<in> sample_set \<Psi>\<^sub>3"
+    using sample_set_\<Psi> assms by auto
+  thus ?thesis
+    using h_range_1 by simp
+qed
+
 lemma fin_f:
   assumes "(f,g,h) \<in> sample_set \<Psi>"
   shows "finite { int (f a) | a. P a }" (is "finite ?M")
@@ -351,7 +367,7 @@ proof -
   let ?max_s = "max \<lceil>log 2 (real n)\<rceil> 1"
 
   have c: "(f,g,h) \<in> sample_set \<Psi>" 
-    using w_i select_\<Omega>_range by metis
+    using w_i \<Omega>.range by metis
   have a:"int (f x) \<le> ?max_s" for x 
   proof -
     have "int (f x) \<le> int n_exp"
@@ -390,7 +406,7 @@ qed
 lemma \<tau>\<^sub>2_mono: 
   assumes "A \<subseteq> B"
   shows "\<tau>\<^sub>2 \<omega> A x i j \<le> \<tau>\<^sub>2 \<omega> B x i j"
-  unfolding \<tau>\<^sub>2.simps \<tau>\<^sub>1.simps using select_\<Omega>_range
+  unfolding \<tau>\<^sub>2.simps \<tau>\<^sub>1.simps using \<Omega>.range
   by (intro max_mono diff_mono \<tau>\<^sub>0_mono assms) auto
 
 lemma is_too_large_antimono: 

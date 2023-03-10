@@ -217,7 +217,7 @@ lemma (in regular_graph) deviation_bound:
   fixes f :: "'a \<Rightarrow> real"
   assumes "l > 0"
   assumes "\<Lambda>\<^sub>a \<le> exp (-real l * ln (real l)^3)"
-  assumes "\<And>x. x \<ge> 7 \<Longrightarrow> measure (pmf_of_set (verts G)) {v. f v \<ge> x} \<le> exp (-x * ln x^3)"
+  assumes "\<And>x. x \<ge> 20 \<Longrightarrow> measure (pmf_of_set (verts G)) {v. f v \<ge> x} \<le> exp (-x * ln x^3)"
   shows "measure (pmf_of_multiset (walks G l)) {w. (\<Sum>i\<leftarrow>w. f i) \<ge> C\<^sub>1 * l} \<le> exp (- real l)" 
     (is "?L \<le> ?R")
 proof -
@@ -242,9 +242,9 @@ proof -
   have \<Lambda>_gt_0: "\<Lambda> > 0"
     unfolding \<Lambda>_def by simp
 
-  have k_max_gt_4: "k_max \<ge> 4"
+  have k_max_ge_4: "k_max \<ge> 4"
     unfolding k_max_def by simp
-  have k_max_gt_3: "k_max \<ge> 3"
+  have k_max_ge_3: "k_max \<ge> 3"
     unfolding k_max_def by simp
 
   have 1:"of_bool(\<lfloor>ln(max x (exp 1))\<rfloor>+1=int k) = 
@@ -312,7 +312,7 @@ proof -
     hence "{?L1} = {2}"
       by simp
     also have "... \<subseteq> ?R2"
-      using k_max_gt_3 by simp
+      using k_max_ge_3 by simp
     finally show ?thesis by simp
   qed
 
@@ -333,7 +333,7 @@ proof -
         (simp add:of_bool_def if_distrib if_distribR sum.If_cases)
     also have "...=
       (\<Sum>i\<leftarrow>w.(\<Sum>k\<in>(insert 2{3..k_max}). exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1)))"
-      using k_max_gt_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong sum.cong) auto
+      using k_max_ge_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong sum.cong) auto
     also have "... = (\<Sum>i\<leftarrow>w. exp 2* of_bool (2=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1) + 
       (\<Sum>k=3..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1)))"
       by (subst sum.insert) auto
@@ -358,7 +358,7 @@ proof -
       by (subst sum.shift_bounds_nat_ivl[symmetric]) (simp cong:sum.cong)
     also have "... = (\<Sum>i\<leftarrow>w. exp 2+ (\<Sum>k\<in> insert 2 {3..<k_max}. exp (k+1)* of_bool(f i\<ge>exp k))-
       (\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
-      using k_max_gt_3
+      using k_max_ge_3
       by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
     also have "... = (\<Sum>i\<leftarrow>w. exp 2+ exp 3 * of_bool (f i \<ge> exp 2) + 
       (\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-(\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
@@ -368,7 +368,7 @@ proof -
       by (intro sum_list_mono add_mono diff_mono) auto
     also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
       (\<Sum>k\<in> insert k_max {3..<k_max}. exp k* of_bool(f i\<ge>exp k)))"
-      using k_max_gt_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
+      using k_max_ge_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
     also have "... = (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. (exp (k+1)-exp k)* of_bool(f i\<ge>exp k))-
       (exp k_max * of_bool (f i\<ge> exp k_max)))"
       by (subst sum.insert) (auto simp add:sum_subtractf algebra_simps)
@@ -394,7 +394,7 @@ proof -
     hence "g k < l/real k^2" if "k \<in>{3..<k_max}" for k 
       using that by force
     hence "(\<Sum>k=3..<k_max. g k) < (\<Sum>k=3..<k_max. l/real k^2)"
-      using k_max_gt_4 by (intro sum_strict_mono) auto
+      using k_max_ge_4 by (intro sum_strict_mono) auto
     also have "... \<le> (\<Sum>k=3..<k_max. l/ (real k*(real k-1)))" 
       by (intro sum_mono divide_left_mono) (auto simp:power2_eq_square)
     also have "... = l * (\<Sum>k=3..<k_max. 1 / (real k-1) - 1/k)"
@@ -404,7 +404,7 @@ proof -
     also have "... = l * (\<Sum>k=2..<(k_max-1). (-1)/(Suc k) - (-1) / k)"
       by (subst sum.shift_bounds_nat_ivl) auto
     also have "... = l * (1/2 - 1 / real (k_max - 1))"
-      using k_max_gt_3 by (subst sum_Suc_diff') auto
+      using k_max_ge_3 by (subst sum_Suc_diff') auto
     also have "... \<le> real l * (1 - 0)"
        by (intro mult_left_mono diff_mono) auto
     also have "... = l"
@@ -425,11 +425,11 @@ proof -
       using True assms(1)
       by (simp add: ln_ge_iff)
 
-    have "7 \<le> exp (2::real)"
-      by (approximation 5)
+    have "20 \<le> exp (3::real)"
+      by (approximation 10)
     also have "... \<le> exp (real k)"
       using that by simp
-    finally have exp_k_lbound: "7 \<le> exp (real k)"
+    finally have exp_k_lbound: "20 \<le> exp (real k)"
       by simp
 
     have S_range: "S \<subseteq> verts G"
@@ -561,11 +561,11 @@ proof -
     hence k_gt_l: "k \<ge> ln l" by simp
     define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)" 
 
-    have "7 \<le> exp (2::real)"
-      by (approximation 5)
+    have "20 \<le> exp (3::real)"
+      by (approximation 10)
     also have "... \<le> exp (real k)"
       using that by simp
-    finally have exp_k_lbound: "7 \<le> exp (real k)"
+    finally have exp_k_lbound: "20 \<le> exp (real k)"
       by simp
 
     have \<gamma>_gt_0: "0 < \<gamma>" 
@@ -638,7 +638,7 @@ proof -
   also have "... \<le> (\<Sum>k=3..<k_max. exp (- real l - real k + 2))"
     by (intro sum_mono 4) auto
   also have "... = (\<Sum>k=0+3..<(k_max-3)+3. exp (- real l - real k + 2))"
-    using k_max_gt_3 by (intro sum.cong) auto
+    using k_max_ge_3 by (intro sum.cong) auto
   also have "... = (\<Sum>k=0..<k_max-3. exp (-1 - real l - real k))"
     by (subst sum.shift_bounds_nat_ivl) ( simp add:algebra_simps)
   also have "... = exp(-1-real l) * (\<Sum>k<k_max-3. exp (real k*(-1)))"
@@ -649,7 +649,7 @@ proof -
   also have "... = exp(-1-real l) * (1-exp (- 1) ^ (k_max - 3)) / (1-exp (- 1))"
     by (simp add:field_simps)
   also have "... \<le> exp(-1-real l) * (1-0) / (1-exp (- 1))"
-    using k_max_gt_3
+    using k_max_ge_3
     by (intro mult_left_mono divide_right_mono diff_mono) auto
   also have "... = exp (-real l) * (exp (-1) / (1-exp(-1)))"
     by (simp add:exp_diff exp_minus inverse_eq_divide)
