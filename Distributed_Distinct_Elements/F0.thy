@@ -13,7 +13,7 @@ section \<open>Algorithm\<close>
 
 definition C2 :: real where "C2 = 3^2*2^23"
 definition C3 :: int where "C3 = 33"
-definition C5 :: real where "C5 = 5"
+definition C5 :: real where "C5 = 4"
 definition C6 :: nat where "C6 = 2^5"
 
 locale inner_algorithm =
@@ -43,8 +43,6 @@ definition l :: nat
 lemma l_lbound: "C5 * ln (2 /real_of_rat \<epsilon>) \<le> l"
   unfolding l_def by linarith
 
-
-
 definition k :: nat 
   where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
 
@@ -54,9 +52,23 @@ definition \<Lambda> :: real
 lemma k_min: "7.5 * ln (real b) + 16 \<le> real k"
   unfolding k_def by linarith
 
-lemma \<Lambda>_gt_0: "\<Lambda> > 0" sorry
+lemma \<Lambda>_gt_0: "\<Lambda> > 0" 
+  unfolding \<Lambda>_def min_less_iff_conj by auto
 
-lemma l_gt_0: "l > 0" sorry
+lemma l_gt_0: "l > 0" 
+proof -
+  have "of_rat \<epsilon> < real_of_rat 1"
+    using \<epsilon>_lt_1 unfolding of_rat_less by simp
+  also have "... < 2" by simp
+  finally have "real_of_rat \<epsilon> < 2" by simp
+  hence "0 < C5 * ln (2 /real_of_rat \<epsilon>)"
+    unfolding C5_def using \<epsilon>_gt_0
+    by (intro Rings.mult_pos_pos ln_gt_zero) auto
+  also have "... \<le> l"
+    by (intro l_lbound)
+  finally show ?thesis 
+    by simp
+qed
 
 lemma b_exp_ge_26: "b_exp \<ge> 26"
 proof -
@@ -186,7 +198,7 @@ fun single :: "nat \<Rightarrow> nat \<Rightarrow> f0_state" where
 
 fun estimate1 :: "f0_state \<Rightarrow> nat \<Rightarrow> real" where
   "estimate1 (B,s) i = (
-    let t = max 0 (Max ((B i) ` {..<b}) + s - \<lfloor>log 2 b\<rfloor> + 8); 
+    let t = max 0 (Max ((B i) ` {..<b}) + s - \<lfloor>log 2 b\<rfloor> + 9); 
         p = card { j. j \<in> {..<b} \<and> B i j + s \<ge> t } in
         2 powr t * ln (1-p/b) / ln(1-1/b))"
 

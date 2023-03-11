@@ -5,6 +5,8 @@ theory Pseudorandom_Combinators_Expander
     Distributed_Distinct_Elements_Tail_Bounds
 begin
 
+unbundle intro_cong_syntax
+
 definition \<E> :: "nat \<Rightarrow> real \<Rightarrow> 'a sample_space \<Rightarrow> (nat \<Rightarrow> 'a) sample_space"
   where "\<E> l \<Lambda> S = (let e = see_standard (size S) \<Lambda> in 
     \<lparr> size = see_size e * see_degree e^(l-1), 
@@ -122,8 +124,57 @@ proof -
   finally show ?thesis by simp
 qed
 
+lemma tail_bound:
+  fixes T
+  assumes "l > 0" "\<Lambda> > 0"
+  defines "\<mu> \<equiv> measure (sample_pmf S) {w. T w}"
+  assumes "\<gamma> < 1" "\<mu> + \<Lambda> \<le> \<gamma>"
+  shows "measure (\<E> l \<Lambda> S) {w. real (card {i \<in> {..<l}. T (w i)}) \<ge> \<gamma>*l} 
+    \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>)) - 2 * exp(-1)))" (is "?L \<le> ?R")
+proof -
+  let ?w = "pmf_of_multiset (walks (graph_of e) l)"
+  define V where "V = {v\<in> verts (graph_of e). T (select S v)} "
+
+  have 0: "card {i \<in> {..<l}. T (select S (w ! i))} = card {i \<in> {..<l}. w ! i \<in> V}" 
+    if "w  \<in> set_pmf (pmf_of_multiset (walks (graph_of e) l))" for w
+  proof -
+    have a0: "w \<in># walks (graph_of e) l" using that E.walks_nonempty by simp
+    have "w ! i \<in> verts (graph_of e)" if "i < l" for i
+      using that E.set_walks_3[OF a0] by auto
+    thus ?thesis
+      unfolding V_def
+      by (intro arg_cong[where f="card"] restr_Collect_cong) auto
+  qed
+
+  have 1:"E.\<Lambda>\<^sub>a \<le> \<Lambda>"
+    using see_standard(1) unfolding is_expander_def e_def by simp
+
+  have 2: "V \<subseteq> verts (graph_of e)"
+    unfolding V_def by simp
+
+  have "\<mu> = measure (pmf_of_set {..<size S}) ({v. T (select S v)})"
+    unfolding \<mu>_def sample_pmf_alt[OF sample_space_S] 
+    by simp
+  also have "... = real (card ({v\<in>{..<size S}. T (select S v)})) / real (size S)"
+    using size_S_gt_0 by (subst measure_pmf_of_set) (auto simp add:Int_def)
+  also have "... = real (card V) / card (verts (graph_of e))"
+    unfolding V_def graph_of_def e_def using see_standard by (simp add:Int_commute)
+  finally have \<mu>_eq: "\<mu> = real (card V) / card (verts (graph_of e))" 
+    by simp
+
+  have "?L = measure ?w {y. \<gamma> * real l \<le> real (card {i \<in> {..<l}. T (select S (y ! i))})}"
+    unfolding walks by simp
+  also have "... = measure ?w {y. \<gamma> * real l \<le> real (card {i \<in> {..<l}. y ! i \<in> V})}"
+    using 0 by (intro measure_pmf_cong) (simp)
+  also have "... \<le> ?R"
+    using assms(5) unfolding \<mu>_eq
+    by (intro E.walk_tail_bound_2 assms(1,2,4) 1 2) auto
+  finally show ?thesis
+    by simp
+qed
+
 end
 
-
+unbundle no_intro_cong_syntax
 
 end
