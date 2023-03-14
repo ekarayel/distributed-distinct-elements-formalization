@@ -255,10 +255,8 @@ qed
 
 
 lemma cutoff_level:
-  "measure (pmf_of_set {..<size \<Omega>}) {\<omega>. s \<omega> A > s\<^sub>M} \<le> of_rat \<epsilon>/2" (is "?L \<le> ?R")
+  "measure \<Omega> {\<omega>. s \<omega> A > s\<^sub>M} \<le> \<epsilon>/2" (is "?L \<le> ?R")
 proof -
-  let ?p = "pmf_of_set {..<size \<Omega>}"
-
   have C\<^sub>1_est: "C\<^sub>1 * l \<le> 30 * real l" 
     unfolding C\<^sub>1_def
     by (intro mult_right_mono of_nat_0_le_iff) (approximation 10)
@@ -416,22 +414,20 @@ proof -
       by simp
   qed
 
-  have \<epsilon>_le_2: "real_of_rat \<epsilon> \<le> of_rat 2" 
-    unfolding of_rat_less_eq using \<epsilon>_lt_1 by simp
-
-  have "?L \<le> measure ?p {\<omega>. is_too_large (\<tau>\<^sub>2 \<omega> A s\<^sub>M)}"
+  have "?L \<le> measure \<Omega> {\<omega>. is_too_large (\<tau>\<^sub>2 \<omega> A s\<^sub>M)}"
     using lt_s_too_large
     by (intro pmf_mono') (simp del:is_too_large.simps \<tau>\<^sub>2.simps s.simps)
-  also have "... = measure ?p 
+  also have "... = measure \<Omega> 
     {\<omega>. (\<Sum>(i,j)\<in>{..<l}\<times>{..<b}. \<lfloor>log 2 (of_int (max (\<tau>\<^sub>2 \<omega> A s\<^sub>M i j) (-1)) + 2)\<rfloor>) > C3 * b *l}"
     by (simp del:\<tau>\<^sub>2.simps)
-  also have "... = measure ?p {\<omega>. real_of_int (\<Sum>(i,j)\<in>{..<l}\<times>{..<b}. 
+  also have "... = measure \<Omega> {\<omega>. real_of_int (\<Sum>(i,j)\<in>{..<l}\<times>{..<b}. 
     \<lfloor>log 2 (of_int (max (\<tau>\<^sub>2 \<omega> A s\<^sub>M i j) (-1)) + 2)\<rfloor>) > of_int (C3 * b * l)}"
     unfolding  of_int_less_iff by simp
-  also have "... = measure ?p {\<omega>. (\<Sum>i<l. Z (select \<Omega> \<omega> i)) > of_int C3 * real b * real l}"
+  also have "... = measure \<Omega> {\<omega>. real_of_int C3 * real b * real l < of_int (\<Sum>x\<in>{..<l} \<times> {..<b}.
+    \<lfloor>log 2 (real_of_int (\<tau>\<^sub>1 (\<omega> (fst x)) A s\<^sub>M (snd x)) + 2)\<rfloor>)}"
+    by (intro_cong "[\<sigma>\<^sub>2 measure, \<sigma>\<^sub>1 Collect, \<sigma>\<^sub>1 of_int, \<sigma>\<^sub>2 (<)]" more:ext sum.cong) auto
+  also have "... = measure \<Omega> {\<omega>. (\<Sum>i<l. Z (\<omega> i)) > of_int C3 * real b * real l}"
     unfolding Z_def sum.cartesian_product by (simp add:case_prod_beta)
-  also have "... = measure \<Omega> {\<omega>. (\<Sum>i<l. Z (\<omega> i)) > of_int C3 * real b * l}"
-    unfolding sample_pmf_alt[OF \<Omega>.sample_space] by simp
   also have "... = measure \<Omega> {\<omega>. (\<Sum>i<l. V (\<omega> i) + 3) > of_int C3 * real l}"
     unfolding V_def using b_min
     by (intro measure_pmf_cong) (simp add:sum_divide_distrib[symmetric] field_simps sum.distrib)
@@ -441,14 +437,14 @@ proof -
     unfolding C3_def using C\<^sub>1_est by (intro pmf_mono') auto
   also have "... \<le> exp (- real l)"
     by (intro \<Omega>.deviation_bound l_gt_0 0) (simp_all add: \<Lambda>_def)
-  also have "... \<le> exp (- (C5 * ln (2 / real_of_rat \<epsilon>)))"
+  also have "... \<le> exp (- (C5 * ln (2 / \<epsilon>)))"
     using l_lbound by (intro iffD2[OF exp_le_cancel_iff]) auto
-  also have "... \<le> exp (- (1 * ln (2 / real_of_rat \<epsilon>)))"
-    unfolding C5_def using \<epsilon>_gt_0 \<epsilon>_le_2
+  also have "... \<le> exp (- (1 * ln (2 / \<epsilon>)))"
+    unfolding C5_def using \<epsilon>_gt_0 \<epsilon>_lt_1
     by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_right_mono ln_ge_zero) auto
-  also have "... = exp ( ln (real_of_rat \<epsilon> / 2))"
+  also have "... = exp ( ln ( \<epsilon> / 2))"
     using \<epsilon>_gt_0 by (simp add: ln_div) 
-  also have "... = of_rat \<epsilon>/2"
+  also have "... =  \<epsilon>/2"
     using \<epsilon>_gt_0 by simp
   finally show ?thesis
     by simp

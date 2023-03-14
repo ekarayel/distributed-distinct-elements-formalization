@@ -18,36 +18,23 @@ definition C6 :: nat where "C6 = 2^5"
 
 locale inner_algorithm =
   fixes n :: nat
-  fixes \<epsilon> :: rat
-  fixes \<delta> :: rat
-  assumes n_gt_0: "n > 0" 
+  fixes \<epsilon> :: real
+  fixes \<delta> :: real
+  assumes n_gt_0: "n > 0"
   assumes \<epsilon>_gt_0: "\<epsilon> > 0" and \<epsilon>_lt_1: "\<epsilon> < 1"
   assumes \<delta>_gt_0: "\<delta> > 0" and \<delta>_lt_1: "\<delta> < 1"
 begin
 
-definition b_exp :: nat 
-  where "b_exp = nat (\<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
+definition b_exp where "b_exp = nat \<lceil>log 2 (C2 / \<delta>^2)\<rceil>"
+definition b :: nat where "b = 2^b_exp"
+definition l where "l = nat \<lceil>C5 * ln (2/ \<epsilon>)\<rceil>"
+definition k where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
+definition \<Lambda> :: real where "\<Lambda> = min (1/16) (exp (-l * ln l^3))"
+definition \<rho> :: "real \<Rightarrow> real" where "\<rho> x = b * (1 - (1-1/b) powr x)"
+definition \<rho>' :: "real \<Rightarrow> real" where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
 
-definition b :: nat 
-  where "b = 2^b_exp"
-
-definition \<rho> :: "real \<Rightarrow> real"
-  where "\<rho> x = b * (1 - (1-1/b) powr x)"
-
-definition \<rho>' :: "real \<Rightarrow> real"
-  where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
-
-definition l :: nat 
-  where "l = nat \<lceil>C5 * ln (2/real_of_rat \<epsilon>)\<rceil>"
-
-lemma l_lbound: "C5 * ln (2 /real_of_rat \<epsilon>) \<le> l"
+lemma l_lbound: "C5 * ln (2 / \<epsilon>) \<le> l"
   unfolding l_def by linarith
-
-definition k :: nat 
-  where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
-
-definition \<Lambda> :: real
-  where "\<Lambda> = min (1/16) (exp (-l * ln l^3))"
 
 lemma k_min: "7.5 * ln (real b) + 16 \<le> real k"
   unfolding k_def by linarith
@@ -57,12 +44,8 @@ lemma \<Lambda>_gt_0: "\<Lambda> > 0"
 
 lemma l_gt_0: "l > 0" 
 proof -
-  have "of_rat \<epsilon> < real_of_rat 1"
-    using \<epsilon>_lt_1 unfolding of_rat_less by simp
-  also have "... < 2" by simp
-  finally have "real_of_rat \<epsilon> < 2" by simp
-  hence "0 < C5 * ln (2 /real_of_rat \<epsilon>)"
-    unfolding C5_def using \<epsilon>_gt_0
+  have "0 < C5 * ln (2 / \<epsilon>)"
+    unfolding C5_def using \<epsilon>_gt_0 \<epsilon>_lt_1
     by (intro Rings.mult_pos_pos ln_gt_zero) auto
   also have "... \<le> l"
     by (intro l_lbound)
@@ -73,14 +56,14 @@ qed
 lemma b_exp_ge_26: "b_exp \<ge> 26"
 proof -
   have "2 powr 25 < C2 / 1 " unfolding C2_def by simp
-  also have "... \<le> C2 / (real_of_rat \<delta>)\<^sup>2"
+  also have "... \<le> C2 / \<delta>^2"
     using \<delta>_gt_0 \<delta>_lt_1 unfolding C2_def
     by (intro divide_left_mono power_le_one) auto
-  finally have "2 powr 25 < C2 / (real_of_rat \<delta>)\<^sup>2" by simp
-  hence "log 2 (C2 / (real_of_rat \<delta>)\<^sup>2) > 25" 
+  finally have "2 powr 25 < C2 / \<delta>^2" by simp
+  hence "log 2 (C2 / \<delta>^2) > 25" 
     using \<delta>_gt_0 unfolding C2_def
     by (intro iffD2[OF less_log_iff] divide_pos_pos zero_less_power) auto
-  hence "\<lceil>log 2 (C2 / (real_of_rat \<delta>)\<^sup>2)\<rceil> \<ge> 26" by simp
+  hence "\<lceil>log 2 (C2 / \<delta>^2)\<rceil> \<ge> 26" by simp
   thus ?thesis
     unfolding b_exp_def by linarith
 qed
@@ -108,11 +91,11 @@ proof -
     by auto
 qed
 
-lemma b_lower_bound: "C2 / (of_rat \<delta>)^2 \<le> real b"
+lemma b_lower_bound: "C2 / \<delta>^2 \<le> real b"
 proof -
-  have "C2 / (of_rat \<delta>)^2 = 2 powr (log 2 (C2 / (of_rat \<delta>)^2))"
+  have "C2 /  \<delta>^2 = 2 powr (log 2 (C2 / \<delta>^2))"
     using \<delta>_gt_0 unfolding C2_def by (intro powr_log_cancel[symmetric] divide_pos_pos) auto
-  also have "... \<le> 2 powr (nat \<lceil>log 2 (C2 / (of_rat \<delta>)^2)\<rceil>)"
+  also have "... \<le> 2 powr (nat \<lceil>log 2 (C2 /  \<delta>^2)\<rceil>)"
     by (intro powr_mono of_nat_ceiling) simp
   also have "... = real b"
     unfolding b_def b_exp_def by (simp add:powr_realpow)
@@ -188,13 +171,15 @@ fun merge1 :: "f0_state \<Rightarrow> f0_state \<Rightarrow> f0_state" where
 fun merge :: "f0_state \<Rightarrow> f0_state \<Rightarrow> f0_state" where
   "merge x y = compress (merge1 x y)"
 
-fun single1 :: "nat \<Rightarrow> nat \<Rightarrow> f0_state" where
-  "single1 \<omega> x = (\<lambda> i j. 
-     let (f,g,h) = select \<Omega> \<omega> i in (
-     if h (g x) = j then int (f x) else (-1)), 0)"
+type_synonym \<Omega>_space = "nat \<Rightarrow> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)"
 
-fun single :: "nat \<Rightarrow> nat \<Rightarrow> f0_state" where
-  "single x coins = compress (single1 x coins)"
+fun single1 :: "\<Omega>_space \<Rightarrow> nat \<Rightarrow> f0_state" where
+  "single1 \<omega> x = (\<lambda> i j. 
+     let (f,g,h) = \<omega> i in (
+     if h (g x) = j \<and> i < l then int (f x) else (-1)), 0)"
+
+fun single :: "\<Omega>_space \<Rightarrow> nat \<Rightarrow> f0_state" where
+  "single \<omega> x = compress (single1 \<omega> x)"
 
 fun estimate1 :: "f0_state \<Rightarrow> nat \<Rightarrow> real" where
   "estimate1 (B,s) i = (
@@ -213,26 +198,23 @@ fun \<tau>\<^sub>0 :: "((nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)
 fun \<tau>\<^sub>1 :: "((nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)) \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
   where "\<tau>\<^sub>1 \<psi> A s j = max (\<tau>\<^sub>0 \<psi> A j - s) (-1)"
 
-fun \<tau>\<^sub>2 :: "nat \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
-  where "\<tau>\<^sub>2 \<omega> A s i j = \<tau>\<^sub>1 (select \<Omega> \<omega> i) A s j"
+fun \<tau>\<^sub>2 :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
+  where "\<tau>\<^sub>2 \<omega> A s i j = (if i < l then  \<tau>\<^sub>1 (\<omega> i) A s j else (-1))"
 
-fun \<tau>\<^sub>3 :: "nat \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> f0_state" 
+fun \<tau>\<^sub>3 :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> f0_state" 
   where "\<tau>\<^sub>3 \<omega> A s = (\<tau>\<^sub>2 \<omega> A s, s)"
 
-fun s :: "nat \<Rightarrow> nat set \<Rightarrow> nat" 
+fun s :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat" 
   where "s \<omega> A = (LEAST s . \<not>(is_too_large (\<tau>\<^sub>2 \<omega> A s)))"
 
-fun \<tau> :: "nat \<Rightarrow> nat set \<Rightarrow> f0_state" 
+fun \<tau> :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> f0_state" 
   where "\<tau> \<omega> A = \<tau>\<^sub>3 \<omega> A (s \<omega> A)"
 
 lemma \<tau>\<^sub>2_step: "\<tau>\<^sub>2 \<omega> A (x+y) = (\<lambda>i j. max (\<tau>\<^sub>2 \<omega> A x i j - y) (- 1))"
-  by (intro ext) simp
+  by (intro ext) auto
 
 lemma \<tau>\<^sub>3_step: "compress_step (\<tau>\<^sub>3 \<omega> A x) = \<tau>\<^sub>3 \<omega> A (x+1)"
   using \<tau>\<^sub>2_step[where y="1"] by (simp del:\<tau>\<^sub>2.simps)
-
-lemma prod_right_mono: "B \<subseteq> C \<Longrightarrow> A \<times> B \<subseteq> A \<times> C" (* REMOVE? *)
-  by auto
 
 sublocale \<Psi>\<^sub>1: \<H>_locale "2" "n" "\<G> n_exp" "\<Psi>\<^sub>1"
 proof -
@@ -368,18 +350,20 @@ lemma Max_int_range: "x \<le> (y::int) \<Longrightarrow> Max {x..y} = y"
 sublocale \<Omega>: expander_sample_space l \<Lambda> \<Psi>
   unfolding expander_sample_space_def using sample_space_\<Psi> l_gt_0 \<Lambda>_gt_0 by auto
 
-lemma select_\<Omega>_range: "select \<Omega> \<omega> i \<in> sample_set \<Psi>"
-  using \<Omega>.range by simp
-
-lemma max_s': "\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2) i j = (-1)"
-proof -
-  obtain f g h where w_i: "select \<Omega> \<omega> i = (f,g,h)" 
+lemma max_s': 
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2) i j = (-1)"
+proof (cases "i < l")
+  case True
+  obtain f g h where w_i: "\<omega> i = (f,g,h)" 
     by (metis prod_cases3)
 
   let ?max_s = "max \<lceil>log 2 (real n)\<rceil> 1"
 
-  have c: "(f,g,h) \<in> sample_set \<Psi>" 
-    using w_i \<Omega>.range by metis
+  have "\<omega> i \<in> sample_set \<Psi>"
+    using \<Omega>.sample_set assms unfolding Pi_def by auto
+  hence c: "(f,g,h) \<in> sample_set \<Psi>" 
+    using  w_i  by auto
   have a:"int (f x) \<le> ?max_s" for x 
   proof -
     have "int (f x) \<le> int n_exp"
@@ -387,18 +371,24 @@ proof -
     also have "... = ?max_s" unfolding n_exp_def by simp
     finally show ?thesis by simp
   qed
-  have "\<tau>\<^sub>0 (select \<Omega> \<omega> i) A j \<le> Max {(-1)..?max_s}"
+  have "\<tau>\<^sub>0 (\<omega> i) A j \<le> Max {(-1)..?max_s}"
     unfolding w_i \<tau>\<^sub>0.simps using a by (intro Max_mono)  auto
   also have "... = ?max_s" 
     by (intro Max_int_range) auto
-  finally have "\<tau>\<^sub>0 (select \<Omega> \<omega> i) A j \<le> ?max_s" by simp
-  thus ?thesis
-    unfolding \<tau>\<^sub>2.simps \<tau>\<^sub>1.simps
+  finally have "\<tau>\<^sub>0 (\<omega> i) A j \<le> ?max_s" by simp
+  hence "max (\<tau>\<^sub>0 (\<omega> i) A j - int (nat \<lceil>log 2 (real n)\<rceil> + 2)) (- 1) = (-1)"
     by (intro max_absorb2) linarith
+  thus ?thesis
+    unfolding \<tau>\<^sub>2.simps \<tau>\<^sub>1.simps using True by auto
+next
+  case False
+  thus ?thesis by simp
 qed
 
-lemma max_s: "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2)))"
-  using max_s' by (simp add:C3_def mult_less_0_iff del:\<tau>\<^sub>2.simps)
+lemma max_s: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2)))"
+  using max_s'[OF assms] by (simp add:C3_def case_prod_beta mult_less_0_iff del:\<tau>\<^sub>2.simps) 
 
 lemma max_mono: "x \<le> (y::int) \<Longrightarrow> max x z \<le> max y z"
   by simp
@@ -416,23 +406,30 @@ proof -
 qed
 
 lemma \<tau>\<^sub>2_mono: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
   assumes "A \<subseteq> B"
   shows "\<tau>\<^sub>2 \<omega> A x i j \<le> \<tau>\<^sub>2 \<omega> B x i j"
-  unfolding \<tau>\<^sub>2.simps \<tau>\<^sub>1.simps using \<Omega>.range
-  by (intro max_mono diff_mono \<tau>\<^sub>0_mono assms) auto
+proof -
+  have "max (\<tau>\<^sub>0 (\<omega> i) A j - int x) (- 1) \<le> max (\<tau>\<^sub>0 (\<omega> i) B j - int x) (- 1)" if "i < l"
+    using assms(1) \<Omega>.sample_set that
+    by (intro max_mono diff_mono \<tau>\<^sub>0_mono assms(2) order.refl) auto
+  thus ?thesis
+    by (cases "i < l") auto
+qed
 
 lemma is_too_large_antimono: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
   assumes  "A \<subseteq> B"
   assumes "is_too_large (\<tau>\<^sub>2 \<omega> A x)" 
   shows "is_too_large (\<tau>\<^sub>2 \<omega> B x)"
 proof -
   have "C3 * b * l < (\<Sum> (i,j) \<in> {..<l} \<times> {..<b}. \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> A x i j) (-1) + 2)\<rfloor>)"
-    using assms(2) by simp
+    using assms(3) by simp
   also have "... = (\<Sum> y \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> A x (fst y) (snd y)) (-1) + 2)\<rfloor>)" 
     by (simp add:case_prod_beta del:\<tau>\<^sub>2.simps) 
   also have "... \<le> (\<Sum> y \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> B x (fst y) (snd y)) (-1) + 2)\<rfloor>)" 
     by (intro sum_mono floor_mono iffD2[OF log_le_cancel_iff] iffD2[OF of_int_le_iff] 
-        add_mono max_mono \<tau>\<^sub>2_mono[OF assms(1)]) auto
+        add_mono max_mono \<tau>\<^sub>2_mono[OF assms(1,2)]) auto
   also have "... = (\<Sum> (i,j) \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> B x i j) (-1) + 2)\<rfloor>)" 
     by (simp add:case_prod_beta del:\<tau>\<^sub>2.simps) 
   finally have "(\<Sum> (i,j) \<in> {..<l} \<times> {..<b}.  \<lfloor>log 2 (max (\<tau>\<^sub>2 \<omega> B x i j) (-1) + 2)\<rfloor>) > C3 * b * l"
@@ -440,16 +437,19 @@ proof -
   thus ?thesis by simp
 qed
 
-lemma s_compact: "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (s \<omega> A)))"
-  unfolding s.simps using max_s
+lemma s_compact: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (s \<omega> A)))"
+  unfolding s.simps using max_s[OF assms]
   by (intro wellorder_Least_lemma(1)) blast
 
 lemma s_mono: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
   assumes "A \<subseteq> B"
   shows "s \<omega> A \<le> s \<omega> B"
 proof -
   have "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (s \<omega> B)))" 
-    using is_too_large_antimono[OF assms] s_compact by blast
+    using is_too_large_antimono[OF assms] s_compact[OF assms(1)] by blast
   hence "(LEAST s . \<not>(is_too_large (\<tau>\<^sub>2 \<omega> A s))) \<le> s \<omega> B"
     by (intro Least_le) blast
   thus ?thesis
@@ -459,11 +459,13 @@ qed
 lemma lt_s_too_large: "x < s \<omega> A \<Longrightarrow> is_too_large (\<tau>\<^sub>2 \<omega> A x)"
   unfolding s.simps using not_less_Least by auto
 
-lemma compress_result\<^sub>1: "compress (\<tau>\<^sub>3 \<omega> A (s \<omega> A - i)) = \<tau> \<omega> A"
+lemma compress_result_1: 
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "compress (\<tau>\<^sub>3 \<omega> A (s \<omega> A - i)) = \<tau> \<omega> A"
 proof (induction i)
   case 0
   then show ?case 
-    using s_compact by (simp del:\<tau>\<^sub>2.simps)
+    using s_compact[OF assms] by (simp del:\<tau>\<^sub>2.simps)
 next
   case (Suc i)
   show ?case
@@ -487,6 +489,7 @@ next
 qed
 
 lemma compress_result:
+  assumes "\<omega> \<in> sample_set \<Omega>"
   assumes "x \<le> s \<omega> A"
   shows "compress (\<tau>\<^sub>3 \<omega> A x) = \<tau> \<omega> A"
 proof -
@@ -494,7 +497,7 @@ proof -
   have "compress (\<tau>\<^sub>3 \<omega> A x) = compress (\<tau>\<^sub>3 \<omega> A (s \<omega> A - i))"
     by (subst i_def) blast
   also have "... = \<tau> \<omega> A"
-    using compress_result\<^sub>1 by blast
+    using compress_result_1[OF assms(1)] by blast
   finally show ?thesis by simp
 qed
 
@@ -516,18 +519,28 @@ proof-
 qed
 
 lemma \<tau>\<^sub>2_merge:
-  "\<tau>\<^sub>2 \<omega> (A \<union> B) x i j = max (\<tau>\<^sub>2 \<omega> A x i j) (\<tau>\<^sub>2 \<omega> B x i j)"
-proof -
-  obtain f g h where w_i: "select \<Omega> \<omega> i = (f,g,h)" 
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "\<tau>\<^sub>2 \<omega> (A \<union> B) x i j = max (\<tau>\<^sub>2 \<omega> A x i j) (\<tau>\<^sub>2 \<omega> B x i j)"
+proof (cases "i < l")
+  case True
+
+  obtain f g h where w_i: "\<omega> i = (f,g,h)" 
     by (metis prod_cases3)
-  have a:"(f,g,h) \<in> sample_set \<Psi>"
-    using select_\<Omega>_range w_i by metis
-  show ?thesis
-    by (simp add:w_i \<tau>\<^sub>0_merge[OF a] del:\<tau>\<^sub>0.simps)
+
+  have "\<omega> i \<in> sample_set \<Psi>"
+    using \<Omega>.sample_set assms unfolding Pi_def by auto
+  hence a: "(f,g,h) \<in> sample_set \<Psi>" 
+    using  w_i  by auto
+  show ?thesis 
+    using True by (simp add:w_i \<tau>\<^sub>0_merge[OF a] del:\<tau>\<^sub>0.simps)
+next
+  case False
+  thus ?thesis by simp
 qed
 
 lemma merge1_result:
-   "merge1 (\<tau> \<omega> A) (\<tau> \<omega> B) = \<tau>\<^sub>3 \<omega> (A \<union> B) (max (s \<omega> A) (s \<omega> B))"
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "merge1 (\<tau> \<omega> A) (\<tau> \<omega> B) = \<tau>\<^sub>3 \<omega> (A \<union> B) (max (s \<omega> A) (s \<omega> B))"
 proof -
   let ?smax = "max (s \<omega> A) (s \<omega> B)"
   obtain u where u_def: "s \<omega> A + u = ?smax" 
@@ -544,7 +557,7 @@ proof -
     unfolding le_max_iff_disj by blast 
 
   have "\<tau>\<^sub>2 \<omega> (A \<union> B) ?smax = (\<lambda> i j.  max (\<tau>\<^sub>2 \<omega> A ?smax i j) (\<tau>\<^sub>2 \<omega> B ?smax i j))"
-    using \<tau>\<^sub>2_merge by (intro ext)
+    using \<tau>\<^sub>2_merge[OF assms] by blast
   also have "... = (\<lambda> i j.  max (\<tau>\<^sub>2 \<omega> A (s \<omega> A + u) i j) (\<tau>\<^sub>2 \<omega> B (s \<omega> B + v) i j))"
     unfolding u_def v_def by blast
   also have "... = (\<lambda> i j.  max (max (\<tau>\<^sub>2 \<omega> A (s \<omega> A) i j - u) (-1)) (max (\<tau>\<^sub>2 \<omega> B (s \<omega> B) i j - v) (-1)))"
@@ -564,27 +577,28 @@ proof -
 qed
 
 lemma merge_result:
-  "merge (\<tau> \<omega> A) (\<tau> \<omega> B) = \<tau> \<omega> (A \<union> B)" (is "?L = ?R")
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "merge (\<tau> \<omega> A) (\<tau> \<omega> B) = \<tau> \<omega> (A \<union> B)" (is "?L = ?R")
 proof -
-  have a:"max (local.s \<omega> A) (local.s \<omega> B) \<le> local.s \<omega> (A \<union> B)" 
-    using s_mono by (simp del:s.simps)
+  have a:"max (s \<omega> A) (s \<omega> B) \<le> s \<omega> (A \<union> B)" 
+    using s_mono[OF assms] by (simp del:s.simps)
 
   have "?L = compress (merge1 (\<tau> \<omega> A) (\<tau> \<omega> B))"
     by (simp del:\<tau>.simps)
   also have "... = compress ( \<tau>\<^sub>3 \<omega> (A \<union> B) (max (s \<omega> A) (s \<omega> B)))"
-    by (subst merge1_result) blast 
+    by (subst merge1_result[OF assms]) blast 
   also have "... = ?R"
-    by (intro compress_result a Un_least)
+    by (intro compress_result[OF assms] a Un_least)
   finally show ?thesis by blast
 qed
 
 lemma single1_result: "single1 \<omega> x = \<tau>\<^sub>3 \<omega> {x} 0"
 proof -
-  have "(case select \<Omega> \<omega> i of (f, g, h) \<Rightarrow> if h (g x) = j then int (f x) else - 1) = \<tau>\<^sub>2 \<omega> {x} 0 i j" 
-    (is ?ths) for i j
+  have "(case \<omega> i of (f, g, h) \<Rightarrow> if h (g x) = j \<and> i < l then int (f x) else - 1) = \<tau>\<^sub>2 \<omega> {x} 0 i j"  
+      for i j
   proof -
-    obtain f g h where w_i:"select \<Omega> \<omega> i = (f, g,h)" by (metis prod_cases3)
-    show ?ths
+    obtain f g h where w_i:"\<omega> i = (f, g,h)" by (metis prod_cases3)
+    show ?thesis
       by (simp add:w_i)
   qed
   thus ?thesis
@@ -592,16 +606,18 @@ proof -
 qed
 
 lemma single_result:
-  "single \<omega> x = \<tau> \<omega> {x}" (is "?L = ?R")
+  assumes "\<omega> \<in> sample_set \<Omega>"
+  shows "single \<omega> x = \<tau> \<omega> {x}" (is "?L = ?R")
 proof -
   have "?L = compress (single1 \<omega> x)"
     by (simp)
-  also have "... = compress ( \<tau>\<^sub>3 \<omega> {x} 0)"
+  also have "... = compress (\<tau>\<^sub>3 \<omega> {x} 0)"
     by (subst single1_result) blast
   also have "... = ?R"
-    by (intro compress_result) auto
+    by (intro compress_result[OF assms]) auto
   finally show ?thesis by blast
 qed
+
 end 
 
 locale inner_algorithm_fix_A = inner_algorithm +

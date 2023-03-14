@@ -118,7 +118,7 @@ proof -
     by (simp add:\<rho>'_deriv_def algebra_simps)
 qed
 
-lemma l_6_8: "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > real_of_rat \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
+lemma l_6_8: "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
   have "?L \<le> measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"
@@ -132,7 +132,7 @@ proof -
 
     define I :: "real set" where "I = {0..59/90*b}"
 
-    have "p (f,g,h) \<le> \<rho> (card (R f)) + real_of_rat \<delta>/12 * card (R f)"
+    have "p (f,g,h) \<le> \<rho> (card (R f)) + \<delta>/12 * card (R f)"
       using assms(4) E\<^sub>4_def unfolding abs_le_iff by simp
     also have "... \<le> \<rho>(2/3*b) + 1/12* (2/3*b)"
       using \<delta>_lt_1 R_bound[OF assms(1,2)]
@@ -176,44 +176,44 @@ proof -
     also have "... \<le> \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> * 4"
       using \<xi>_def(1) I_def
       by (intro mult_left_mono \<rho>'_deriv_bound) auto
-    also have "... \<le> (real_of_rat \<delta>/12 * card (R f)) * 4"
+    also have "... \<le> ( \<delta>/12 * card (R f)) * 4"
       using assms(4) E\<^sub>4_def by (intro mult_right_mono) auto
-    also have "... = real_of_rat \<delta>/3 * card (R f)" by simp
-    finally have b: "\<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> \<le> real_of_rat \<delta>/3 * card (R f)"  by simp
+    also have "... = \<delta>/3 * card (R f)" by simp
+    finally have b: "\<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> \<le> \<delta>/3 * card (R f)"  by simp
 
     have "\<bar>\<rho>'(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> 
       \<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>" 
       by simp
-    also have "... \<le> real_of_rat \<delta>/3 * card (R f) + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>"
+    also have "... \<le> \<delta>/3 * card (R f) + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>"
       by (intro add_mono b) auto
-    also have "... = real_of_rat \<delta>/3 * \<bar>Y / 2 ^ (t f) + (card (R f) - Y / 2 ^ (t f))\<bar> + 
+    also have "... =  \<delta>/3 * \<bar>Y / 2 ^ (t f) + (card (R f) - Y / 2 ^ (t f))\<bar> + 
       \<bar>card (R f) - Y / 2 ^ (t f)\<bar>" by simp
-    also have "... \<le> real_of_rat \<delta>/3 * (\<bar>Y / 2 ^ (t f)\<bar> + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>) + 
+    also have "... \<le>  \<delta>/3 * (\<bar>Y / 2 ^ (t f)\<bar> + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>) + 
       \<bar>card (R f) - Y / 2 ^ (t f)\<bar>" 
       using \<delta>_gt_0 by (intro mult_left_mono add_mono abs_triangle_ineq) auto
-    also have "... \<le> real_of_rat \<delta>/3 * \<bar>Y / 2 ^ (t f)\<bar> + 
-      (1+ real_of_rat \<delta>/3) * \<bar>card (R f) - Y / 2 ^ (t f)\<bar>"
+    also have "... \<le>  \<delta>/3 * \<bar>Y / 2 ^ (t f)\<bar> + 
+      (1+  \<delta>/3) * \<bar>card (R f) - Y / 2 ^ (t f)\<bar>"
       using \<delta>_gt_0 \<delta>_lt_1 by (simp add:algebra_simps) 
-    also have "... \<le> real_of_rat \<delta>/3 * \<bar>Y / 2 ^ (t f)\<bar> + 
-      (4/3) * (real_of_rat \<delta> / 3 * real Y / 2 ^ t f)"
+    also have "... \<le>  \<delta>/3 * \<bar>Y / 2 ^ (t f)\<bar> + 
+      (4/3) * ( \<delta> / 3 * real Y / 2 ^ t f)"
       using assms(2) \<delta>_gt_0 \<delta>_lt_1 
       unfolding E\<^sub>2_def by (intro add_mono mult_mono) auto
-    also have "... = (7/9) * real_of_rat \<delta> * real Y / 2^t f"
+    also have "... = (7/9) * \<delta> * real Y / 2^t f"
       using Y_ge_1 by (subst abs_of_nonneg) auto
-    also have "... \<le> 1 * real_of_rat \<delta> * real Y / 2^t f" 
+    also have "... \<le> 1 * \<delta> * real Y / 2^t f" 
       using \<delta>_gt_0 by (intro mult_mono divide_right_mono) auto
-    also have "... = real_of_rat \<delta> * real Y / 2^t f" by simp
-    finally have a:"\<bar>\<rho>'(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> real_of_rat \<delta> * Y / 2 ^ (t f)"
+    also have "... =  \<delta> * real Y / 2^t f" by simp
+    finally have a:"\<bar>\<rho>'(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> \<delta> * Y / 2 ^ (t f)"
       by simp
 
     have "\<bar>A\<^sub>S (f, g, h) - real Y\<bar> = \<bar>2 ^ (t f)\<bar> * \<bar>\<rho>'(p (f,g,h)) - real Y / 2 ^ (t f)\<bar>"
       unfolding A\<^sub>S_def by (subst abs_mult[symmetric]) 
         (simp add:algebra_simps powr_add[symmetric])
-    also have "... \<le> 2 ^ (t f) * (real_of_rat \<delta> * Y / 2 ^ (t f))"
+    also have "... \<le> 2 ^ (t f) * (\<delta> * Y / 2 ^ (t f))"
       by (intro mult_mono a) auto
-    also have "... = real_of_rat \<delta> * Y" 
+    also have "... = \<delta> * Y" 
       by (simp add:algebra_simps powr_add[symmetric])
-    finally have "\<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<le> real_of_rat \<delta> * Y" by simp
+    finally have "\<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<le> \<delta> * Y" by simp
     moreover have "2 powr (\<lceil>log 2 (real Y)\<rceil> - t\<^sub>1 f) \<le> 2 powr b_exp" (is "?L1 \<le> ?R1")
     proof -
       have "?L1 \<le> 2 powr (1 + log 2 (real Y)- t\<^sub>1 f)"
@@ -232,7 +232,7 @@ proof -
     hence "\<lceil>log 2 (real Y)\<rceil> - t\<^sub>1 f \<le> real b_exp"
       unfolding not_less[symmetric] using powr_less_mono[where x="2"] by simp
     hence "t f \<ge> s\<^sub>M" unfolding t_def s\<^sub>M_def by (intro nat_mono) auto
-    ultimately show "\<psi> \<notin> {(f, g, h). real_of_rat \<delta> * Y < \<bar>(A\<^sub>S (f, g, h) - real Y)\<bar> \<or> t f < s\<^sub>M}"
+    ultimately show "\<psi> \<notin> {(f, g, h). \<delta> * Y < \<bar>(A\<^sub>S (f, g, h) - real Y)\<bar> \<or> t f < s\<^sub>M}"
       unfolding \<psi>_def by auto
   qed
   also have "... \<le> 

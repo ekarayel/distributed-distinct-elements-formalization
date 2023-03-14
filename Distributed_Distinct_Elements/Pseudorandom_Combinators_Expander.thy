@@ -6,6 +6,7 @@ theory Pseudorandom_Combinators_Expander
 begin
 
 unbundle intro_cong_syntax
+no_notation Digraph.dominates ("_ \<rightarrow>\<index> _" [100,100] 40)
 
 definition \<E> :: "nat \<Rightarrow> real \<Rightarrow> 'a sample_space \<Rightarrow> (nat \<Rightarrow> 'a) sample_space"
   where "\<E> l \<Lambda> S = (let e = see_standard (size S) \<Lambda> in 
@@ -56,6 +57,16 @@ proof -
     unfolding \<E>_alt using select_range[OF sample_space_S] by simp
   thus ?thesis
     unfolding \<alpha>_def by simp
+qed
+
+lemma sample_set: "sample_set (\<E> l \<Lambda> S) \<subseteq> (UNIV \<rightarrow> sample_set S)"
+proof (rule subsetI)
+  fix x assume "x \<in> sample_set (\<E> l \<Lambda> S)"
+
+  then obtain i where "x = select (\<E> l \<Lambda> S) i"
+    unfolding sample_set_def by auto
+  thus "x \<in> UNIV \<rightarrow> sample_set S"
+    using range by auto
 qed
 
 lemma walks: 
@@ -169,6 +180,20 @@ proof -
   also have "... \<le> ?R"
     using assms(5) unfolding \<mu>_eq
     by (intro E.walk_tail_bound_2 assms(1,2,4) 1 2) auto
+  finally show ?thesis
+    by simp
+qed
+
+lemma uniform_property:
+  assumes "i < l"
+  shows "map_pmf (\<lambda>w. w i) (\<E> l \<Lambda> S) = sample_pmf S" (is "?L = ?R")
+proof -
+  have "?L = map_pmf (select S) (map_pmf (\<lambda>xs. (xs ! i)) (pmf_of_multiset (walks (graph_of e) l)))"
+    unfolding walks by (simp add: map_pmf_comp)
+  also have "... = map_pmf (select S) (pmf_of_set (verts (graph_of e)))"
+    unfolding E.uniform_property[OF assms] by simp
+  also have "... = ?R"
+    unfolding sample_pmf_alt[OF sample_space_S] e_def graph_of_def using see_standard by simp
   finally show ?thesis
     by simp
 qed

@@ -13,7 +13,7 @@ lemma R_bound:
   assumes "E\<^sub>2 (f,g,h)"
   shows "card (R f) \<le> 2/3 * b"
 proof -
-  have "real (card (R f)) \<le> (real_of_rat \<delta> / 3) * (real Y / 2 ^ t f) + real Y / 2 ^ t f"
+  have "real (card (R f)) \<le> ( \<delta> / 3) * (real Y / 2 ^ t f) + real Y / 2 ^ t f"
     using assms(2) unfolding E\<^sub>2_def by simp
   also have "... \<le> (1/3) * (real Y / 2 ^ t f) + real Y / 2 ^ t f"
     using \<delta>_lt_1 by (intro add_mono mult_right_mono) auto

@@ -120,26 +120,26 @@ lemma A_1_eq_A\<^sub>S:
   shows "A_1 (f,g,h) \<sigma> = A\<^sub>S (f,g,h)"
   unfolding A_1_def  A\<^sub>S_def t_2_eq_t[OF assms(1,2)] p_1_eq_p[OF assms(1,2)] by simp
 
-lemma l_6_9: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > real_of_rat \<delta> * Y} \<le> 1/2^4" 
+lemma l_6_9: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * Y} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
-  have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > of_rat \<delta> * real Y} \<le>
-    measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > of_rat \<delta> * real Y \<or> t f < s\<^sub>M}"
+  have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * real Y} \<le>
+    measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> >  \<delta> * real Y \<or> t f < s\<^sub>M}"
   proof (rule pmf_mono')
     fix \<psi> 
-    assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M. real_of_rat \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>}"
+    assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M.  \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>}"
     assume d:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
-    obtain \<sigma> where b:"\<sigma> \<le> s\<^sub>M" and c:"of_rat \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>"
+    obtain \<sigma> where b:"\<sigma> \<le> s\<^sub>M" and c:" \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>"
       using a by auto
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
     hence e:"(f,g,h) \<in> sample_set \<Psi>"
       using d unfolding sample_space_alt[OF sample_space_\<Psi>] by simp
 
-    show "\<psi> \<in> {(f, g, h). real_of_rat \<delta> * real Y < \<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<or> t f < s\<^sub>M}" 
+    show "\<psi> \<in> {(f, g, h). \<delta> * real Y < \<bar>A\<^sub>S (f, g, h) - real Y\<bar> \<or> t f < s\<^sub>M}" 
     proof (cases "t f \<ge> s\<^sub>M")
       case True
       hence f:"\<sigma> \<le> t f" using b by simp
-      have "of_rat \<delta> * real Y < \<bar>A\<^sub>S \<psi> - real Y\<bar>"
+      have "\<delta> * real Y < \<bar>A\<^sub>S \<psi> - real Y\<bar>"
         using A_1_eq_A\<^sub>S[OF e f] c unfolding \<psi>_def by simp      
       then show ?thesis unfolding \<psi>_def by simp
     next
@@ -152,7 +152,9 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma estimate1_eq: "estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) j = A_1 (select \<Omega> \<omega> j) \<sigma>" (is "?L = ?R")
+lemma estimate1_eq: 
+  assumes "j < l"
+  shows "estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) j = A_1 (\<omega> j) \<sigma>" (is "?L = ?R")
 proof -
   define t where "t = max 0 (Max ((\<tau>\<^sub>2 \<omega> A \<sigma> j) ` {..<b}) + \<sigma> - \<lfloor>log 2 b\<rfloor> + 9)"
   define p where "p = card { k. k \<in> {..<b} \<and> (\<tau>\<^sub>2 \<omega> A \<sigma> j k) + \<sigma> \<ge> t }"
@@ -170,18 +172,19 @@ proof -
     unfolding t_def 0 1 by (rule refl)
   also have "... = int (nat (Max ((\<lambda>x. x + \<sigma>) ` (\<tau>\<^sub>2 \<omega> A \<sigma> j) ` {..<b}) - b_exp + 9))"
     by (intro_cong "[\<sigma>\<^sub>1 int,\<sigma>\<^sub>1 nat,\<sigma>\<^sub>2(+),\<sigma>\<^sub>2(-)]" more:hom_Max_commute) (simp_all add:2 del:s.simps)
-  also have "... = int (t_2 (select \<Omega> \<omega> j) \<sigma>)"
+  also have "... = int (t_2 (\<omega> j) \<sigma>)"
+    using assms
     unfolding t_2_def t_1_def \<tau>\<^sub>2.simps image_image by (simp del:s.simps \<tau>\<^sub>1.simps)
-  finally have 3:"t = int (t_2 (select \<Omega> \<omega> j) \<sigma>)"
+  finally have 3:"t = int (t_2 (\<omega> j) \<sigma>)"
     by simp
 
-  have 4: "p = p_1 (select \<Omega> \<omega> j) \<sigma>"
-    unfolding p_def p_1_def 3 by (simp del:s.simps)
+  have 4: "p = p_1 (\<omega> j) \<sigma>"
+    using assms unfolding p_def p_1_def 3 by (simp del:s.simps)
 
   have "?L = 2 powr t * ln (1-p/b) / ln(1-1/b)"
     unfolding estimate1.simps \<tau>.simps \<tau>\<^sub>3.simps 
     by (simp only:t_def p_def Let_def)
-  also have "... = 2 powr (t_2 (select \<Omega> \<omega> j) \<sigma>) * \<rho>' p"
+  also have "... = 2 powr (t_2 (\<omega> j) \<sigma>) * \<rho>' p"
     unfolding 3 \<rho>'_def by (simp del:s.simps)
   also have "... = ?R"
     unfolding A_1_def 3 4 by (simp add:powr_realpow del:s.simps)
@@ -190,19 +193,17 @@ proof -
 qed
 
 lemma l_6_10:
-  fixes p
-  defines "p \<equiv> pmf_of_set{..<size \<Omega>} "
-  shows "measure p {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. real_of_rat \<delta>*Y < \<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>) } \<le> of_rat \<epsilon>/2"
+  "measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. \<delta>*Y < \<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>) } \<le> \<epsilon>/2"
     (is "?L \<le> ?R")
 proof -
-  define I :: "real set" where "I = {x. \<bar>x - real Y\<bar> \<le> real_of_rat \<delta>*Y}"
+  define I :: "real set" where "I = {x. \<bar>x - real Y\<bar> \<le> \<delta>*Y}"
 
   define \<mu> where "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M. A_1 \<psi> \<sigma>\<notin>I}"
 
   have int_I: "interval I" 
     unfolding interval_def I_def by auto
 
-  have "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > real_of_rat \<delta> * Y}"
+  have "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * Y}"
     unfolding \<mu>_def I_def by (simp add:not_le)
   also have "... \<le>  1 / 2 ^ 4"
     by (intro l_6_9)
@@ -225,14 +226,14 @@ proof -
   hence 3: "\<mu> + \<Lambda> > 0" 
     by (intro add_nonneg_pos \<Lambda>_gt_0)
 
-  have "?L = measure p {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. real_of_rat \<delta>*Y < \<bar>median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>))-Y\<bar>) }"
+  have "?L = measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. \<delta>*Y < \<bar>median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>))-Y\<bar>) }"
     by simp
-  also have "... = measure p {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)) \<notin> I)}"
+  also have "... = measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)) \<notin> I)}"
     unfolding I_def by (intro measure_pmf_cong) auto
-  also have "... \<le> measure p {\<omega>. real(card{i\<in>{..<l}.(\<exists>\<sigma>\<le>s\<^sub>M. A_1(select \<Omega> \<omega> i) \<sigma>\<notin>I)})\<ge> real l/2}"
+  also have "... \<le> measure \<Omega> {\<omega>. real(card{i\<in>{..<l}.(\<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma>\<notin>I)})\<ge> real l/2}"
   proof (rule pmf_mono')
     fix \<omega>
-    assume "\<omega> \<in> set_pmf p" "\<omega> \<in> {\<omega>. \<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I}" 
+    assume "\<omega> \<in> set_pmf \<Omega>" "\<omega> \<in> {\<omega>. \<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I}" 
     then obtain \<sigma> where \<sigma>_def: "median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I" "\<sigma>\<le>s\<^sub>M"
       by auto
 
@@ -251,13 +252,13 @@ proof -
         (auto simp del:estimate1.simps)
     also have "... = 2 * real (card {i\<in>{..<l}. estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) i \<notin> I})"
       by (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") (auto simp del:estimate1.simps)
-    also have "... = 2 * real (card {i \<in> {..<l}. A_1 (select \<Omega> \<omega> i) \<sigma> \<notin> I})"
-      unfolding estimate1_eq by simp
-    also have "... \<le> 2 * real (card {i \<in> {..<l}. (\<exists>\<sigma>\<le>s\<^sub>M. A_1 (select \<Omega> \<omega> i) \<sigma> \<notin> I)})"
+    also have "... = 2 * real (card {i \<in> {..<l}. A_1 (\<omega> i) \<sigma> \<notin> I})"
+      using estimate1_eq by (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]" more:restr_Collect_cong) auto
+    also have "... \<le> 2 * real (card {i \<in> {..<l}. (\<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma> \<notin> I)})"
       using \<sigma>_def(2) by (intro mult_left_mono Nat.of_nat_mono card_mono) auto
-    finally have "real l \<le> 2 * real (card {i \<in> {..<l}. (\<exists>\<sigma>\<le>s\<^sub>M. A_1 (select \<Omega> \<omega> i) \<sigma> \<notin> I)})"
+    finally have "real l \<le> 2 * real (card {i \<in> {..<l}. (\<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma> \<notin> I)})"
       by simp
-    thus "\<omega> \<in> {\<omega>. real l/2 \<le> real (card {i \<in> {..<l}. \<exists>\<sigma>\<le>s\<^sub>M. A_1 (select \<Omega> \<omega> i) \<sigma> \<notin> I})}"
+    thus "\<omega> \<in> {\<omega>. real l/2 \<le> real (card {i \<in> {..<l}. \<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma> \<notin> I})}"
       by simp
   qed
   also have "... = measure \<Omega> {\<omega>. real (card{i\<in>{..<l}. (\<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma>\<notin>I)}) \<ge> (1/2)*real l}"
@@ -272,9 +273,9 @@ proof -
   also have "... \<le> exp (- (real l * (1/4)))"
     by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_left_mono of_nat_0_le_iff)
      (approximation 5)
-  also have "... \<le> exp (- (C5 * ln (2/of_rat \<epsilon>)*(1/4)))"
+  also have "... \<le> exp (- (C5 * ln (2/ \<epsilon>)*(1/4)))"
     by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_right_mono l_lbound) auto
-  also have "... = exp ( - ln (2/of_rat \<epsilon>))"
+  also have "... = exp ( - ln (2/ \<epsilon>))"
     unfolding C5_def by simp
   also have "... = ?R"
     using \<epsilon>_gt_0 by (subst ln_inverse[symmetric]) auto
@@ -283,18 +284,18 @@ proof -
 qed
 
 theorem theorem_6_2:
-  "measure (pmf_of_set {..<size \<Omega>}) {\<omega>. \<bar>estimate (\<tau> \<omega> A)- Y\<bar> > real_of_rat \<delta> * Y} \<le> of_rat \<epsilon>"
+  "measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- Y\<bar> >  \<delta> * Y} \<le>  \<epsilon>"
   (is "?L \<le> ?R")
 proof -
-  let ?P = "measure (pmf_of_set {..<size \<Omega>})"
-  have "?L \<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. of_rat \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)-real Y\<bar>)\<or>s \<omega> A> s\<^sub>M}"
+  let ?P = "measure \<Omega>"
+  have "?L \<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M.  \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)-real Y\<bar>)\<or>s \<omega> A> s\<^sub>M}"
     unfolding \<tau>.simps \<tau>\<^sub>3.simps not_le[symmetric] 
     by (intro pmf_mono') (auto simp del:s.simps estimate.simps) 
-  also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. of_rat \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>)} + ?P {\<omega>. s \<omega> A> s\<^sub>M}"
+  also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M.  \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>)} + ?P {\<omega>. s \<omega> A> s\<^sub>M}"
     by (intro pmf_add) auto
-  also have "...\<le> of_rat \<epsilon>/2 + of_rat \<epsilon>/2"
+  also have "...\<le>  \<epsilon>/2 +  \<epsilon>/2"
     by (intro add_mono cutoff_level l_6_10) 
-  also have "... = of_rat \<epsilon>"
+  also have "... =  \<epsilon>"
     by simp 
   finally show ?thesis 
     by simp
@@ -302,7 +303,21 @@ qed
 
 end
 
-unbundle no_intro_cong_syntax
+lemma (in inner_algorithm) theorem_6_2:
+  assumes "A \<subseteq> {..<n}" "A \<noteq> {}"
+  shows "measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- real (card A)\<bar> >  \<delta> * real (card A)} \<le> \<epsilon>" (is "?L \<le> ?R")
+proof -
+  interpret inner_algorithm_fix_A
+    using assms by unfold_locales auto
+  have "?L = measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- Y\<bar> >  \<delta> * Y}"
+    unfolding Y_def by simp
+  also have "... \<le> ?R"
+    by (intro theorem_6_2)
+  finally show ?thesis
+    by simp
+qed
 
+
+unbundle no_intro_cong_syntax
 
 end

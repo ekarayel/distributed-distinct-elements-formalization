@@ -5,7 +5,7 @@ begin
 context inner_algorithm_fix_A 
 begin
 
-definition E\<^sub>2 where "E\<^sub>2 = (\<lambda>(f,g,h). \<bar>card (R f) - Y / 2^(t f)\<bar> \<le> real_of_rat \<delta>/3 * Y / 2^(t f))"
+definition E\<^sub>2 where "E\<^sub>2 = (\<lambda>(f,g,h). \<bar>card (R f) - Y / 2^(t f)\<bar> \<le> \<delta>/3 * Y / 2^(t f))"
 
 lemma e_2: "measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> \<not>E\<^sub>2 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
@@ -86,41 +86,41 @@ proof -
   have r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) \<le> real Y / 2^t" if "t \<in> T" for t 
     using r_exp[OF that] r_var by metis
 
-  have "9 = C2 / (real_of_rat \<delta>)\<^sup>2 * of_rat \<delta>^2/2^23" 
+  have "9 = C2 / \<delta>\<^sup>2 * \<delta>^2/2^23" 
     using \<delta>_gt_0 by (simp add:C2_def)
-  also have "... = 2 powr (log 2 (C2 / (real_of_rat \<delta>)\<^sup>2)) * of_rat \<delta>^2/2^23" 
+  also have "... = 2 powr (log 2 (C2 /  \<delta>\<^sup>2)) *  \<delta>^2/2^23" 
     using \<delta>_gt_0 C2_def by (subst powr_log_cancel) auto
-  also have "... \<le> 2 powr b_exp * of_rat \<delta>^2/2^23" 
+  also have "... \<le> 2 powr b_exp * \<delta>^2/2^23" 
     unfolding b_exp_def
     by (intro divide_right_mono mult_right_mono powr_mono, linarith) auto 
-  also have "... = b * of_rat \<delta>^2/2^23"  
+  also have "... = b * \<delta>^2/2^23"  
     using powr_realpow unfolding b_def by simp
-  also have "... = (b/2^16) * (of_rat \<delta>^2/2^7)" 
+  also have "... = (b/2^16) * (\<delta>^2/2^7)" 
     by simp
-  also have "... \<le> (Y * 2 powr (-t\<^sub>m)) * (of_rat \<delta>^2/2^7)" 
+  also have "... \<le> (Y * 2 powr (-t\<^sub>m)) * (\<delta>^2/2^7)" 
     by (intro mult_mono c) auto
-  also have "... = Y * (2 powr (-t\<^sub>m) * 2 powr (-7)) * of_rat \<delta>^2" 
+  also have "... = Y * (2 powr (-t\<^sub>m) * 2 powr (-7)) * \<delta>^2" 
     using powr_realpow by simp
-  also have "... = 2 powr (-t\<^sub>m-7) * (of_rat \<delta>^2 * Y)" 
+  also have "... = 2 powr (-t\<^sub>m-7) * (\<delta>^2 * Y)" 
     by (subst powr_add[symmetric]) (simp )
-  finally have "9 \<le> 2 powr (-t\<^sub>m-7) * (of_rat \<delta>^2 * Y)" by simp
-  hence b: "9/ (of_rat \<delta>^2 * Y) \<le> 2 powr (-t\<^sub>m -7)"
+  finally have "9 \<le> 2 powr (-t\<^sub>m-7) * (\<delta>^2 * Y)" by simp
+  hence b: "9/ (\<delta>^2 * Y) \<le> 2 powr (-t\<^sub>m -7)"
     using \<delta>_gt_0 Y_ge_1
     by (subst pos_divide_le_eq) auto
 
-  have a: "measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real Y/2^t\<bar>>of_rat \<delta>/3 *real Y/2^t} \<le> 2 powr (real t-t\<^sub>m-7)" 
+  have a: "measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real Y/2^t\<bar>> \<delta>/3 *real Y/2^t} \<le> 2 powr (real t-t\<^sub>m-7)" 
     (is"?L1 \<le> ?R1") if "t \<in> T" for t
   proof -
-    have "?L1 \<le> \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f) - real Y / 2^t\<bar> \<ge> of_rat \<delta>/3 * real Y / 2^t)"
+    have "?L1 \<le> \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f) - real Y / 2^t\<bar> \<ge>  \<delta>/3 * real Y / 2^t)"
       by (intro pmf_mono') (auto)
-    also have "... = \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f)-(\<integral>\<omega>. real (r t \<omega>) \<partial> \<Psi>\<^sub>1)\<bar> \<ge> of_rat \<delta>/3 * real Y/2^t)"
+    also have "... = \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f)-(\<integral>\<omega>. real (r t \<omega>) \<partial> \<Psi>\<^sub>1)\<bar> \<ge> \<delta>/3 * real Y/2^t)"
       by (simp add: r_exp[OF that]) 
-    also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) / (of_rat \<delta>/3 * real Y / 2^t)^2"
+    also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) / (\<delta>/3 * real Y / 2^t)^2"
       using Y_ge_1 \<delta>_gt_0 \<Psi>\<^sub>1.sample_space
       by (intro measure_pmf.Chebyshev_inequality divide_pos_pos mult_pos_pos) auto
-    also have "... \<le> (Y / 2^t) / (of_rat \<delta>/3 * Y / 2^t)^2"
+    also have "... \<le> (Y / 2^t) / (\<delta>/3 * Y / 2^t)^2"
       by (intro divide_right_mono r_var[OF that]) simp
-    also have "... = 2^t*(9/ (of_rat \<delta>^2 * Y))"
+    also have "... = 2^t*(9/ ( \<delta>^2 * Y))"
       by (simp add:power2_eq_square algebra_simps)
     also have "... \<le> 2^t*(2 powr (-t\<^sub>m-7))"
       by (intro mult_left_mono b) simp
@@ -136,18 +136,18 @@ proof -
   hence T_reindex: "(-) (nat t\<^sub>m) ` {x. x < nat (t\<^sub>m + 1)} = {..<nat (t\<^sub>m + 1)}"
     by (auto simp add: set_eq_iff image_iff) 
 
-  have "?L \<le> measure \<Psi> {\<psi>. (\<exists>t \<in> T. \<bar>real (r t (fst \<psi>))-real Y/2^t\<bar> > of_rat \<delta>/3 * real Y / 2^t)}"
+  have "?L \<le> measure \<Psi> {\<psi>. (\<exists>t \<in> T. \<bar>real (r t (fst \<psi>))-real Y/2^t\<bar> > \<delta>/3 * real Y / 2^t)}"
   proof (rule pmf_mono')
     fix \<psi>
     assume "\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
     assume "\<psi> \<in> {\<psi>. E\<^sub>1 \<psi> \<and> \<not> E\<^sub>2 \<psi>}"
-    hence a:"2 powr (-t\<^sub>1 f) * Y \<in> {b/2^16..b/2}" and
-      b:"\<bar>card (R f) - Y / 2^(t f)\<bar> > real_of_rat \<delta>/3 * Y / 2^(t f)"
+    hence a:"2 powr ( -real_of_int (t\<^sub>1 f)) * real Y \<in> {real b/2^16..real b/2}" and
+      b:"\<bar>card (R f) - real Y / 2^(t f)\<bar> >  \<delta>/3 * Y / 2^(t f)"
       unfolding E\<^sub>1_def E\<^sub>2_def by (auto simp add:\<psi>_def)
     have "\<bar>card (R f) - Y / 2^(t f)\<bar> = 0" if "t f= 0"
       using that by (simp add:R_def Y_def)
-    moreover have "(real_of_rat \<delta>/3) * (Y / 2^(t f)) \<ge> 0" 
+    moreover have "( \<delta>/3) * (Y / 2^(t f)) \<ge> 0" 
       using \<delta>_gt_0 Y_ge_1 by (intro mult_nonneg_nonneg) auto
     ultimately have "False" if "t f = 0" 
       using b that by simp
@@ -160,17 +160,17 @@ proof -
     hence "real Y / 2 ^ (t f) \<ge> b / 2^16"
       by (subst (asm) powr_realpow, auto)
     hence "t f \<in> T" unfolding T_def by simp
-    moreover have "\<bar>r (t f) f - Y / 2^t f\<bar> > real_of_rat \<delta>/3 * Y / 2^t f" 
+    moreover have "\<bar>r (t f) f - Y / 2^t f\<bar> >  \<delta>/3 * Y / 2^t f" 
       using R_def r_def b by simp
-    ultimately have "\<exists>t \<in> T. \<bar>r t (fst \<psi>) - Y / 2^t\<bar> > real_of_rat \<delta>/3 * Y / 2^t"
+    ultimately have "\<exists>t \<in> T. \<bar>r t (fst \<psi>) - Y / 2^t\<bar> >  \<delta>/3 * Y / 2^t"
       using \<psi>_def by (intro bexI[where x="t f"]) simp
-    thus "\<psi> \<in> {\<psi>. (\<exists>t \<in> T. \<bar>r t (fst \<psi>) - Y / 2^t\<bar> > real_of_rat \<delta>/3 * Y / 2^t)}" by simp
+    thus "\<psi> \<in> {\<psi>. (\<exists>t \<in> T. \<bar>r t (fst \<psi>) - Y / 2^t\<bar> >  \<delta>/3 * Y / 2^t)}" by simp
   qed
-  also have "... = measure \<Psi>\<^sub>1 {f. (\<exists>t \<in> T. \<bar>real (r t f)-real Y / 2^t\<bar> > of_rat \<delta>/3 * real Y/2^t)}"
+  also have "... = measure \<Psi>\<^sub>1 {f. (\<exists>t \<in> T. \<bar>real (r t f)-real Y / 2^t\<bar> > \<delta>/3 * real Y/2^t)}"
     unfolding sample_pmf_\<Psi> by (intro pair_pmf_prob_left)
-  also have "... = measure \<Psi>\<^sub>1 (\<Union>t \<in> T. {f. \<bar>real (r t f)-real Y / 2^t\<bar> > of_rat \<delta>/3 * real Y/2^t})"
+  also have "... = measure \<Psi>\<^sub>1 (\<Union>t \<in> T. {f. \<bar>real (r t f)-real Y / 2^t\<bar> > \<delta>/3 * real Y/2^t})"
     by (intro measure_pmf_cong) auto
-  also have "... \<le> (\<Sum>t \<in> T. measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real Y / 2^t\<bar> > of_rat \<delta>/3 * real Y/2^t})"
+  also have "... \<le> (\<Sum>t \<in> T. measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real Y / 2^t\<bar> > \<delta>/3 * real Y/2^t})"
     by (intro measure_UNION_le fin_T) (simp)
   also have "... \<le> (\<Sum>t \<in> T.  2 powr (real t - of_int t\<^sub>m - 7))"
     by (intro sum_mono a)

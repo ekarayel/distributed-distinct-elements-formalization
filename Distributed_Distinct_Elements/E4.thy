@@ -5,18 +5,18 @@ begin
 context inner_algorithm_fix_A 
 begin
 
-definition E\<^sub>4 where "E\<^sub>4 = (\<lambda>(f,g,h). \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> \<le> real_of_rat \<delta>/12 * card (R f))"
+definition E\<^sub>4 where "E\<^sub>4 = (\<lambda>(f,g,h). \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> \<le>  \<delta>/12 * card (R f))"
 
-lemma e_4_h: "9 / sqrt b \<le> of_rat \<delta> / 12"
+lemma e_4_h: "9 / sqrt b \<le> \<delta> / 12"
 proof -
   have "108 \<le> sqrt (C2)"
     unfolding C2_def by (approximation 5)
-  also have "... \<le> sqrt(of_rat \<delta>^2 * real b)"
+  also have "... \<le> sqrt( \<delta>^2 * real b)"
     using b_lower_bound \<delta>_gt_0
     by (intro real_sqrt_le_mono) (simp add: pos_divide_le_eq algebra_simps)
-  also have "... = of_rat \<delta> * sqrt b"
+  also have "... =  \<delta> * sqrt b"
     using \<delta>_gt_0 by (simp add:real_sqrt_mult)
-  finally have "108 \<le> of_rat \<delta> * sqrt b"  by simp
+  finally have "108 \<le>  \<delta> * sqrt b"  by simp
   thus ?thesis
     using b_min by (simp add:pos_divide_le_eq)
 qed
@@ -65,7 +65,7 @@ proof -
     have "?L1 \<le> measure \<Psi>\<^sub>3 {h. \<bar>B.Y h - B.\<mu>\<bar> > 9 * real (card (g ` R f)) / sqrt (card {..<b})}"
     proof (rule pmf_mono')
       fix h assume "h \<in> {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)}"
-      hence b: "\<bar>p (f,g,h) -\<rho> (card (R f))\<bar> > of_rat \<delta>/12 * card (R f)"
+      hence b: "\<bar>p (f,g,h) -\<rho> (card (R f))\<bar> >  \<delta>/12 * card (R f)"
         unfolding E\<^sub>4_def by simp
       assume "h \<in> set_pmf (sample_pmf \<Psi>\<^sub>3)"
       hence h_range: "h x < b" for x
@@ -88,7 +88,7 @@ proof -
         by simp 
       have "9 * real (card (g ` R f)) / sqrt (card {..<b}) = 9/ sqrt b * real (card (R f))"
         using card_image[OF g_inj] by simp
-      also have "... \<le> of_rat \<delta>/12 * card (R f)" 
+      also have "... \<le>  \<delta>/12 * card (R f)" 
         by (intro mult_right_mono e_4_h) simp
       also have "... < \<bar>B.Y h - B.\<mu>\<bar>"
         using b c unfolding B.Y_def p_def b_mu by simp
