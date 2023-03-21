@@ -5,15 +5,10 @@ theory DDE_Preliminary
     Median_Method.Median
     Expander_Graphs.Extra_Congruence_Method
     Expander_Graphs.Constructive_Chernoff_Bound
+    Frequency_Moments.Landau_Ext
 begin
 
 unbundle intro_cong_syntax
-
-lemma (in prob_space) AE_pmfI:
-  assumes "M = measure_pmf p"
-  assumes "\<And>\<omega>. \<omega> \<in> set_pmf p \<Longrightarrow> P \<omega>"
-  shows "AE \<omega> in M. P \<omega>"
-  unfolding assms(1) by (intro AE_pmfI assms(2)) auto
 
 lemma pmf_exp_of_fin_function:
   assumes "finite A" "g ` set_pmf p \<subseteq> A"
@@ -38,7 +33,7 @@ lemma measure_pmf_cong:
   using assms
   by (intro finite_measure.finite_measure_eq_AE AE_pmfI) auto
 
-lemma pmf_mono':
+lemma pmf_mono:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<Longrightarrow> x \<in> Q"
   shows "measure (measure_pmf p) P \<le> measure (measure_pmf p) Q"
 proof -
@@ -52,7 +47,7 @@ qed
 lemma  pmf_rev_mono:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<notin> Q \<Longrightarrow> x \<notin> P"
   shows "measure p P \<le> measure p Q"
-  using assms by (intro pmf_mono') blast
+  using assms by (intro pmf_mono) blast
 
 lemma pmf_exp_mono:
   fixes f g :: "'a \<Rightarrow> real"
@@ -61,25 +56,7 @@ lemma pmf_exp_mono:
   shows "integral\<^sup>L (measure_pmf p) f \<le> integral\<^sup>L (measure_pmf p) g"
   using assms  by (intro integral_mono_AE AE_pmfI) auto
 
-lemma (in prob_space) pmf_markov:
-  assumes "M = measure_pmf p"
-  assumes "integrable M f" "c > 0"
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0" 
-  shows "prob {\<omega>. f \<omega> \<ge> c} \<le> expectation f / c" (is "?L \<le> ?R")
-proof -
-  have a:"AE \<omega> in M. 0 \<le> f \<omega>" 
-    by (intro AE_pmfI[OF assms(1)] assms(4)) auto
-  have b:"{} \<in> events" 
-    unfolding assms(1) by simp
-
-  have "?L = \<P>(\<omega> in M. f \<omega> \<ge> c)"
-    using assms(1) by simp
-  also have "... \<le>  expectation f / c"
-    by (intro integral_Markov_inequality_measure[OF _ b] assms a)
-  finally show ?thesis by simp
-qed
-
-lemma  pmf_markov':
+lemma pmf_markov:
   assumes "integrable (measure_pmf p) f" "c > 0"
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0" 
   shows "measure p {\<omega>. f \<omega> \<ge> c} \<le> (\<integral>\<omega>. f \<omega> \<partial>p)/ c" (is "?L \<le> ?R")
@@ -101,7 +78,7 @@ lemma pmf_add:
   shows "measure p P \<le> measure p Q + measure p R"
 proof -
   have "measure p P \<le> measure p (Q \<union> R)"
-    using assms by (intro pmf_mono', blast)
+    using assms by (intro pmf_mono) blast
   also have "... \<le> measure p Q + measure p R"
     by (rule measure_subadditive, auto)
   finally show ?thesis by simp
@@ -225,6 +202,88 @@ proof -
     using c z(1,2) by auto
   thus ?thesis using z(3) by auto
 qed
+
+lemma real_inv_at_right_0_inf:
+  "\<forall>\<^sub>F x in at_right (0::real). c \<le> 1 / x"
+proof -
+  have "c \<le> 1 /  x" if b:" x \<in> {0<..<1 / (max c 1)}" for x
+  proof -
+    have "c * x \<le> (max c 1) * x"
+      using b by (intro mult_right_mono, linarith, auto)
+    also have "... \<le> (max c 1)  * (1 / (max c 1))"
+      using b by (intro mult_left_mono) auto
+    also have "... \<le> 1"
+      by (simp add:of_rat_divide)
+    finally have "c * x \<le> 1" by simp
+    moreover have "0 < x"
+      using b by simp
+    ultimately show ?thesis by (subst pos_le_divide_eq, auto)
+  qed
+  thus ?thesis
+    by (intro eventually_at_rightI[where b="1/(max c 1)"], simp_all)
+qed
+
+lemma bigo_prod_1:
+  assumes "(\<lambda>x. f x) \<in> O[F](\<lambda>x. g x)" "G \<noteq> bot"
+  shows "(\<lambda>x. f (fst x)) \<in> O[F \<times>\<^sub>F G](\<lambda>x. g (fst x))"
+proof -
+  obtain c where a: "\<forall>\<^sub>F x in F. norm (f x) \<le> c * norm (g x)" and c_gt_0: "c > 0"
+    using assms unfolding bigo_def by auto
+
+  have "\<exists>c>0. \<forall>\<^sub>F x in F \<times>\<^sub>F G. norm (f (fst x)) \<le> c * norm (g (fst x))"
+    by (intro exI[where x="c"] conjI c_gt_0  eventually_prod1' a assms(2))
+  thus ?thesis
+    unfolding bigo_def by simp
+qed
+
+lemma bigo_prod_2:
+  assumes "(\<lambda>x. f x) \<in> O[G](\<lambda>x. g x)" "F \<noteq> bot"
+  shows "(\<lambda>x. f (snd x)) \<in> O[F \<times>\<^sub>F G](\<lambda>x. g (snd x))"
+proof -
+  obtain c where a: "\<forall>\<^sub>F x in G. norm (f x) \<le> c * norm (g x)" and c_gt_0: "c > 0"
+    using assms unfolding bigo_def by auto
+
+  have "\<exists>c>0. \<forall>\<^sub>F x in F \<times>\<^sub>F G. norm (f (snd x)) \<le> c * norm (g (snd x))"
+    by (intro exI[where x="c"] conjI c_gt_0  eventually_prod2' a assms(2))
+  thus ?thesis
+    unfolding bigo_def by simp
+qed
+
+lemma eventually_inv:
+  fixes P :: "real \<Rightarrow> bool"
+  assumes "eventually (\<lambda>x. P (1/x)) at_top "
+  shows "eventually (\<lambda>x. P x) (at_right 0)"
+proof -
+  obtain N where c:"n \<ge> N \<Longrightarrow> P (1/n)" for n
+    using assms unfolding eventually_at_top_linorder by auto
+
+  define q where "q = max 1 N"
+  have d: "0 < 1 / q" "q > 0"
+    unfolding q_def by auto
+
+  have "P x" if "x \<in> {0<..<1 / q}" for x
+  proof -
+    define n where "n =  1/x"
+    have x_eq: "x = 1 / n" 
+      unfolding n_def using that by simp
+
+    have "N \<le> q" unfolding q_def by simp
+    also have "... \<le> n" 
+      unfolding n_def using that d by (simp add:divide_simps ac_simps)
+    finally have "N \<le> n" by simp
+    thus ?thesis
+      unfolding x_eq by (intro c)
+  qed
+
+  thus ?thesis
+    by (intro eventually_at_rightI[where b="1/q"] d)
+qed
+
+lemma bigo_inv:
+  fixes f g :: "real \<Rightarrow> real"
+  assumes "(\<lambda>x. f (1/x)) \<in> O(\<lambda>x. g (1/x))" 
+  shows "f \<in> O[at_right 0](g)"
+  using assms eventually_inv unfolding bigo_def by auto
 
 unbundle no_intro_cong_syntax
 

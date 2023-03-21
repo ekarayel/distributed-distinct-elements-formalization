@@ -108,40 +108,26 @@ definition \<H> :: "nat \<Rightarrow> nat \<Rightarrow> 'a sample_space \<Righta
         g = from_nat_into (bounded_degree_polynomials (GF (p^m)) k) in
     \<lparr> size = p^(m*k), select = (\<lambda>i x. select R ((f' (ring.hash (GF (p^m)) (f x) (g i))) mod p^n))\<rparr>)"
 
-locale \<H>_locale =
-  fixes k d R S
-  assumes size_R_assm: "is_prime_power (size R)"
+locale hash_sample_space =
+  fixes k d p n :: nat 
+  fixes R :: "'a sample_space"
+  assumes p_prime: "Factorial_Ring.prime p"
+  assumes size_R: "size R = p ^ n"
   assumes k_gt_0: "k > 0"
-  defines "S \<equiv> \<H> k d R"
+  assumes n_gt_0: "n > 0"
 begin
 
-definition p where "p = fst (split_prime_power (size R))"
-definition n where "n = snd (split_prime_power (size R))"
+abbreviation S where "S \<equiv> \<H> k d R"
 
 lemma p_n_def: "(p,n) = split_prime_power (size R)"
-  unfolding p_def n_def by simp
-
-lemma 
-  n_gt_0: "n > 0" and 
-  p_prime: "Factorial_Ring.prime p" and
-  size_R: "size R = p^n"
-proof -
-  obtain p' n' where a: "n' > 0" "Factorial_Ring.prime p'" and b:"size R = p'^n'"
-    using size_R_assm unfolding is_prime_power_def by auto
-  have "(p,n) = split_prime_power (p'^n')"
-    unfolding p_n_def b by simp
-  also have "... = (p',n')"
-    by (intro split_prime_power a)
-  finally have c:"p= p'" "n = n'"
-    by auto
-  show "n >0"  "Factorial_Ring.prime p" "size R = p^n" using a b c by auto
-qed
+  unfolding size_R
+  by (intro split_prime_power[symmetric] n_gt_0 p_prime)
 
 definition m where "m = (LEAST j. d \<le> p^j \<and> j \<ge> n)"
 definition f where "f = from_nat_into (carrier (GF (p^m)))"
 definition f' where "f' = to_nat_on (carrier (GF (p^m)))"
 
-lemma n_lt_m: "n \<le> m" and d_lt_p_m: "d \<le> p^m" 
+lemma n_lt_m: "n \<le> m" and d_lt_p_m: "d \<le> p^m"
 proof -
   define j :: nat where "j = max n d"
   have "d \<le> 2^d" by simp
@@ -156,7 +142,7 @@ proof -
   ultimately have "d \<le> p^m \<and> m \<ge> n"
     unfolding m_def 
     by (intro LeastI[where P="\<lambda>x. d \<le> p^ x \<and> x \<ge> n" and k="j"]) auto
-  thus "n \<le> m" "d \<le> p^m" 
+  thus "n \<le> m" "d \<le> p^m"
     by auto
 qed
 
@@ -192,7 +178,7 @@ lemma p_m_gt_0: "p^m > 0"
   by (metis p_prime gr0I not_prime_0 power_not_zero)
 
 lemma S_eq: "S = \<lparr> size = p^(m*k), sample_space_select = (\<lambda> i x. select R (f' (cw.hash (f x) (g i)) mod p^n )) \<rparr>"
-  unfolding S_def \<H>_def 
+  unfolding \<H>_def 
   by (simp add:p_n_def[symmetric] m_def[symmetric] f_def[symmetric] g_def f'_def Let_def cw.space_def)
 
 lemma \<H>_size: "size S > 0" 
@@ -312,6 +298,49 @@ proof -
 
   thus ?thesis
     unfolding sample_pmf_def S_eq by simp
+qed
+
+lemma size:  
+  fixes m :: nat
+  assumes "d > 0"
+  defines m_altdef: "m \<equiv> max n (nat \<lceil>log p d\<rceil>)"
+  shows "size S = p^(m*k)"
+proof -
+  have "real d = p powr (log p d)"
+    using assms prime_gt_1_nat[OF p_prime]
+    by (intro powr_log_cancel[symmetric]) auto
+  also have "... \<le> p powr (nat \<lceil>log p d\<rceil>)"
+    using prime_gt_1_nat[OF p_prime] by (intro powr_mono) linarith+
+  also have "... = p^ (nat \<lceil>log p d\<rceil>)"
+    using prime_gt_1_nat[OF p_prime] by (subst powr_realpow) auto
+  also have "... \<le> p^m"
+    using prime_gt_1_nat[OF p_prime] unfolding m_altdef
+    by (intro power_increasing of_nat_mono) auto
+  finally have "d \<le> p ^ m" 
+    by simp
+
+  moreover have "n \<le> m"
+    unfolding m_altdef by simp
+  moreover have "m \<le> y" if "d \<le> p ^ y" "n \<le> y" for y
+  proof -
+    have "log p d \<le> log p (p ^ y)"
+      using assms prime_gt_1_nat[OF p_prime]
+      by (intro iffD2[OF log_le_cancel_iff] that(1) of_nat_mono) auto
+    also have "... = log p (p powr (real y))"
+      using prime_gt_1_nat[OF p_prime] by (subst powr_realpow) auto
+    also have "... = y"
+      using prime_gt_1_nat[OF p_prime] by (intro log_powr_cancel) auto
+    finally have "log p d \<le> y" by simp
+    hence "nat \<lceil>log p d\<rceil> \<le> y"
+      by simp
+    thus "m \<le> y"
+      using that(2) unfolding m_altdef by simp
+  qed
+  ultimately have m_eq: "m = (LEAST j. d \<le> p ^ j \<and> n \<le> j)"
+    by (intro Least_equality[symmetric]) auto
+
+  show ?thesis
+    unfolding S_eq m_def m_eq by simp
 qed
 
 end

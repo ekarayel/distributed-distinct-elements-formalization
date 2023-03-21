@@ -198,6 +198,19 @@ proof -
     by simp
 qed
 
+lemma size:
+  "size (\<E> l \<Lambda> S) =  size S * (16 ^ ((l-1) * nat \<lceil>ln \<Lambda> / ln (19 / 20)\<rceil>))" (is "?L = ?R")
+proof -
+  have "?L = see_size e * see_degree e ^ (l - 1)"
+    unfolding \<E>_alt by simp
+  also have "... = size S *  (16 ^ nat \<lceil>ln \<Lambda> / ln (19 / 20)\<rceil>) ^ (l - 1)"
+    using see_standard unfolding e_def by simp
+  also have "... = size S * (16 ^ ((l-1) * nat \<lceil>ln \<Lambda> / ln (19 / 20)\<rceil>))"
+    unfolding power_mult[symmetric] by (simp add:ac_simps)
+  finally show ?thesis
+    by simp
+qed
+
 end
 
 unbundle no_intro_cong_syntax

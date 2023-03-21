@@ -125,7 +125,7 @@ lemma l_6_9: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A
 proof -
   have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * real Y} \<le>
     measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> >  \<delta> * real Y \<or> t f < s\<^sub>M}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix \<psi> 
     assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>s\<^sub>M.  \<delta> * real Y < \<bar>A_1 \<psi> \<sigma> - real Y\<bar>}"
     assume d:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
@@ -231,7 +231,7 @@ proof -
   also have "... = measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)) \<notin> I)}"
     unfolding I_def by (intro measure_pmf_cong) auto
   also have "... \<le> measure \<Omega> {\<omega>. real(card{i\<in>{..<l}.(\<exists>\<sigma>\<le>s\<^sub>M. A_1 (\<omega> i) \<sigma>\<notin>I)})\<ge> real l/2}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix \<omega>
     assume "\<omega> \<in> set_pmf \<Omega>" "\<omega> \<in> {\<omega>. \<exists>\<sigma>\<le>s\<^sub>M. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I}" 
     then obtain \<sigma> where \<sigma>_def: "median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I" "\<sigma>\<le>s\<^sub>M"
@@ -290,7 +290,7 @@ proof -
   let ?P = "measure \<Omega>"
   have "?L \<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M.  \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)-real Y\<bar>)\<or>s \<omega> A> s\<^sub>M}"
     unfolding \<tau>.simps \<tau>\<^sub>3.simps not_le[symmetric] 
-    by (intro pmf_mono') (auto simp del:s.simps estimate.simps) 
+    by (intro pmf_mono) (auto simp del:s.simps estimate.simps) 
   also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M.  \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>)} + ?P {\<omega>. s \<omega> A> s\<^sub>M}"
     by (intro pmf_add) auto
   also have "...\<le>  \<epsilon>/2 +  \<epsilon>/2"

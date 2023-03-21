@@ -112,7 +112,7 @@ proof -
     (is"?L1 \<le> ?R1") if "t \<in> T" for t
   proof -
     have "?L1 \<le> \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f) - real Y / 2^t\<bar> \<ge>  \<delta>/3 * real Y / 2^t)"
-      by (intro pmf_mono') (auto)
+      by (intro pmf_mono) auto
     also have "... = \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f)-(\<integral>\<omega>. real (r t \<omega>) \<partial> \<Psi>\<^sub>1)\<bar> \<ge> \<delta>/3 * real Y/2^t)"
       by (simp add: r_exp[OF that]) 
     also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) / (\<delta>/3 * real Y / 2^t)^2"
@@ -137,7 +137,7 @@ proof -
     by (auto simp add: set_eq_iff image_iff) 
 
   have "?L \<le> measure \<Psi> {\<psi>. (\<exists>t \<in> T. \<bar>real (r t (fst \<psi>))-real Y/2^t\<bar> > \<delta>/3 * real Y / 2^t)}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix \<psi>
     assume "\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)

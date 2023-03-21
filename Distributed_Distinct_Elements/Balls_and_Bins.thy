@@ -1234,7 +1234,7 @@ proof -
     also have "... \<le> (\<Sum>y\<in>{k+1..m}. (ffact (k-1) (real y-2) / fact (k-1)) * 
       ((\<integral>\<omega>. ffact (k+1) (f \<omega>)\<partial>p) / ffact (k+1) (real y)))"
       using k_ge_2 f_nat
-      by (intro sum_mono mult_left_mono measure_pmf.pmf_markov[OF refl] f_any_integrable 
+      by (intro sum_mono mult_left_mono pmf_markov f_any_integrable 
           divide_nonneg_pos ffact_of_nat_nonneg ffact_pos) auto
     also have "... = (\<integral>\<omega>. ffact (k+1) (f \<omega>) \<partial>p) / fact (k-1) * (\<Sum>y\<in>{k+1..m}.
        ffact (k-1) (real y - 2) / ffact (Suc (Suc (k-1))) (real y))"

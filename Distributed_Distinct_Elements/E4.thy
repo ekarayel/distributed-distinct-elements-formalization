@@ -63,7 +63,7 @@ proof -
       unfolding card_g_R using True by simp
 
     have "?L1 \<le> measure \<Psi>\<^sub>3 {h. \<bar>B.Y h - B.\<mu>\<bar> > 9 * real (card (g ` R f)) / sqrt (card {..<b})}"
-    proof (rule pmf_mono')
+    proof (rule pmf_mono)
       fix h assume "h \<in> {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)}"
       hence b: "\<bar>p (f,g,h) -\<rho> (card (R f))\<bar> >  \<delta>/12 * card (R f)"
         unfolding E\<^sub>4_def by simp
@@ -102,7 +102,7 @@ proof -
   next
     case False
     have "?L1 \<le> measure \<Psi>\<^sub>3 {}"
-    proof (rule pmf_mono')
+    proof (rule pmf_mono)
       fix h assume b:"h \<in> {h. E\<^sub>1 (f, g, h) \<and> E\<^sub>2 (f, g, h) \<and> E\<^sub>3 (f, g, h) \<and> \<not> E\<^sub>4 (f, g, h)}"
       hence "card (R f) \<le> (2/3)*b"
         by (auto intro!: R_bound[simplified])

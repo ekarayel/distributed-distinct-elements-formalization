@@ -93,7 +93,7 @@ proof -
   qed
 
   have "?L \<le> measure \<Psi> {(f,g,h). card (R f) \<le> b \<and> (\<exists> x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix \<psi> assume b:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def:"\<psi> = (f,g,h)" by (metis prod_cases3)
     have "(f,g,h) \<in> sample_set \<Psi>"
@@ -127,7 +127,7 @@ proof -
     proof (cases "card (R f) \<le> b")
       case True
       have "?L1 \<le> measure \<Psi>\<^sub>2 (\<Union> \<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. {g. ?\<beta> \<omega> g})"
-        by (intro pmf_mono') auto
+        by (intro pmf_mono) auto
       also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g})"
         by (intro measure_UNION_le fin_\<alpha>) auto
       also have "... \<le> (\<Sum>\<omega> \<in> {\<omega>. ?\<alpha> \<omega> f}. (1/real (C6*b^2)^2))"

@@ -579,7 +579,7 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:field_simps) 
     also have "... \<le> (\<integral>w. real (card {i \<in> {..<l}. exp (real k) \<le> f (w ! i)}) \<partial>?w) / (\<gamma>*l)"
       using walks_nonempty \<gamma>_l_gt_0
-      by (intro pmf_markov' integrable_measure_pmf_finite) simp_all
+      by (intro pmf_markov integrable_measure_pmf_finite) simp_all
     also have "... = (\<integral>w. (\<Sum>i<l. of_bool (exp(real k) \<le> f (w ! i)))\<partial>?w) / (\<gamma>*l)"
       by (intro_cong "[\<sigma>\<^sub>2 (/)]" more:integral_cong_AE AE_pmfI) (auto simp add:Int_def)
     also have "... = (\<Sum>i<l. (\<integral>w. of_bool (exp(real k) \<le> f (w ! i))\<partial>?w)) / (\<gamma>*l)"
@@ -621,14 +621,14 @@ proof -
 
   have "?L \<le> measure ?w 
     {w. ?a+b*(\<Sum>k=3..<k_max. exp (real k) * card {i\<in>{..<l}. f (w!i)\<ge>exp (real k)}) \<ge> C\<^sub>1*l}"
-    using order_trans[OF _ 2] walks_nonempty by (intro pmf_mono') simp
+    using order_trans[OF _ 2] walks_nonempty by (intro pmf_mono) simp
   also have "... = measure ?w 
     {w. (\<Sum>k=3..<k_max. exp(real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)})\<ge>l}"
     unfolding C\<^sub>1_def b_def[symmetric] using b_gt_0
     by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:algebra_simps)
   also have "... \<le> measure ?w 
     {w. (\<exists>k\<in>{3..<k_max}. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2)}"
-    using 3 by (intro pmf_mono') simp
+    using 3 by (intro pmf_mono) simp
   also have "... = measure ?w 
     (\<Union>k\<in>{3..<k_max}. {w. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2})"
     by (intro_cong "[\<sigma>\<^sub>2 measure]") auto

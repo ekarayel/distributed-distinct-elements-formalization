@@ -332,11 +332,11 @@ proof -
     also have "... \<le> measure \<Psi> 
       {\<psi>. real b*(real c+3)\<le> real b*(real c+2)+ of_int (\<Sum>a\<in>A. max 0 (int (fst \<psi> a) - s\<^sub>M -2^c))}"
       using 2 order_trans unfolding sample_space_alt[OF sample_space_\<Psi>]
-      by (intro pmf_mono') blast
+      by (intro pmf_mono) blast
     also have "... = measure \<Psi> {\<psi>. real b \<le> (\<Sum>a\<in>A. of_int (max 0 (int (fst \<psi> a) - s\<^sub>M -2^c)))}"
       by (intro measure_pmf_cong) (simp add:algebra_simps)
     also have "... \<le> (\<integral>\<psi>. (\<Sum>a\<in>A. of_int (max 0 (int (fst \<psi> a) - s\<^sub>M -2^c))) \<partial>\<Psi>)/real b"
-      using b_min sample_space_\<Psi> by (intro pmf_markov' sum_nonneg) simp_all
+      using b_min sample_space_\<Psi> by (intro pmf_markov sum_nonneg) simp_all
     also have "... = (\<Sum>a\<in>A. (\<integral>\<psi>.  of_int (max 0 (int (fst \<psi> a) - s\<^sub>M -2^c)) \<partial>\<Psi>))/real b"
       using sample_space_\<Psi> by (intro_cong "[\<sigma>\<^sub>2(/)]" more:Bochner_Integration.integral_sum) simp
     also have "... = (\<Sum>a\<in>A. (\<integral>f.  of_int (max 0 (int (f a) - s\<^sub>M -2^c)) \<partial>(map_pmf fst \<Psi>)))/real b"
@@ -401,7 +401,7 @@ proof -
     have "real c \<le> x" 
       using that unfolding c_def by linarith
     hence "?L1 \<le> measure \<Psi> {\<psi>. real c \<le> V \<psi>}"
-      by (intro pmf_mono') auto 
+      by (intro pmf_mono) auto 
     also have "... \<le> 2 powr (-(2^c))"
       by (intro 1)
     also have "... = exp (- (2 ^ c * ln 2))"
@@ -416,7 +416,7 @@ proof -
 
   have "?L \<le> measure \<Omega> {\<omega>. is_too_large (\<tau>\<^sub>2 \<omega> A s\<^sub>M)}"
     using lt_s_too_large
-    by (intro pmf_mono') (simp del:is_too_large.simps \<tau>\<^sub>2.simps s.simps)
+    by (intro pmf_mono) (simp del:is_too_large.simps \<tau>\<^sub>2.simps s.simps)
   also have "... = measure \<Omega> 
     {\<omega>. (\<Sum>(i,j)\<in>{..<l}\<times>{..<b}. \<lfloor>log 2 (of_int (max (\<tau>\<^sub>2 \<omega> A s\<^sub>M i j) (-1)) + 2)\<rfloor>) > C3 * b *l}"
     by (simp del:\<tau>\<^sub>2.simps)
@@ -434,7 +434,7 @@ proof -
   also have "... = measure \<Omega> {\<omega>. (\<Sum>i<l. V (\<omega> i)) > of_int (C3-3) * real l}"
     by (simp add:sum.distrib algebra_simps)
   also have "... \<le> measure \<Omega> {\<omega>. (\<Sum>i<l. V (\<omega> i)) \<ge> C\<^sub>1 * real l}"
-    unfolding C3_def using C\<^sub>1_est by (intro pmf_mono') auto
+    unfolding C3_def using C\<^sub>1_est by (intro pmf_mono) auto
   also have "... \<le> exp (- real l)"
     by (intro \<Omega>.deviation_bound l_gt_0 0) (simp_all add: \<Lambda>_def)
   also have "... \<le> exp (- (C5 * ln (2 / \<epsilon>)))"

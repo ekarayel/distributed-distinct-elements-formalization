@@ -43,9 +43,9 @@ proof (cases "log 2 (real Y) \<ge> 8")
     unfolding Z_def by (intro r_var)
 
   have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
-    unfolding t\<^sub>1_def by (intro pmf_mono') (auto simp add:int_of_nat_def)
+    unfolding t\<^sub>1_def by (intro pmf_mono) (auto simp add:int_of_nat_def)
   also have "... \<le> measure \<Psi>\<^sub>1 {f \<in> space \<Psi>\<^sub>1.  (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> \<bar>Z f - (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<bar>}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
     have fin_f_A: "finite (f ` A)" using fin_A finite_imageI by blast
     assume " f \<in> {f. real (Max (f ` A)) < log 2 (real Y) - 8}"
@@ -75,9 +75,9 @@ proof (cases "log 2 (real Y) \<ge> 8")
 next
   case "False"
   have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) < log 2 (real Y) - 8}"
-    unfolding t\<^sub>1_def by (intro pmf_mono') (auto simp add:int_of_nat_def)
+    unfolding t\<^sub>1_def by (intro pmf_mono) (auto simp add:int_of_nat_def)
   also have "... \<le> measure \<Psi>\<^sub>1 {}"
-    using False by (intro pmf_mono') simp
+    using False by (intro pmf_mono) simp
   also have "... = 0"
     by simp
   also have "... \<le> ?R" by simp
@@ -108,9 +108,9 @@ proof -
     by simp
 
   have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) > log 2 (real Y) + 7}"
-    unfolding t\<^sub>1_def  by (intro pmf_mono') (auto simp add:int_of_nat_def)
+    unfolding t\<^sub>1_def  by (intro pmf_mono) (auto simp add:int_of_nat_def)
   also have "... \<le> measure \<Psi>\<^sub>1 {f. Z f \<ge> 1}"
-  proof (rule pmf_mono')
+  proof (rule pmf_mono)
     fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
     assume " f \<in> {f. real (Max (f ` A)) > log 2 (real Y) + 7}"
     hence "real (Max (f ` A)) > log 2 (real Y) + 7" by simp
@@ -131,7 +131,7 @@ proof -
     thus "f \<in> {f. 1 \<le> Z f}" by simp
   qed
   also have "... \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) / 1"
-    using Z_nonneg using \<Psi>\<^sub>1.sample_space by (intro pmf_markov') auto
+    using Z_nonneg using \<Psi>\<^sub>1.sample_space by (intro pmf_markov) auto
   also have "... \<le> ?R"
     using Z_exp by simp
   finally show ?thesis by simp
@@ -148,7 +148,7 @@ proof -
   proof (rule add_mono)
     show "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t\<^sub>1 f)) * real Y < real b/2^16} \<le> 
     measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) > log 2 Y + 16 - b_exp}"
-    proof (rule pmf_mono')
+    proof (rule pmf_mono)
       fix f assume "f \<in> {f. 2 powr real_of_int (- t\<^sub>1 f) * real Y < real b / 2 ^ 16}"
       hence "2 powr real_of_int (- t\<^sub>1 f) * real Y < real b / 2 ^ 16"
         by simp
@@ -167,7 +167,7 @@ proof -
   next
     show "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t\<^sub>1 f) *real Y >real b/2} \<le> 
       measure \<Psi>\<^sub>1 {f. of_int (t\<^sub>1 f) < log 2 Y + 1 - b_exp}"
-    proof (rule pmf_mono')
+    proof (rule pmf_mono)
       fix f assume "f \<in> {f. 2 powr real_of_int (- t\<^sub>1 f) * real Y > real b / 2}"
       hence "2 powr real_of_int (- t\<^sub>1 f) * real Y > real b / 2"
         by simp

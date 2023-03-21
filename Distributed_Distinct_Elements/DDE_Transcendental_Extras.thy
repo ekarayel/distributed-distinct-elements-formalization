@@ -2,6 +2,14 @@ theory DDE_Transcendental_Extras
   imports "Stirling_Formula.Stirling_Formula" "Expander_Graphs.Constructive_Chernoff_Bound"
 begin
 
+lemma ln_min_swap: 
+  "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (min x y) = min (ln x) (ln y)"
+  using ln_less_cancel_iff by fastforce
+
+lemma ln_max_swap: 
+  "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (max x y) = max (ln x) (ln y)"
+  using ln_le_cancel_iff by fastforce
+
 lemma fact_lower_bound:
   "sqrt(2*pi*n)*(n/exp(1))^n \<le> fact n" (is "?L \<le> ?R")
 proof (cases "n > 0")
