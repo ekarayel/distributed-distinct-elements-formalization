@@ -1,7 +1,6 @@
 theory Distributed_Distinct_Elements_Tail_Bounds
   imports 
     DDE_Preliminary
-    DDE_Transcendental_Extras 
     Expander_Graphs.Expander_Graphs_Definition 
     Expander_Graphs.Expander_Graphs_Walks
     "HOL-Decision_Procs.Approximation"

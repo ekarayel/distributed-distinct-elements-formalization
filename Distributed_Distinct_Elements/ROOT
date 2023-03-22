@@ -3,15 +3,27 @@ chapter AFP
 session Distributed_Distinct_Elements (AFP) = "HOL-Probability" +
   options [timeout = 1200]
   sessions
-    Median_Method
-    Universal_Hash_Families
-    Frequency_Moments
+    Expander_Graphs
+    Discrete_Summation
+    Stirling_Formula
   theories
     F0
     E1
     E2
     E3
     E4
+    DDE_Cutoff_Level
+    DDE_Accuracy_With_Cutoff
+    DDE_Accuracy_Without_Cutoff
     DDE_Preliminary
+    DDE_Cutoff_Level
+    Distributed_Distinct_Elements_Outer_Algorithm
+    Distributed_Distinct_Elements_Tail_Bounds
+    Balls_and_Bins
     Pseudorandom_Combinators
     Pseudorandom_Combinators_Hash
+    Pseudorandom_Combinators_Expander
+    Poly_Extras
+  document_files
+    "root.tex"
+    "root.bib"

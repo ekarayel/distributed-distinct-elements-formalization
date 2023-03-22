@@ -1,3 +1,7 @@
+section \<open>Preliminary Results\<close>
+
+text \<open>This section contains various short preliminary results used in the sections below.\<close>
+
 theory DDE_Preliminary
   imports 
     Frequency_Moments.Frequency_Moments_Preliminary_Results
@@ -6,26 +10,12 @@ theory DDE_Preliminary
     Expander_Graphs.Extra_Congruence_Method
     Expander_Graphs.Constructive_Chernoff_Bound
     Frequency_Moments.Landau_Ext
+    Stirling_Formula.Stirling_Formula
 begin
 
 unbundle intro_cong_syntax
 
-lemma pmf_exp_of_fin_function:
-  assumes "finite A" "g ` set_pmf p \<subseteq> A"
-  shows "(\<integral>\<omega>. f (g \<omega>) \<partial>p) = (\<Sum>y \<in> A. f y * measure p {\<omega>. g \<omega> = y})"
-    (is "?L = ?R")
-proof -
-  have "?L = integral\<^sup>L (map_pmf g p) f"
-    using integral_map_pmf assms by simp
-  also have "... = (\<Sum>a\<in>A. f a * pmf (map_pmf g p) a)"
-    using assms
-    by (intro integral_measure_pmf_real) auto
-  also have " ... = (\<Sum>y \<in> A. f y * measure p (g -` {y}))"
-    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) 
-  also have "... = ?R"
-    by (intro sum.cong) (auto simp add: vimage_def) 
-  finally show ?thesis by simp
-qed
+text \<open>Simplified versions of measure theoretic results for pmfs:\<close> 
 
 lemma measure_pmf_cong:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<longleftrightarrow> x \<in> Q"
@@ -44,7 +34,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma  pmf_rev_mono:
+lemma pmf_rev_mono:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<notin> Q \<Longrightarrow> x \<notin> P"
   shows "measure p P \<le> measure p Q"
   using assms by (intro pmf_mono) blast
@@ -93,6 +83,26 @@ proof -
     by (subst map_fst_pair_pmf) simp
   finally show ?thesis by simp
 qed
+
+lemma pmf_exp_of_fin_function:
+  assumes "finite A" "g ` set_pmf p \<subseteq> A"
+  shows "(\<integral>\<omega>. f (g \<omega>) \<partial>p) = (\<Sum>y \<in> A. f y * measure p {\<omega>. g \<omega> = y})"
+    (is "?L = ?R")
+proof -
+  have "?L = integral\<^sup>L (map_pmf g p) f"
+    using integral_map_pmf assms by simp
+  also have "... = (\<Sum>a\<in>A. f a * pmf (map_pmf g p) a)"
+    using assms
+    by (intro integral_measure_pmf_real) auto
+  also have " ... = (\<Sum>y \<in> A. f y * measure p (g -` {y}))"
+    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) 
+  also have "... = ?R"
+    by (intro sum.cong) (auto simp add: vimage_def) 
+  finally show ?thesis by simp
+qed
+
+text \<open>Cardinality rules for distinct/ordered pairs of a set without the finiteness constraint - to 
+use in simplification:\<close>
 
 lemma card_distinct_pairs:
   "card {x \<in> B \<times> B. fst x \<noteq> snd x} = card B^2 - card B" (is "card ?L = ?R")
@@ -156,6 +166,9 @@ next
   then show ?thesis using False by simp
 qed
 
+text \<open>The following are versions of the mean value theorem, where the interval endpoints may be
+reversed.\<close>
+
 lemma MVT_symmetric:
   assumes "\<And>x. \<lbrakk>min a b \<le> x; x \<le> max a b\<rbrakk> \<Longrightarrow> DERIV f x :> f' x"
   shows "\<exists>z::real. min a b \<le> z \<and> z \<le> max a b \<and> (f b - f a = (b - a) * f' z)"
@@ -202,6 +215,52 @@ proof -
     using c z(1,2) by auto
   thus ?thesis using z(3) by auto
 qed
+
+text \<open>Ln is monotone on the positive numbers and thus commutes with min and max:\<close>
+lemma ln_min_swap: 
+  "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (min x y) = min (ln x) (ln y)"
+  using ln_less_cancel_iff by fastforce
+
+lemma ln_max_swap: 
+  "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (max x y) = max (ln x) (ln y)"
+  using ln_le_cancel_iff by fastforce
+
+text \<open>Loose lower bounds for the factorial fuction:.\<close>
+
+lemma fact_lower_bound:
+  "sqrt(2*pi*n)*(n/exp(1))^n \<le> fact n" (is "?L \<le> ?R")
+proof (cases "n > 0")
+  case True
+  have "ln ?L = ln (2*pi*n)/2 + n * ln n - n"
+    using True by (simp add: ln_mult ln_sqrt ln_realpow ln_div algebra_simps)
+  also have "... \<le> ln ?R" 
+    by (intro Stirling_Formula.ln_fact_bounds True)
+  finally show ?thesis 
+    using iffD1[OF ln_le_cancel_iff] True by simp
+next
+  case False
+  then show ?thesis by simp
+qed
+
+lemma fact_lower_bound_1:
+  assumes "n > 0"
+  shows "(n/exp 1)^n \<le> fact n" (is "?L \<le> ?R")
+proof -
+  have "2 * pi \<ge> 1" using pi_ge_two by auto
+  moreover have "n \<ge> 1" using assms by simp
+  ultimately have "2 * pi * n \<ge> 1*1" 
+    by (intro mult_mono) auto
+  hence a:"2 * pi * n \<ge> 1" by simp 
+
+  have "?L = 1 * ?L" by simp
+  also have "... \<le> sqrt(2 * pi * n) * ?L"
+    using a by (intro mult_right_mono) auto
+  also have "... \<le> ?R"
+    using fact_lower_bound by simp
+  finally show ?thesis by simp
+qed
+
+text \<open>Rules to handle O-notation with multiple variables, where some filters may be towards zero:\<close>
 
 lemma real_inv_at_right_0_inf:
   "\<forall>\<^sub>F x in at_right (0::real). c \<le> 1 / x"

@@ -1,0 +1,42 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{isabelle,isabellesym}
+\usepackage[top=1in, bottom=1in, left=0.8in, right=0.8in]{geometry}
+
+\usepackage{amssymb}
+\usepackage{pdfsetup}
+\urlstyle{rm}
+\isabellestyle{it}
+
+\begin{document}
+
+\title{Distributed Distinct Elements}
+\author{Emin Karayel}
+\maketitle
+
+\abstract{This entry formalizes a randomized cardinality esimation data structure with 
+asymptotically optimal space usage. It is inspired by the streaming algorithm presented by 
+B\l{}asiok~\cite{blasiok2020} in 2018. His work closed the gap between the best-known lower
+bound and upper bound after a long line of research started by Flajolet and 
+Martin~\cite{flajolet1982} in 1984 and was to first to apply expander graphs (in addition to hash
+families) to the problem. The formalized algorithm has two improvements compared to the 
+algorithm by B\l{}asiok. It supports operation in parallel mode, and it relies on a simpler 
+pseudo-random construction avoiding the use of code based extractors.}
+
+\tableofcontents
+
+% sane default for proof documents
+\parindent 0pt\parskip 0.5ex
+\pagebreak
+
+\section{Introduction}
+TODO
+
+\input{session}
+
+
+% optional bibliography
+\bibliographystyle{abbrv}
+\bibliography{root}
+
+\end{document}
