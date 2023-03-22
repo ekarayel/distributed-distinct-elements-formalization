@@ -1,9 +1,9 @@
 theory Distributed_Distinct_Elements_Outer_Algorithm
   imports 
     DDE_Accuracy_With_Cutoff 
-    "Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators"
-    "Frequency_Moments.Landau_Ext"
-    "Landau_Symbols.Landau_More"
+    Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators
+    Frequency_Moments.Landau_Ext
+    Landau_Symbols.Landau_More
 begin
 
 unbundle intro_cong_syntax

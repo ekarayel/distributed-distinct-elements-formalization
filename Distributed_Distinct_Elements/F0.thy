@@ -1,15 +1,11 @@
 theory F0
   imports 
-    "HOL-Library.Log_Nat"
-    "Median_Method.Median"
-    "Pseudorandom_Combinators_Hash"
-    "Pseudorandom_Combinators_Expander"
-    "DDE_Preliminary"
-    "Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators"
+    Pseudorandom_Combinators
+    DDE_Preliminary
+    Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators
 begin
 
 unbundle intro_cong_syntax
-hide_const Discrete_Topology.discrete
 hide_const Abstract_Rewriting.restrict
 
 section \<open>Algorithm\<close>

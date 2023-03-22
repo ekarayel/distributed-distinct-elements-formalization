@@ -1,11 +1,13 @@
+section \<open>Balls and Bins\<close>
+
 theory Balls_and_Bins
-  imports DDE_Preliminary 
+  imports 
+    DDE_Preliminary 
+    Discrete_Summation.Factorials
     "HOL-Combinatorics.Stirling"
     "HOL-Computational_Algebra.Polynomial"
-    Discrete_Summation.Factorials
     "HOL-Decision_Procs.Approximation"
     Poly_Extras
-    DDE_Preliminary
 begin
 
 hide_fact "Henstock_Kurzweil_Integration.integral_sum"

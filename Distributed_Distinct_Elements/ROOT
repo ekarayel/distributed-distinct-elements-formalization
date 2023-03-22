@@ -21,8 +21,6 @@ session Distributed_Distinct_Elements (AFP) = "HOL-Probability" +
     Distributed_Distinct_Elements_Tail_Bounds
     Balls_and_Bins
     Pseudorandom_Combinators
-    Pseudorandom_Combinators_Hash
-    Pseudorandom_Combinators_Expander
     Poly_Extras
   document_files
     "root.tex"
