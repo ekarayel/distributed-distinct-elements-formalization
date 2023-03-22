@@ -1,4 +1,4 @@
-theory F0
+theory Distributed_Distinct_Elements_Inner_Algorithm
   imports 
     Pseudorandom_Combinators
     DDE_Preliminary
