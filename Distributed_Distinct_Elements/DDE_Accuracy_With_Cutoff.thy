@@ -317,7 +317,6 @@ proof -
     by simp
 qed
 
-
 unbundle no_intro_cong_syntax
 
 end

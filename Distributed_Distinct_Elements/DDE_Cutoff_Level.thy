@@ -1,6 +1,6 @@
 theory DDE_Cutoff_Level
   imports 
-    F0
+    Distributed_Distinct_Elements_Inner_Algorithm
     Distributed_Distinct_Elements_Tail_Bounds
 begin
 

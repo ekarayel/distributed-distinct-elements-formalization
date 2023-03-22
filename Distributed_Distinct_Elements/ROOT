@@ -7,11 +7,7 @@ session Distributed_Distinct_Elements (AFP) = "HOL-Probability" +
     Discrete_Summation
     Stirling_Formula
   theories
-    F0
-    E1
-    E2
-    E3
-    E4
+    Distributed_Distinct_Elements_Inner_Algorithm
     DDE_Cutoff_Level
     DDE_Accuracy_With_Cutoff
     DDE_Accuracy_Without_Cutoff
