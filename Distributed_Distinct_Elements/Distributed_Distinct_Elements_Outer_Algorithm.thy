@@ -1,12 +1,26 @@
+section \<open>Outer Algorithm\label{sec:outer_algorithm}\<close>
+
+text \<open>This section introduces the final solution with optimal size space usage. Internally it relies
+on the inner algorithm described in Section~\ref{sec:inner_algorithm}, dependending on the
+paramaters $n, \varepsilon$ and $\delta$ it either uses the inner algorithm directly or if 
+$\varepsilon^{-1}$ is larger than $ln n$ is runs $\frac{\varepsilon^{-1}}{\ln \ln n}$ copies of the
+inner algorithm (with the modified failure probability $\frac{1}{\ln n}$) using an expander to 
+select its seeds and derives the failure probability for the median of the copies of 
+$\frac{1}{\varepsilon}.\<close>
+
 theory Distributed_Distinct_Elements_Outer_Algorithm
   imports 
-    DDE_Accuracy_With_Cutoff 
+    Distributed_Distinct_Elements_Accuracy
     Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators
     Frequency_Moments.Landau_Ext
     Landau_Symbols.Landau_More
 begin
 
 unbundle intro_cong_syntax
+
+text \<open>The following are non-asymptotic hard bounds on the space usage for the sketches and seeds
+repsectively. At the end of the section, I show that the sum is asymptotically in 
+$\mathcal O(\ln( \varepsilon^{-1}) \delta^{-1} + \ln n)$.\<close>
 
 definition "state_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^40 * (ln(1/\<epsilon>)+1)/ \<delta>^2 + log 2 (log 2 n + 3))"
 definition "seed_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^30 + 2^23*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2 + 336*ln (1/\<epsilon>))"
@@ -114,7 +128,7 @@ abbreviation \<Theta> where "\<Theta> \<equiv> \<E> l \<Lambda> I.\<Omega>"
 sublocale \<Theta>: expander_sample_space l \<Lambda> I.\<Omega>
   unfolding expander_sample_space_def using I.\<Omega>.sample_space \<Lambda>_gt_0 l_gt_0 by auto
 
-type_synonym state = "inner_algorithm.f0_state list"
+type_synonym state = "inner_algorithm.state list"
 
 definition encode_state 
   where "encode_state = Lf\<^sub>e I.encode_state l"
@@ -134,6 +148,10 @@ fun estimate :: "state \<Rightarrow> real" where
 
 definition \<tau> :: "nat \<Rightarrow> nat set \<Rightarrow> state" 
   where "\<tau> \<theta> A = map (\<lambda>i. I.\<tau> (select \<Theta> \<theta> i) A) [0..<l]"
+
+text \<open>The following three theorems verify the correctness of the algorithm. The term @{term "\<tau>"}
+is a mathematical description of the sketch for a given subset, while @{term "single"}, 
+@{term "merge"} are the actual functions that compute the sketches.\<close>
 
 theorem merge_result: "merge (\<tau> \<omega> A) (\<tau> \<omega> B) = \<tau> \<omega> (A \<union> B)" (is "?L = ?R")
 proof -
@@ -552,7 +570,7 @@ lemma evt_\<epsilon>_1: "\<forall>\<^sub>F x in F. 0 \<le> ln (1 / \<epsilon>_of
   by (intro eventually_mono[OF evt_\<epsilon>[of "1"]] ln_ge_zero) simp
 
 theorem asymptotic_state_space_complexity:
-  "state_space_usage \<in> O[at_top \<times>\<^sub>F at_right 0 \<times>\<^sub>F at_right 0](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)/\<delta>^2 + ln (ln n))"
+  "state_space_usage \<in> O[F](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)/\<delta>^2 + ln (ln n))"
   (is "_ \<in> O[?F](?rhs)")
 proof -
 
@@ -598,7 +616,7 @@ proof -
 qed
 
 theorem asymptotic_seed_space_complexity:
-  "seed_space_usage \<in> O[at_top \<times>\<^sub>F at_right 0 \<times>\<^sub>F at_right 0](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)+ln (1/\<delta>)^2 + ln n)"
+  "seed_space_usage \<in> O[F](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)+ln (1/\<delta>)^2 + ln n)"
   (is "_ \<in> O[?F](?rhs)")
 proof -
   have 7: "\<forall>\<^sub>F x in ?F. 0 \<le> (ln (1 / \<delta>_of x))\<^sup>2"
@@ -672,7 +690,8 @@ proof -
       (simp_all add:power_divide prod_filter_eq_bot)
 
   have 12: "(\<lambda>_. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x))"
-    unfolding var_simps by (intro bigo_prod_1 bigo_prod_2 bigo_inv) (simp_all add:prod_filter_eq_bot)
+    unfolding var_simps 
+    by (intro bigo_prod_1 bigo_prod_2 bigo_inv) (simp_all add:prod_filter_eq_bot)
 
   have 2: "state_space_usage \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (ln (n_of x)))"
     using asymptotic_state_space_complexity unfolding \<epsilon>_of_def \<delta>_of_def n_of_def
@@ -709,7 +728,6 @@ proof -
   also have "... = O[?F](?rhs)"
     unfolding \<epsilon>_of_def \<delta>_of_def n_of_def
     by (simp add:case_prod_beta')
-
   finally show ?thesis by simp
 qed
 

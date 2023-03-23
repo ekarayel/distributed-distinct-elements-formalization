@@ -1,6 +1,8 @@
-theory DDE_Cutoff_Level
+section \<open>Cutoff Level\<close>
+
+theory Distributed_Distinct_Elements_Cutoff_Level
   imports 
-    Distributed_Distinct_Elements_Inner_Algorithm
+    Distributed_Distinct_Elements_Accuracy_Without_Cutoff
     Distributed_Distinct_Elements_Tail_Bounds
 begin
 

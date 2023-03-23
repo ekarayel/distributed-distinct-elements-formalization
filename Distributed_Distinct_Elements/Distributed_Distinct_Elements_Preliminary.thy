@@ -2,7 +2,7 @@ section \<open>Preliminary Results\<close>
 
 text \<open>This section contains various short preliminary results used in the sections below.\<close>
 
-theory DDE_Preliminary
+theory Distributed_Distinct_Elements_Preliminary
   imports 
     Frequency_Moments.Frequency_Moments_Preliminary_Results
     Frequency_Moments.Product_PMF_Ext

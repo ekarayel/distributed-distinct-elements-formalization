@@ -1,11 +1,112 @@
-theory DDE_Accuracy_Without_Cutoff
+section \<open>Accuracy without cutoff\<close>
+
+theory Distributed_Distinct_Elements_Accuracy_Without_Cutoff
   imports 
     Distributed_Distinct_Elements_Inner_Algorithm 
-    Balls_and_Bins
+    Distributed_Distinct_Elements_Balls_and_Bins
 begin
 
-context inner_algorithm_fix_A
+locale inner_algorithm_fix_A = inner_algorithm +
+  fixes A
+  assumes A_range: "A \<subseteq> {..<n}"
+  assumes A_nonempty: "{} \<noteq> A"
 begin
+
+definition Y where "Y = card A"
+
+definition s\<^sub>M where "s\<^sub>M = nat (\<lceil>log 2 Y\<rceil> - b_exp)"
+
+definition t\<^sub>1 :: "(nat \<Rightarrow> nat) \<Rightarrow> int" 
+  where "t\<^sub>1 f = int (Max (f ` A)) - b_exp + 9"
+
+definition t :: "(nat \<Rightarrow> nat) \<Rightarrow> nat"
+  where "t f = nat (t\<^sub>1 f)"
+
+definition R :: "(nat \<Rightarrow> nat) \<Rightarrow> nat set"
+  where "R f = {a. a \<in> A \<and> f a \<ge> t f}"
+
+definition r :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> nat"
+  where "r x f = card {a. a \<in> A \<and> f a \<ge> x}"
+
+definition p where "p = (\<lambda>(f,g,h). card {j\<in> {..<b}. \<tau>\<^sub>1 (f,g,h) A 0 j \<ge> t f})"
+
+definition A\<^sub>S where "A\<^sub>S = (\<lambda>(f,g,h). 2 ^ t f * \<rho>_inv (p (f,g,h)))"
+
+lemma fin_A: "finite A"
+  using A_range finite_nat_iff_bounded by auto
+
+lemma Y_le_n: "Y \<le> n"
+proof -
+  have "card A \<le> card {..<n}" 
+    by (intro card_mono A_range) simp
+  thus ?thesis
+    unfolding Y_def  by simp
+qed
+
+lemma Y_ge_1: "Y \<ge> 1"
+  unfolding Y_def 
+  using fin_A A_nonempty by (simp add: leI)
+
+lemma of_bool_square: "(of_bool x)\<^sup>2 = ((of_bool x)::real)"
+  by (cases x, auto)
+
+lemma r_eq: "r x f = (\<Sum> a \<in> A.( of_bool( x \<le> f a) :: real))"
+  unfolding r_def of_bool_def sum.If_cases[OF fin_A]
+  by (simp add: Collect_conj_eq)
+
+lemma 
+  shows 
+    r_exp: "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)" and
+    r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
+proof -
+  define V :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> real" where "V = (\<lambda>a f. of_bool (x \<le> f a))"
+
+  have V_exp: "(\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x" 
+    (is "?L = ?R") if "a \<in> A" for a
+  proof -
+    have a_le_n: "a < n"
+      using that A_range by auto
+
+    have "?L = (\<integral>\<omega>. indicator {f. x \<le> f a} \<omega> \<partial> \<Psi>\<^sub>1)"
+      unfolding V_def by (intro integral_cong_AE) auto
+    also have "... = measure (map_pmf (\<lambda>\<omega>. \<omega> a) (sample_pmf \<Psi>\<^sub>1)) {f. x \<le> f}"
+      by simp
+    also have "... = measure (\<G> n_exp) {f. x \<le> f}"
+      unfolding \<Psi>\<^sub>1.\<H>_single[OF a_le_n] by simp
+    also have "... = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x"
+      unfolding \<G>_prob n_exp_def by simp
+    finally show ?thesis by simp
+  qed
+
+  have b:"(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1))" 
+    unfolding r_eq V_def  using \<Psi>\<^sub>1.sample_space
+    by (intro Bochner_Integration.integral_sum) auto 
+  also have "... = (\<Sum> a \<in> A.  of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x)"
+    using V_exp by (intro sum.cong) auto
+  also have "... = Y * ( of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)"
+    using Y_def by simp
+  finally show "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/ 2^x)"
+    by simp
+
+  have "(\<integral>\<omega>. (V a \<omega>)^2 \<partial> \<Psi>\<^sub>1) = (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1)" for a
+    unfolding V_def of_bool_square by simp
+
+  hence a:"measure_pmf.variance \<Psi>\<^sub>1 (V a) \<le> measure_pmf.expectation \<Psi>\<^sub>1 (V a)"  for a 
+    using \<Psi>\<^sub>1.sample_space by (subst measure_pmf.variance_eq) auto
+
+  have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> prob_space.indep_vars \<Psi>\<^sub>1 (\<lambda>_. borel) V J" for J
+    unfolding V_def using A_range finite_subset[OF _ fin_A]
+    by (intro prob_space.indep_vars_compose2[where Y="\<lambda>i y. of_bool(x \<le> y)" and M'="\<lambda>_. discrete"]
+        prob_space.k_wise_indep_vars_subset[OF _ \<Psi>\<^sub>1.\<H>_indep]) (auto simp:prob_space_measure_pmf)
+  hence "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) = (\<Sum> a \<in> A. measure_pmf.variance \<Psi>\<^sub>1 (V a))"
+    unfolding r_eq V_def using \<Psi>\<^sub>1.sample_space
+    by (intro measure_pmf.var_sum_pairwise_indep_2 fin_A) (simp_all)
+  also have "... \<le> (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1))"
+    by (intro sum_mono a) 
+  also have "... = (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
+    unfolding b by simp
+  finally show "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)" by simp
+qed
 
 definition E\<^sub>1 where "E\<^sub>1 = (\<lambda>(f,g,h). 2 powr (-t\<^sub>1 f) * Y \<in> {b/2^16..b/2})"
 
@@ -498,7 +599,8 @@ proof -
     "... = (\<integral>f. measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<partial>\<Psi>\<^sub>1)"
     by (subst pair_pmf_prob_left) simp
   also have "... \<le> (\<integral>f. 1/real (2*C6) \<partial>\<Psi>\<^sub>1)"
-  proof (rule pmf_exp_mono[OF integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space] integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]]) 
+  proof (rule pmf_exp_mono[OF integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space] 
+          integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]]) 
     fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
     show "measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<le> 1 / real (2 * C6)" 
       (is "?L1 \<le> ?R1")
@@ -529,7 +631,6 @@ proof -
     unfolding C6_def by simp
   finally show ?thesis by simp
 qed
-
 
 definition E\<^sub>4 where "E\<^sub>4 = (\<lambda>(f,g,h). \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> \<le>  \<delta>/12 * card (R f))"
 
@@ -656,7 +757,7 @@ qed
 
 
 
-lemma \<rho>_inverse: "\<rho>' (\<rho> x) = x"
+lemma \<rho>_inverse: "\<rho>_inv (\<rho> x) = x"
 proof -
   have a:"1-1/b \<noteq> 0" 
     using b_min by simp
@@ -672,7 +773,7 @@ proof -
   moreover have "ln (1-1/b) < 0" 
     using b_min by (subst ln_less_zero_iff) auto
   ultimately show ?thesis
-    using \<rho>'_def by simp
+    using \<rho>_inv_def by simp
 qed
 
 lemma rho_mono:
@@ -718,13 +819,13 @@ proof -
     by simp
 qed
 
-definition \<rho>'_deriv :: "real \<Rightarrow> real"
-  where "\<rho>'_deriv x = -1 / (real b * (1-x / real b) * ln (1 - 1 / real b))"
+definition \<rho>_inv' :: "real \<Rightarrow> real"
+  where "\<rho>_inv' x = -1 / (real b * (1-x / real b) * ln (1 - 1 / real b))"
 
-lemma \<rho>'_deriv_bound:
+lemma \<rho>_inv'_bound:
   assumes "x \<ge> 0"
   assumes "x \<le> 59/90*b"
-  shows "\<bar>\<rho>'_deriv x\<bar> \<le> 4"
+  shows "\<bar>\<rho>_inv' x\<bar> \<le> 4"
 proof -
   have c:"ln (1 - 1 / real b) < 0"
     using b_min
@@ -747,26 +848,26 @@ proof -
     by (simp add:algebra_simps)
   finally have "3 * (real b * (1 - x / real b) * (-ln (1 - 1 / real b))) \<ge> 1" by simp
   hence "3 * (real b * (1 - x / real b) * ln (1 - 1 / real b)) \<le> -1" by simp
-  hence "\<rho>'_deriv x \<le> 3"
-    unfolding \<rho>'_deriv_def using d
+  hence "\<rho>_inv' x \<le> 3"
+    unfolding \<rho>_inv'_def using d
     by (subst neg_divide_le_eq) auto
-  moreover have "\<rho>'_deriv x > 0" 
-    unfolding \<rho>'_deriv_def using d by (intro divide_neg_neg) auto
+  moreover have "\<rho>_inv' x > 0" 
+    unfolding \<rho>_inv'_def using d by (intro divide_neg_neg) auto
   ultimately show ?thesis by simp
 qed
 
-lemma \<rho>'_deriv:
+lemma \<rho>_inv':
   fixes x :: real
   assumes "x < b"
-  shows "DERIV \<rho>' x :> \<rho>'_deriv x" 
+  shows "DERIV \<rho>_inv x :> \<rho>_inv' x" 
 proof -
   have "DERIV (ln \<circ> (\<lambda>x. (1 - x / real b))) x :> 1 / (1-x / real b) * (0 -1/b)"
     using assms b_min
     by (intro DERIV_chain DERIV_ln_divide DERIV_cdivide derivative_intros) auto
-  hence "DERIV \<rho>' x :> (1 / (1-x / real b) * (-1/b)) / ln (1-1/real b)"
-    unfolding comp_def \<rho>'_def by (intro DERIV_cdivide) auto
+  hence "DERIV \<rho>_inv x :> (1 / (1-x / real b) * (-1/b)) / ln (1-1/real b)"
+    unfolding comp_def \<rho>_inv_def by (intro DERIV_cdivide) auto
   thus ?thesis
-    by (simp add:\<rho>'_deriv_def algebra_simps)
+    by (simp add:\<rho>_inv'_def algebra_simps)
 qed
 
 lemma l_6_8: "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
@@ -814,26 +915,26 @@ proof -
       unfolding I_def interval_def by simp
     moreover have "59 / 90 * b < b" 
       using b_min by simp
-    hence "DERIV \<rho>' x :> \<rho>'_deriv x" if "x \<in> I" for x
-      using that I_def by (intro \<rho>'_deriv) simp 
+    hence "DERIV \<rho>_inv x :> \<rho>_inv' x" if "x \<in> I" for x
+      using that I_def by (intro \<rho>_inv') simp 
     ultimately obtain \<xi> :: real where \<xi>_def: "\<xi> \<in> I"
-      "\<rho>' (p(f,g,h)) - \<rho>' (\<rho> (card (R f))) = (p (f,g,h) - \<rho>(card (R f))) * \<rho>'_deriv \<xi>" 
+      "\<rho>_inv (p(f,g,h)) - \<rho>_inv (\<rho> (card (R f))) = (p (f,g,h) - \<rho>(card (R f))) * \<rho>_inv' \<xi>" 
       using p_in_I MVT_interval by blast
 
-    have "\<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> = \<bar>\<rho>'(p (f,g,h)) - \<rho>'(\<rho>(card (R f)))\<bar>"
+    have "\<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> = \<bar>\<rho>_inv(p (f,g,h)) - \<rho>_inv(\<rho>(card (R f)))\<bar>"
       by (subst \<rho>_inverse) simp
-    also have "... = \<bar>(p (f,g,h) - \<rho> (card (R f)))\<bar> * \<bar>\<rho>'_deriv \<xi> \<bar>"
+    also have "... = \<bar>(p (f,g,h) - \<rho> (card (R f)))\<bar> * \<bar>\<rho>_inv' \<xi> \<bar>"
       using \<xi>_def(2) abs_mult by simp
     also have "... \<le> \<bar>p (f,g,h) - \<rho> (card (R f))\<bar> * 4"
       using \<xi>_def(1) I_def
-      by (intro mult_left_mono \<rho>'_deriv_bound) auto
+      by (intro mult_left_mono \<rho>_inv'_bound) auto
     also have "... \<le> ( \<delta>/12 * card (R f)) * 4"
       using assms(4) E\<^sub>4_def by (intro mult_right_mono) auto
     also have "... = \<delta>/3 * card (R f)" by simp
-    finally have b: "\<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> \<le> \<delta>/3 * card (R f)"  by simp
+    finally have b: "\<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> \<le> \<delta>/3 * card (R f)"  by simp
 
-    have "\<bar>\<rho>'(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> 
-      \<bar>\<rho>'(p (f,g,h)) - card (R f)\<bar> + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>" 
+    have "\<bar>\<rho>_inv(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> 
+      \<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>" 
       by simp
     also have "... \<le> \<delta>/3 * card (R f) + \<bar>card (R f) - Y / 2 ^ (t f)\<bar>"
       by (intro add_mono b) auto
@@ -854,10 +955,10 @@ proof -
     also have "... \<le> 1 * \<delta> * real Y / 2^t f" 
       using \<delta>_gt_0 by (intro mult_mono divide_right_mono) auto
     also have "... =  \<delta> * real Y / 2^t f" by simp
-    finally have a:"\<bar>\<rho>'(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> \<delta> * Y / 2 ^ (t f)"
+    finally have a:"\<bar>\<rho>_inv(p (f,g,h)) - Y / 2 ^ (t f)\<bar> \<le> \<delta> * Y / 2 ^ (t f)"
       by simp
 
-    have "\<bar>A\<^sub>S (f, g, h) - real Y\<bar> = \<bar>2 ^ (t f)\<bar> * \<bar>\<rho>'(p (f,g,h)) - real Y / 2 ^ (t f)\<bar>"
+    have "\<bar>A\<^sub>S (f, g, h) - real Y\<bar> = \<bar>2 ^ (t f)\<bar> * \<bar>\<rho>_inv(p (f,g,h)) - real Y / 2 ^ (t f)\<bar>"
       unfolding A\<^sub>S_def by (subst abs_mult[symmetric]) 
         (simp add:algebra_simps powr_add[symmetric])
     also have "... \<le> 2 ^ (t f) * (\<delta> * Y / 2 ^ (t f))"

@@ -1,8 +1,11 @@
-theory DDE_Accuracy_With_Cutoff
-  imports DDE_Accuracy_Without_Cutoff DDE_Cutoff_Level
+section \<open>Accuracy with cutoff\<close>
+
+theory Distributed_Distinct_Elements_Accuracy
+  imports 
+    Distributed_Distinct_Elements_Accuracy_Without_Cutoff 
+    Distributed_Distinct_Elements_Cutoff_Level
 begin
 
-hide_const Quantum.Z
 unbundle intro_cong_syntax
 
 lemma (in semilattice_set) Union:
@@ -52,7 +55,7 @@ definition p_1 (* tilde p *)
   where "p_1 \<psi> \<sigma> = card {j\<in> {..<b}. \<tau>\<^sub>1 \<psi> A \<sigma> j + \<sigma> \<ge> t_2 \<psi> \<sigma>}"
 
 definition A_1 (* tilde A* *)
-  where "A_1 \<psi> \<sigma> = 2 ^ t_2 \<psi> \<sigma> * \<rho>' (p_1 \<psi> \<sigma>)"
+  where "A_1 \<psi> \<sigma> = 2 ^ t_2 \<psi> \<sigma> * \<rho>_inv (p_1 \<psi> \<sigma>)"
 
 lemma t_2_eq_t:
   assumes "(f,g,h) \<in> sample_set \<Psi>"
@@ -184,8 +187,8 @@ proof -
   have "?L = 2 powr t * ln (1-p/b) / ln(1-1/b)"
     unfolding estimate1.simps \<tau>.simps \<tau>\<^sub>3.simps 
     by (simp only:t_def p_def Let_def)
-  also have "... = 2 powr (t_2 (\<omega> j) \<sigma>) * \<rho>' p"
-    unfolding 3 \<rho>'_def by (simp del:s.simps)
+  also have "... = 2 powr (t_2 (\<omega> j) \<sigma>) * \<rho>_inv p"
+    unfolding 3 \<rho>_inv_def by (simp del:s.simps)
   also have "... = ?R"
     unfolding A_1_def 3 4 by (simp add:powr_realpow del:s.simps)
   finally show ?thesis

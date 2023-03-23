@@ -1,6 +1,8 @@
+section \<open>Specializaed Tail bounds for expander walks\<close>
+
 theory Distributed_Distinct_Elements_Tail_Bounds
   imports 
-    DDE_Preliminary
+    Distributed_Distinct_Elements_Preliminary
     Expander_Graphs.Expander_Graphs_Definition 
     Expander_Graphs.Expander_Graphs_Walks
     "HOL-Decision_Procs.Approximation"

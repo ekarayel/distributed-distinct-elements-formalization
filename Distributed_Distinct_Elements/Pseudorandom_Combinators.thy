@@ -1,14 +1,33 @@
-section \<open>Combinators for pseudo-random objects\<close>
+section \<open>Combinators for Pseudo-random Objects\<close>
+
+text \<open>This section introduces a combinator library for pseudo-random objects. Each object can
+described as a sample space, a function from an initial segment of the natural numbers that selects
+a value (or data structure.) Semantically they are multisets with the natural interpretation as a
+probability space (each element is selected with a probability proportional to its occurence count
+in the multiset). Operationally the selection procedure describes an algorithm to sample from the
+space.
+
+After general definitions and lemmas basic sample spaces, such as chosing a natural uniformly in
+an initial segment, a product construction the main pseudo-random objects hash families and 
+expander graphs are introduces. In both cases the range is itself an arbitrary sample space, such
+that it is for example possible to construct a pseudo-random object that samples seeds for hash
+families using an expander walk.
+
+The definitions @{term "\<Psi>"} in Section~\ref{sec:inner_algorithm} and @{term "\<Theta>"} in
+Section~\ref{sec:outer_algorithm} are good examples.
+
+A nice introduction into such constructions has been published by Goldreich~\cite{goldreich2011}.\<close>
+
+subsection \<open>Definitions and General Lemmas\<close>
 
 theory Pseudorandom_Combinators
   imports
     Finite_Fields.Card_Irreducible_Polynomials
     Universal_Hash_Families.Carter_Wegman_Hash_Family
     Frequency_Moments.Product_PMF_Ext
-    DDE_Preliminary
+    Distributed_Distinct_Elements_Preliminary
     Expander_Graphs.Expander_Graphs_Strongly_Explicit
 begin
-
 
 unbundle intro_cong_syntax
 hide_const "Quantum.T"
@@ -74,6 +93,8 @@ proof -
     by (intro integrable_measure_pmf_finite)
 qed
 
+subsection \<open>Basic sample spaces\<close>
+
 text \<open>Sample space for uniformly selecting a natural number less than a given bound:\<close>
 
 definition nat_sample_space :: "nat \<Rightarrow> nat sample_space" ("[_]\<^sub>S")
@@ -83,6 +104,12 @@ lemma nat_sample_pmf:
   "sample_pmf ([x]\<^sub>S) = pmf_of_set {..<x}"
   unfolding nat_sample_space_def sample_pmf_def by simp
 
+lemma nat_sample_space[simp]:
+  assumes "n > 0"
+  shows "sample_space [n]\<^sub>S"
+  using assms
+  unfolding sample_space_def nat_sample_space_def by simp
+
 text \<open>Sample space for the product of two sample spaces:\<close>
 
 definition prod_sample_space :: 
@@ -91,12 +118,6 @@ definition prod_sample_space ::
     "prod_sample_space s t = 
       \<lparr> size = size s * size t, 
         select = (\<lambda>i. (select s (i mod (size s)), select t (i div (size s)))) \<rparr>"
-
-lemma nat_sample_space[simp]:
-  assumes "n > 0"
-  shows "sample_space [n]\<^sub>S"
-  using assms
-  unfolding sample_space_def nat_sample_space_def by simp
 
 lemma split_pmf_mod_div': 
   assumes "a > (0::nat)"
@@ -203,7 +224,7 @@ lemma prod_sample_set:
   shows "sample_set (S \<times>\<^sub>S T) = sample_set S \<times> sample_set T" (is "?L = ?R")
   using assms by (simp add:sample_space_alt prod_sample_pmf)
 
-text \<open>Sample space for hash families\<close>
+subsection \<open>Hash Families\<close>
 
 lemma indep_vars_map_pmf:
   assumes "prob_space.indep_vars (measure_pmf p) (\<lambda>_. discrete) (\<lambda>i \<omega>. X' i (f \<omega>)) I"
@@ -543,7 +564,7 @@ qed
 
 end
 
-subsection "Sample space with a geometric distribution"
+text \<open>Sample space with a geometric distribution\<close>
 
 fun count_zeros :: "nat \<Rightarrow> nat \<Rightarrow> nat" where 
   "count_zeros 0 k = 0" |
@@ -644,8 +665,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-text \<open>Sample space for expander walks:\<close>
-
+subsection \<open>Expander Walks\<close>
 
 definition \<E> :: "nat \<Rightarrow> real \<Rightarrow> 'a sample_space \<Rightarrow> (nat \<Rightarrow> 'a) sample_space"
   where "\<E> l \<Lambda> S = (let e = see_standard (size S) \<Lambda> in 

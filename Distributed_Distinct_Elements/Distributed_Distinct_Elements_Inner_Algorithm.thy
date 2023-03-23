@@ -1,14 +1,14 @@
+section \<open>Inner Algorithm\label{sec:inner_algorithm}\<close>
+
 theory Distributed_Distinct_Elements_Inner_Algorithm
   imports 
     Pseudorandom_Combinators
-    DDE_Preliminary
+    Distributed_Distinct_Elements_Preliminary
     Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators
 begin
 
 unbundle intro_cong_syntax
 hide_const Abstract_Rewriting.restrict
-
-section \<open>Algorithm\<close>
 
 definition C2 :: real where "C2 = 3^2*2^23"
 definition C3 :: int where "C3 = 33"
@@ -30,12 +30,10 @@ definition l where "l = nat \<lceil>C5 * ln (2/ \<epsilon>)\<rceil>"
 definition k where "k = nat \<lceil>7.5*ln b + 16\<rceil>"
 definition \<Lambda> :: real where "\<Lambda> = min (1/16) (exp (-l * ln l^3))"
 definition \<rho> :: "real \<Rightarrow> real" where "\<rho> x = b * (1 - (1-1/b) powr x)"
-definition \<rho>' :: "real \<Rightarrow> real" where "\<rho>' x = ln (1-x/b) / ln (1-1/b)"
+definition \<rho>_inv :: "real \<Rightarrow> real" where "\<rho>_inv x = ln (1-x/b) / ln (1-1/b)"
 
 lemma l_lbound: "C5 * ln (2 / \<epsilon>) \<le> l"
   unfolding l_def by linarith
-
-
 
 lemma k_min: "7.5 * ln (real b) + 16 \<le> real k"
   unfolding k_def by linarith
@@ -132,22 +130,22 @@ definition \<Psi> where "\<Psi> = \<Psi>\<^sub>1 \<times>\<^sub>S \<Psi>\<^sub>2
 
 abbreviation \<Omega> where "\<Omega> \<equiv> \<E> l \<Lambda> \<Psi>"
 
-type_synonym f0_state = "(nat \<Rightarrow> nat \<Rightarrow> int) \<times> (nat)"
+type_synonym state = "(nat \<Rightarrow> nat \<Rightarrow> int) \<times> (nat)"
 
 fun is_too_large :: "(nat \<Rightarrow> nat \<Rightarrow> int) \<Rightarrow> bool" where
   "is_too_large B = ((\<Sum> (i,j) \<in> {..<l} \<times> {..<b}. \<lfloor>log 2 (max (B i j) (-1) + 2)\<rfloor>) > C3 * b * l)" 
 
-fun compress_step :: "f0_state \<Rightarrow> f0_state" where
+fun compress_step :: "state \<Rightarrow> state" where
   "compress_step (B,s) = (\<lambda> i j. max (B i j - 1) (-1), s+1)"
 
-function compress :: "f0_state \<Rightarrow> f0_state" where
+function compress :: "state \<Rightarrow> state" where
   "compress (B,s) = (
     if is_too_large B 
       then (compress (compress_step (B,s)))
       else (B,s))"
   by auto
 
-fun compress_termination_measure :: "f0_state \<Rightarrow> nat" where
+fun compress_termination_measure :: "state \<Rightarrow> nat" where
   "compress_termination_measure (B,s) = (\<Sum> (i,j) \<in> {..<l} \<times> {..<b}. nat (B i j + 1))"
 
 lemma compress_termination: 
@@ -181,30 +179,30 @@ termination compress
   using measure_def compress_termination
   by (relation "Wellfounded.measure (compress_termination_measure)", auto)
 
-fun merge1 :: "f0_state \<Rightarrow> f0_state \<Rightarrow> f0_state" where
+fun merge1 :: "state \<Rightarrow> state \<Rightarrow> state" where
   "merge1 (B1,s1) (B2, s2) = (
     let s = max s1 s2 in (\<lambda> i j. max (B1 i j + s1 - s) (B2 i j + s2 -s), s))"
 
-fun merge :: "f0_state \<Rightarrow> f0_state \<Rightarrow> f0_state" where
+fun merge :: "state \<Rightarrow> state \<Rightarrow> state" where
   "merge x y = compress (merge1 x y)"
 
-type_synonym \<Omega>_space = "nat \<Rightarrow> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)"
+type_synonym seed = "nat \<Rightarrow> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)"
 
-fun single1 :: "\<Omega>_space \<Rightarrow> nat \<Rightarrow> f0_state" where
+fun single1 :: "seed \<Rightarrow> nat \<Rightarrow> state" where
   "single1 \<omega> x = (\<lambda> i j. 
      let (f,g,h) = \<omega> i in (
      if h (g x) = j \<and> i < l then int (f x) else (-1)), 0)"
 
-fun single :: "\<Omega>_space \<Rightarrow> nat \<Rightarrow> f0_state" where
+fun single :: "seed \<Rightarrow> nat \<Rightarrow> state" where
   "single \<omega> x = compress (single1 \<omega> x)"
 
-fun estimate1 :: "f0_state \<Rightarrow> nat \<Rightarrow> real" where
+fun estimate1 :: "state \<Rightarrow> nat \<Rightarrow> real" where
   "estimate1 (B,s) i = (
     let t = max 0 (Max ((B i) ` {..<b}) + s - \<lfloor>log 2 b\<rfloor> + 9); 
         p = card { j. j \<in> {..<b} \<and> B i j + s \<ge> t } in
         2 powr t * ln (1-p/b) / ln(1-1/b))"
 
-fun estimate :: "f0_state \<Rightarrow> real" where
+fun estimate :: "state \<Rightarrow> real" where
   "estimate x = median l (estimate1 x)"
 
 subsection \<open>History Independence\<close>
@@ -215,16 +213,16 @@ fun \<tau>\<^sub>0 :: "((nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)
 fun \<tau>\<^sub>1 :: "((nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat) \<times> (nat \<Rightarrow> nat)) \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
   where "\<tau>\<^sub>1 \<psi> A s j = max (\<tau>\<^sub>0 \<psi> A j - s) (-1)"
 
-fun \<tau>\<^sub>2 :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
-  where "\<tau>\<^sub>2 \<omega> A s i j = (if i < l then  \<tau>\<^sub>1 (\<omega> i) A s j else (-1))"
+fun \<tau>\<^sub>2 :: "seed \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> int" 
+  where "\<tau>\<^sub>2 \<omega> A s i j = (if i < l then \<tau>\<^sub>1 (\<omega> i) A s j else (-1))"
 
-fun \<tau>\<^sub>3 :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> f0_state" 
+fun \<tau>\<^sub>3 :: "seed \<Rightarrow> nat set \<Rightarrow> nat \<Rightarrow> state" 
   where "\<tau>\<^sub>3 \<omega> A s = (\<tau>\<^sub>2 \<omega> A s, s)"
 
-fun s :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> nat" 
+fun s :: "seed \<Rightarrow> nat set \<Rightarrow> nat" 
   where "s \<omega> A = (LEAST s . \<not>(is_too_large (\<tau>\<^sub>2 \<omega> A s)))"
 
-fun \<tau> :: "\<Omega>_space \<Rightarrow> nat set \<Rightarrow> f0_state" 
+fun \<tau> :: "seed \<Rightarrow> nat set \<Rightarrow> state" 
   where "\<tau> \<omega> A = \<tau>\<^sub>3 \<omega> A (s \<omega> A)"
 
 lemma \<tau>\<^sub>2_step: "\<tau>\<^sub>2 \<omega> A (x+y) = (\<lambda>i j. max (\<tau>\<^sub>2 \<omega> A x i j - y) (- 1))"
@@ -341,7 +339,7 @@ lemma Max_int_range: "x \<le> (y::int) \<Longrightarrow> Max {x..y} = y"
 sublocale \<Omega>: expander_sample_space l \<Lambda> \<Psi>
   unfolding expander_sample_space_def using sample_space_\<Psi> l_gt_0 \<Lambda>_gt_0 by auto
 
-lemma max_s': 
+lemma max_s_1: 
   assumes "\<omega> \<in> sample_set \<Omega>"
   shows "\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2) i j = (-1)"
 proof (cases "i < l")
@@ -376,15 +374,15 @@ next
   thus ?thesis by simp
 qed
 
-lemma max_s: 
+lemma max_s_2: 
   assumes "\<omega> \<in> sample_set \<Omega>"
   shows "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (nat \<lceil>log 2 n\<rceil>+2)))"
-  using max_s'[OF assms] by (simp add:C3_def case_prod_beta mult_less_0_iff del:\<tau>\<^sub>2.simps) 
+  using max_s_1[OF assms] by (simp add:C3_def case_prod_beta mult_less_0_iff del:\<tau>\<^sub>2.simps) 
 
-lemma max_s_2:
+lemma max_s_3:
   assumes "\<omega> \<in> sample_set \<Omega>"
   shows "s \<omega> A \<le> (nat \<lceil>log 2 n\<rceil>+2)"
-  unfolding s.simps by (intro wellorder_Least_lemma(2) max_s assms)
+  unfolding s.simps by (intro wellorder_Least_lemma(2) max_s_2 assms)
 
 lemma max_mono: "x \<le> (y::'a::linorder) \<Longrightarrow> max x z \<le> max y z"
   using max.coboundedI1 by auto
@@ -439,7 +437,7 @@ qed
 lemma s_compact: 
   assumes "\<omega> \<in> sample_set \<Omega>"
   shows "\<not> (is_too_large (\<tau>\<^sub>2 \<omega> A (s \<omega> A)))"
-  unfolding s.simps using max_s[OF assms]
+  unfolding s.simps using max_s_2[OF assms]
   by (intro wellorder_Least_lemma(1)) blast
 
 lemma s_mono: 
@@ -638,7 +636,7 @@ definition T\<^sub>e' :: "(nat \<times> nat \<Rightarrow> int) encoding" where
 definition T\<^sub>e :: "(nat \<Rightarrow> nat \<Rightarrow> int) encoding" 
   where "T\<^sub>e f = T\<^sub>e' (case_prod f)"
 
-definition encode_state :: "f0_state encoding"
+definition encode_state :: "state encoding"
   where "encode_state = T\<^sub>e \<times>\<^sub>e Nb\<^sub>e (nat \<lceil>log 2 n\<rceil>+3)"
 
 lemma inj_on_restrict:
@@ -797,7 +795,7 @@ proof -
   have "?L = bit_count (T\<^sub>e (\<tau>\<^sub>2 \<omega> A (s \<omega> A))) + bit_count (Nb\<^sub>e (nat \<lceil>log 2 (real n)\<rceil>+3) (s \<omega> A))"
     unfolding encode_state_def by (simp del:s.simps add:dependent_bit_count)
   also have "...=bit_count(T\<^sub>e(\<tau>\<^sub>2 \<omega> A (s \<omega> A)))+ereal (1+ of_int\<lfloor>log 2 (2 + real (nat \<lceil>log 2 n\<rceil>))\<rfloor>)"
-    using max_s_2[OF assms] by (subst bounded_nat_bit_count_2)
+    using max_s_3[OF assms] by (subst bounded_nat_bit_count_2)
       (simp_all add:numeral_eq_Suc le_imp_less_Suc floorlog_def del:s.simps \<tau>\<^sub>2.simps)
   also have  "... = bit_count(T\<^sub>e(\<tau>\<^sub>2 \<omega> A (s \<omega> A)))+ereal (1+ of_int\<lfloor>log 2 (2 + of_int \<lceil>log 2 n\<rceil>)\<rfloor>)"
     using 0 by (simp del:s.simps \<tau>\<^sub>2.simps)
@@ -1073,114 +1071,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-
 end 
-
-locale inner_algorithm_fix_A = inner_algorithm +
-  fixes A
-  assumes A_range: "A \<subseteq> {..<n}"
-  assumes A_nonempty: "{} \<noteq> A"
-begin
-
-definition Y where "Y = card A"
-
-definition s\<^sub>M where "s\<^sub>M = nat (\<lceil>log 2 Y\<rceil> - b_exp)"
-
-subsection \<open>Accuracy for $s=0$\<close>
-
-definition t\<^sub>1 :: "(nat \<Rightarrow> nat) \<Rightarrow> int" 
-  where "t\<^sub>1 f = int (Max (f ` A)) - b_exp + 9"
-
-definition t :: "(nat \<Rightarrow> nat) \<Rightarrow> nat"
-  where "t f = nat (t\<^sub>1 f)"
-
-definition R :: "(nat \<Rightarrow> nat) \<Rightarrow> nat set"
-  where "R f = {a. a \<in> A \<and> f a \<ge> t f}"
-
-definition r :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> nat"
-  where "r x f = card {a. a \<in> A \<and> f a \<ge> x}"
-
-definition p where "p = (\<lambda>(f,g,h). card {j\<in> {..<b}. \<tau>\<^sub>1 (f,g,h) A 0 j \<ge> t f})"
-
-definition A\<^sub>S where "A\<^sub>S = (\<lambda>(f,g,h). 2 ^ t f * \<rho>' (p (f,g,h)))"
-
-lemma fin_A: "finite A"
-  using A_range finite_nat_iff_bounded by auto
-
-lemma Y_le_n: "Y \<le> n"
-proof -
-  have "card A \<le> card {..<n}" 
-    by (intro card_mono A_range) simp
-  thus ?thesis
-    unfolding Y_def  by simp
-qed
-
-lemma Y_ge_1: "Y \<ge> 1"
-  unfolding Y_def 
-  using fin_A A_nonempty by (simp add: leI)
-
-lemma of_bool_square: "(of_bool x)\<^sup>2 = ((of_bool x)::real)"
-  by (cases x, auto)
-
-lemma r_eq: "r x f = (\<Sum> a \<in> A.( of_bool( x \<le> f a) :: real))"
-  unfolding r_def of_bool_def sum.If_cases[OF fin_A]
-  by (simp add: Collect_conj_eq)
-
-lemma 
-  shows 
-    r_exp: "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)" and
-    r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
-proof -
-  define V :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> real" where "V = (\<lambda>a f. of_bool (x \<le> f a))"
-
-  have V_exp: "(\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x" 
-    (is "?L = ?R") if "a \<in> A" for a
-  proof -
-    have a_le_n: "a < n"
-      using that A_range by auto
-
-    have "?L = (\<integral>\<omega>. indicator {f. x \<le> f a} \<omega> \<partial> \<Psi>\<^sub>1)"
-      unfolding V_def by (intro integral_cong_AE) auto
-    also have "... = measure (map_pmf (\<lambda>\<omega>. \<omega> a) (sample_pmf \<Psi>\<^sub>1)) {f. x \<le> f}"
-      by simp
-    also have "... = measure (\<G> n_exp) {f. x \<le> f}"
-      unfolding \<Psi>\<^sub>1.\<H>_single[OF a_le_n] by simp
-    also have "... = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x"
-      unfolding \<G>_prob n_exp_def by simp
-    finally show ?thesis by simp
-  qed
-
-  have b:"(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1))" 
-    unfolding r_eq V_def  using \<Psi>\<^sub>1.sample_space
-    by (intro Bochner_Integration.integral_sum) auto 
-  also have "... = (\<Sum> a \<in> A.  of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x)"
-    using V_exp by (intro sum.cong) auto
-  also have "... = Y * ( of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)"
-    using Y_def by simp
-  finally show "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real Y * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/ 2^x)"
-    by simp
-
-  have "(\<integral>\<omega>. (V a \<omega>)^2 \<partial> \<Psi>\<^sub>1) = (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1)" for a
-    unfolding V_def of_bool_square by simp
-
-  hence a:"measure_pmf.variance \<Psi>\<^sub>1 (V a) \<le> measure_pmf.expectation \<Psi>\<^sub>1 (V a)"  for a 
-    using \<Psi>\<^sub>1.sample_space by (subst measure_pmf.variance_eq) auto
-
-  have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> prob_space.indep_vars \<Psi>\<^sub>1 (\<lambda>_. borel) V J" for J
-    unfolding V_def using A_range finite_subset[OF _ fin_A]
-    by (intro prob_space.indep_vars_compose2[where Y="\<lambda>i y. of_bool(x \<le> y)" and M'="\<lambda>_. discrete"]
-        prob_space.k_wise_indep_vars_subset[OF _ \<Psi>\<^sub>1.\<H>_indep]) (auto simp:prob_space_measure_pmf)
-  hence "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) = (\<Sum> a \<in> A. measure_pmf.variance \<Psi>\<^sub>1 (V a))"
-    unfolding r_eq V_def using \<Psi>\<^sub>1.sample_space
-    by (intro measure_pmf.var_sum_pairwise_indep_2 fin_A) (simp_all)
-  also have "... \<le> (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1))"
-    by (intro sum_mono a) 
-  also have "... = (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
-    unfolding b by simp
-  finally show "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)" by simp
-qed
-
-end
 
 unbundle no_intro_cong_syntax
 
