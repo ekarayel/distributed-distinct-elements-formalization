@@ -322,7 +322,7 @@ proof -
 
   have "P x" if "x \<in> {0<..<1 / q}" for x
   proof -
-    define n where "n =  1/x"
+    define n where "n = 1/x"
     have x_eq: "x = 1 / n" 
       unfolding n_def using that by simp
 

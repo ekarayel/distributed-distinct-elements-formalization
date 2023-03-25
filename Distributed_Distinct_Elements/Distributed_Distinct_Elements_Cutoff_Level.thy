@@ -1,5 +1,9 @@
 section \<open>Cutoff Level\<close>
 
+text \<open>This section verifies that the cutoff will be below @{term "s\<^sub>M"} with high probability.
+The result will be needed in Section~\ref{sec:accuracy}, where it is shown that the estimates
+will be accurate if the cutoff is below @{term "s\<^sub>M"}.\<close>
+
 theory Distributed_Distinct_Elements_Cutoff_Level
   imports 
     Distributed_Distinct_Elements_Accuracy_Without_Cutoff

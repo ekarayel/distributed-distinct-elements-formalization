@@ -1,6 +1,6 @@
 section \<open>Combinators for Pseudo-random Objects\<close>
 
-text \<open>This section introduces a combinator library for pseudo-random objects. Each object can
+text \<open>This section introduces a combinator library for pseudo-random objects. Each object can be
 described as a sample space, a function from an initial segment of the natural numbers that selects
 a value (or data structure.) Semantically they are multisets with the natural interpretation as a
 probability space (each element is selected with a probability proportional to its occurence count
@@ -8,8 +8,8 @@ in the multiset). Operationally the selection procedure describes an algorithm t
 space.
 
 After general definitions and lemmas basic sample spaces, such as chosing a natural uniformly in
-an initial segment, a product construction the main pseudo-random objects hash families and 
-expander graphs are introduces. In both cases the range is itself an arbitrary sample space, such
+an initial segment, a product construction the main pseudo-random objects: hash families and 
+expander graphs are introduced. In both cases the range is itself an arbitrary sample space, such
 that it is for example possible to construct a pseudo-random object that samples seeds for hash
 families using an expander walk.
 

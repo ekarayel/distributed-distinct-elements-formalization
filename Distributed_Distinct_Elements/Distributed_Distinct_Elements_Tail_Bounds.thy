@@ -1,4 +1,4 @@
-section \<open>Specializaed Tail bounds for expander walks\<close>
+section \<open>Tail Bounds for Expander Walks\<close>
 
 theory Distributed_Distinct_Elements_Tail_Bounds
   imports 
@@ -8,6 +8,13 @@ theory Distributed_Distinct_Elements_Tail_Bounds
     "HOL-Decision_Procs.Approximation"
     Pseudorandom_Combinators
 begin 
+
+text \<open>This section introduces tail estimates for random walks in expander graphs, specific to the
+verification of this algorithm (in particular to two-stage expander graph sampling and obtained
+tail bounds for subgaussian random variables). They follow from the more fundamental results 
+@{thm [source] regular_graph.kl_chernoff_property} and 
+@{thm [source] regular_graph.uniform_property} which are verified in the AFP entry for
+expander graphs~\cite{Expander_Graphs-AFP}.\<close>
 
 hide_fact Henstock_Kurzweil_Integration.integral_sum
 

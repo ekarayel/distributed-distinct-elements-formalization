@@ -3,10 +3,10 @@ section \<open>Outer Algorithm\label{sec:outer_algorithm}\<close>
 text \<open>This section introduces the final solution with optimal size space usage. Internally it relies
 on the inner algorithm described in Section~\ref{sec:inner_algorithm}, dependending on the
 paramaters $n, \varepsilon$ and $\delta$ it either uses the inner algorithm directly or if 
-$\varepsilon^{-1}$ is larger than $ln n$ is runs $\frac{\varepsilon^{-1}}{\ln \ln n}$ copies of the
+$\varepsilon^{-1}$ is larger than $\ln n$ it runs $\frac{\varepsilon^{-1}}{\ln \ln n}$ copies of the
 inner algorithm (with the modified failure probability $\frac{1}{\ln n}$) using an expander to 
-select its seeds and derives the failure probability for the median of the copies of 
-$\frac{1}{\varepsilon}.\<close>
+select its seeds. The theorems below verify that the probability that the relative 
+accuracy of the median of the copies is too large is below $\varepsilon$.\<close>
 
 theory Distributed_Distinct_Elements_Outer_Algorithm
   imports 
@@ -19,7 +19,7 @@ begin
 unbundle intro_cong_syntax
 
 text \<open>The following are non-asymptotic hard bounds on the space usage for the sketches and seeds
-repsectively. At the end of the section, I show that the sum is asymptotically in 
+repsectively. The end of this section contains a proof the sum is asymptotically in 
 $\mathcal O(\ln( \varepsilon^{-1}) \delta^{-1} + \ln n)$.\<close>
 
 definition "state_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^40 * (ln(1/\<epsilon>)+1)/ \<delta>^2 + log 2 (log 2 n + 3))"
@@ -130,13 +130,6 @@ sublocale \<Theta>: expander_sample_space l \<Lambda> I.\<Omega>
 
 type_synonym state = "inner_algorithm.state list"
 
-definition encode_state 
-  where "encode_state = Lf\<^sub>e I.encode_state l"
-
-lemma encode_state: "is_encoding encode_state"
-  unfolding encode_state_def
-  by (intro fixed_list_encoding I.encode_state)
-
 fun single :: "nat \<Rightarrow> nat \<Rightarrow> state" where
   "single \<theta> x = map (\<lambda>j. I.single (select \<Theta> \<theta> j) x) [0..<l]"
 
@@ -197,7 +190,7 @@ proof (cases "stage_two")
     by (intro add_nonneg_pos \<Lambda>_gt_0) auto
 
   have "\<mu> \<le> \<epsilon>\<^sub>i"
-    unfolding \<mu>_def I_def using I.theorem_6_2[OF assms(1,2)] 
+    unfolding \<mu>_def I_def using I.estimate_result[OF assms(1,2)] 
     by (simp add: not_le del:I.estimate.simps I.\<tau>.simps)
   also have "... = 1/ln n0"
     using True unfolding \<epsilon>\<^sub>i_def by simp
@@ -295,12 +288,22 @@ next
   also have "... = measure I.\<Omega> {\<omega>. \<delta>*real(card A) < \<bar>I.estimate (I.\<tau> \<omega> A)-real(card A)\<bar>}"
     using l_eq by (subst \<Theta>.uniform_property) auto
   also have "... \<le> \<epsilon>\<^sub>i"
-    by (intro I.theorem_6_2[OF assms(1,2)])
+    by (intro I.estimate_result[OF assms(1,2)])
   also have "... = ?R"
     unfolding \<epsilon>\<^sub>i_def using False by simp
   finally show ?thesis 
     by simp
 qed
+
+text \<open>The function @{term "encode_state"} can represent states as bit strings.
+This enables verification of the space usage.\<close>
+
+definition encode_state 
+  where "encode_state = Lf\<^sub>e I.encode_state l"
+
+lemma encode_state: "is_encoding encode_state"
+  unfolding encode_state_def
+  by (intro fixed_list_encoding I.encode_state)
 
 lemma state_bit_count:
   "bit_count (encode_state (\<tau> \<omega> A)) \<le> state_space_usage (real n, \<delta>, \<epsilon>)" 
@@ -319,7 +322,6 @@ proof -
   also have "... \<le> 2^40 * (ln(1/\<epsilon>)+1)/ \<delta>^2 + log 2 (log 2 n + 3)" (is "?L1 \<le> ?R1")
   proof (cases "stage_two")
     case True
-
     have "\<lceil>4*ln (1/\<epsilon>)/ln(ln n0)\<rceil> \<le> 4*ln (1/\<epsilon>)/ln(ln n0) + 1"
       by simp
     also have "... \<le> 4*ln (1/\<epsilon>)/ln(ln n0) + ln (1/\<epsilon>)/ln(ln n0)"
@@ -398,6 +400,9 @@ proof -
   finally show ?thesis 
     unfolding state_space_usage_def by simp
 qed
+
+text \<open>Encoding function for the seeds which are just natural numbers smaller than 
+@{term "size \<Theta>"}.\<close>
 
 definition encode_seed 
   where "encode_seed = Nb\<^sub>e (size \<Theta>)"
@@ -531,74 +536,145 @@ proof -
   finally show ?thesis by simp
 qed
 
+text \<open>The following is an alternative form expressing the correctness and space usage theorems.
+If @{term "x"} is expression formed by @{term "single"} and @{term "merge"} operations. Then
+@{term "x"} requires @{term "state_space_usage (real n, \<delta>, \<epsilon>)"} bits to encode and
+@{term "estimate x"} approximates the count of the distinct universe elements in the expression.
+
+For example:
+
+@{term "estimate (merge (single \<omega> 1) (merge (single \<omega> 5) (single \<omega> 1)))"} approximates the
+cardinality of @{term "{1::nat, 5, 1}"} i.e. $2$.\<close>
+
+datatype sketch_tree = Single nat | Merge sketch_tree sketch_tree
+
+fun eval :: "nat \<Rightarrow> sketch_tree \<Rightarrow> state"
+  where 
+    "eval \<omega> (Single x) = single \<omega> x" | 
+    "eval \<omega> (Merge x y) = merge (eval \<omega> x) (eval \<omega> y)"
+
+fun sketch_tree_set :: "sketch_tree \<Rightarrow> nat set"
+  where 
+    "sketch_tree_set (Single x) = {x}" | 
+    "sketch_tree_set (Merge x y) = sketch_tree_set x \<union> sketch_tree_set y"
+
+theorem correctness:
+  fixes Y
+  assumes "sketch_tree_set t \<subseteq> {..<n}"
+  defines "p \<equiv> pmf_of_set {..<size \<Theta>}"
+  defines "Y \<equiv> real (card (sketch_tree_set t))"
+  shows "measure p {\<omega>. \<bar>estimate (eval \<omega> t)- Y\<bar> > \<delta> * Y} \<le> \<epsilon>" (is "?L \<le> ?R")
+proof -
+  define A where "A = sketch_tree_set t"
+  have Y_eq: "Y = real (card A)"
+    unfolding Y_def A_def by simp
+
+  have 0:"eval \<omega> t = \<tau> \<omega> A" for \<omega>
+    unfolding A_def using single_result merge_result
+    by (induction t) (auto simp del:merge.simps single.simps)
+
+  have 1: "A \<subseteq> {..<n}" 
+    using assms(1) unfolding A_def by blast
+  have 2: "A \<noteq> {}" 
+    unfolding A_def by (induction t) auto
+
+  show ?thesis
+    unfolding 0 Y_eq p_def by (intro estimate_result 1 2)
+qed
+
+theorem space_usage:
+  assumes "\<omega> < size \<Theta>"
+  shows 
+    "bit_count (encode_state (eval \<omega> t)) \<le> state_space_usage (real n, \<delta>, \<epsilon>)" (is "?A")
+    "bit_count (encode_seed \<omega>) \<le> seed_space_usage (real n, \<delta>, \<epsilon>)" (is "?B")
+proof-
+  define A where "A = sketch_tree_set t"
+
+  have 0:"eval \<omega> t = \<tau> \<omega> A" for \<omega>
+    unfolding A_def using single_result merge_result
+    by (induction t) (auto simp del:merge.simps single.simps)
+
+  show ?A
+    unfolding 0 by (intro state_bit_count)
+  show ?B
+    using random_bit_count[OF assms] by simp
+qed
+
 end
+
+text \<open>The functions @{term "state_space_usage"} and @{term "seed_space_usage"} are exact bounds
+on the space usage for the state and the seed. The following establishes asymptotic bounds 
+with respect to the limit $n, \delta^{-1}, \varepsilon^{-1} \rightarrow \infty$.\<close>
 
 context
 begin
 
-definition n_of :: "real \<times> real \<times> real \<Rightarrow> real" where "n_of = (\<lambda>(n, \<delta>, \<epsilon>). n)"
-definition \<epsilon>_of :: "real \<times> real \<times> real \<Rightarrow> real" where "\<epsilon>_of = (\<lambda>(n, \<delta>, \<epsilon>). \<epsilon>)"
-definition \<delta>_of :: "real \<times> real \<times> real \<Rightarrow> real" where "\<delta>_of = (\<lambda>(n, \<delta>, \<epsilon>). \<delta>)"
+text \<open>Some local notation to ease proofs about the asymptotic space usage of the algorithm:\<close>
 
-abbreviation F :: "(real \<times> real \<times> real) filter" 
+private definition n_of :: "real \<times> real \<times> real \<Rightarrow> real" where "n_of = (\<lambda>(n, \<delta>, \<epsilon>). n)"
+private definition \<epsilon>_of :: "real \<times> real \<times> real \<Rightarrow> real" where "\<epsilon>_of = (\<lambda>(n, \<delta>, \<epsilon>). \<epsilon>)"
+private definition \<delta>_of :: "real \<times> real \<times> real \<Rightarrow> real" where "\<delta>_of = (\<lambda>(n, \<delta>, \<epsilon>). \<delta>)"
+
+private abbreviation F :: "(real \<times> real \<times> real) filter" 
   where "F \<equiv> (at_top \<times>\<^sub>F at_right 0 \<times>\<^sub>F at_right 0)"
 
-lemma var_simps:
-  "n_of = fst" "\<delta>_of = (\<lambda>x. fst (snd x))" "\<epsilon>_of = (\<lambda>x. snd (snd x))" 
+private lemma var_simps:
+  "n_of = fst" 
+  "\<delta>_of = (\<lambda>x. fst (snd x))" 
+  "\<epsilon>_of = (\<lambda>x. snd (snd x))" 
   unfolding n_of_def \<delta>_of_def \<epsilon>_of_def by (auto simp add:case_prod_beta)
 
-lemma evt_n: "eventually (\<lambda>x. n_of x \<ge> n) F"
+private lemma evt_n: "eventually (\<lambda>x. n_of x \<ge> n) F"
   unfolding var_simps by (intro eventually_prod1' eventually_prod2' eventually_ge_at_top) 
       (simp add:prod_filter_eq_bot)
 
-lemma evt_n_1: "\<forall>\<^sub>F x in F. 0 \<le> ln (n_of x)"
+private lemma evt_n_1: "\<forall>\<^sub>F x in F. 0 \<le> ln (n_of x)"
   by (intro eventually_mono[OF evt_n[of "1"]] ln_ge_zero) simp
 
-lemma evt_n_2: "\<forall>\<^sub>F x in F. 0 \<le> ln (ln (n_of x))"
+private lemma evt_n_2: "\<forall>\<^sub>F x in F. 0 \<le> ln (ln (n_of x))"
   using order_less_le_trans[OF exp_gt_zero]
   by (intro eventually_mono[OF evt_n[of "exp 1"]] ln_ge_zero iffD2[OF ln_ge_iff]) auto
 
-lemma evt_\<delta>: "eventually (\<lambda>x. 1/\<delta>_of x \<ge> \<delta> \<and> \<delta>_of x > 0) F" 
+private lemma evt_\<delta>: "eventually (\<lambda>x. 1/\<delta>_of x \<ge> \<delta> \<and> \<delta>_of x > 0) F" 
   unfolding var_simps by (intro eventually_prod1' eventually_prod2' eventually_conj 
       real_inv_at_right_0_inf eventually_at_right_less) (simp_all add:prod_filter_eq_bot)
 
-lemma evt_\<epsilon>: "eventually (\<lambda>x. 1/\<epsilon>_of x \<ge> \<epsilon> \<and> \<epsilon>_of x > 0) F" 
+private lemma evt_\<epsilon>: "eventually (\<lambda>x. 1/\<epsilon>_of x \<ge> \<epsilon> \<and> \<epsilon>_of x > 0) F" 
   unfolding var_simps by (intro eventually_prod1' eventually_prod2' eventually_conj 
       real_inv_at_right_0_inf eventually_at_right_less) (simp_all add:prod_filter_eq_bot)
 
-lemma evt_\<epsilon>_1: "\<forall>\<^sub>F x in F. 0 \<le> ln (1 / \<epsilon>_of x)"
+private lemma evt_\<epsilon>_1: "\<forall>\<^sub>F x in F. 0 \<le> ln (1 / \<epsilon>_of x)"
   by (intro eventually_mono[OF evt_\<epsilon>[of "1"]] ln_ge_zero) simp
 
 theorem asymptotic_state_space_complexity:
   "state_space_usage \<in> O[F](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)/\<delta>^2 + ln (ln n))"
   (is "_ \<in> O[?F](?rhs)")
 proof -
-
-  have 2:"(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x))"
+  have 0:"(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x))"
     using order_less_le_trans[OF exp_gt_zero]
     by (intro landau_o.big_mono eventually_mono[OF evt_\<epsilon>[of "exp 1"]])
       (auto intro!: iffD2[OF ln_ge_iff] simp add:abs_ge_iff)
 
-  have 3:"(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (n_of x))"
+  have 1:"(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (n_of x))"
     using order_less_le_trans[OF exp_gt_zero] 
     by (intro landau_o.big_mono eventually_mono[OF evt_n[of "exp 1"]]) 
       (auto intro!:iffD2[OF ln_ge_iff] simp add:abs_ge_iff)
 
   have "(\<lambda>x. ((ln (1/\<epsilon>_of x)+1)* (1/\<delta>_of x)\<^sup>2))\<in> O[?F](\<lambda>x. ln(1/\<epsilon>_of x)* (1/\<delta>_of x)\<^sup>2)"
-    by (intro landau_o.mult sum_in_bigo 2) simp_all
-  hence 0: "(\<lambda>x. 2^40*((ln (1/\<epsilon>_of x)+1)* (1/\<delta>_of x)\<^sup>2))\<in> O[?F](\<lambda>x. ln(1/\<epsilon>_of x)* (1/\<delta>_of x)\<^sup>2)"
+    by (intro landau_o.mult sum_in_bigo 0) simp_all
+  hence 2: "(\<lambda>x. 2^40*((ln (1/\<epsilon>_of x)+1)* (1/\<delta>_of x)\<^sup>2))\<in> O[?F](\<lambda>x. ln(1/\<epsilon>_of x)* (1/\<delta>_of x)\<^sup>2)"
     unfolding cmult_in_bigo_iff by simp
 
-  have 4: "(1::real) \<le> exp 2"
+  have 3: "(1::real) \<le> exp 2"
     by (approximation 5)
 
   have "(\<lambda>x. ln (n_of x) / ln 2 + 3) \<in> O[?F](\<lambda>x. ln (n_of x))"
-    using 3 by (intro sum_in_bigo) simp_all
+    using 1 by (intro sum_in_bigo) simp_all
   hence "(\<lambda>x. ln (ln (n_of x) / ln 2 + 3)) \<in> O[?F](\<lambda>x. ln (ln (n_of x)))"
-    using order_less_le_trans[OF exp_gt_zero] order_trans[OF 4]
+    using order_less_le_trans[OF exp_gt_zero] order_trans[OF 3]
     by (intro landau_ln_2[where a="2"] eventually_mono[OF evt_n[of "exp 2"]])
      (auto intro!:iffD2[OF ln_ge_iff] add_nonneg_nonneg divide_nonneg_pos) 
-  hence 1: "(\<lambda>x. log 2 (log 2 (n_of x) + 3))\<in> O[?F](\<lambda>x. ln(ln(n_of x)))"
+  hence 4: "(\<lambda>x. log 2 (log 2 (n_of x) + 3))\<in> O[?F](\<lambda>x. ln(ln(n_of x)))"
     unfolding log_def by simp
 
   have 5: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / \<delta>_of x)\<^sup>2"
@@ -609,7 +685,7 @@ proof -
   also have "... = (\<lambda>x. 2 ^ 40 * ((ln (1 / (\<epsilon>_of x)) + 1)* (1/\<delta>_of x)\<^sup>2) + log 2 (log 2 (n_of x)+3))"
     unfolding state_space_usage_def by (simp add:divide_simps)
   also have "... \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)* (1/\<delta>_of x)\<^sup>2 + ln (ln (n_of x)))"
-    by (intro landau_sum 0 1 5 evt_n_2) 
+    by (intro landau_sum 2 4 5 evt_n_2) 
   also have "... = O[?F](?rhs)"
     by (simp add:case_prod_beta' n_of_def \<epsilon>_of_def \<delta>_of_def divide_simps)
   finally show ?thesis by simp
@@ -619,13 +695,13 @@ theorem asymptotic_seed_space_complexity:
   "seed_space_usage \<in> O[F](\<lambda>(n, \<delta>, \<epsilon>). ln (1/\<epsilon>)+ln (1/\<delta>)^2 + ln n)"
   (is "_ \<in> O[?F](?rhs)")
 proof -
-  have 7: "\<forall>\<^sub>F x in ?F. 0 \<le> (ln (1 / \<delta>_of x))\<^sup>2"
+  have 0: "\<forall>\<^sub>F x in ?F. 0 \<le> (ln (1 / \<delta>_of x))\<^sup>2"
     by simp
 
-  have 5: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2"
-    by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 7]] add_nonneg_nonneg) auto
+  have 1: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2"
+    by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 0]] add_nonneg_nonneg) auto
 
-  have 9: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
+  have a2: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
     using order_less_le_trans[OF exp_gt_zero]
     by (intro landau_o.big_mono eventually_mono[OF evt_\<delta>[of "exp 1"]])
       (auto intro!:iffD2[OF ln_ge_iff] simp add:abs_ge_iff)
@@ -634,25 +710,25 @@ proof -
     using order_less_le_trans[OF exp_gt_zero]
     by (intro landau_o.big_mono eventually_mono[OF evt_n[of "exp 1"]])
       (auto intro!:iffD2[OF ln_ge_iff] simp add:abs_ge_iff)
-  hence 0: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
-    by (intro landau_sum_2 5 evt_n_1 7 evt_\<epsilon>_1) simp
-  have 1: "(\<lambda>x. ln (n_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
-    by (intro landau_sum_2 5 evt_n_1) simp
+  hence 3: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
+    by (intro landau_sum_2 1 evt_n_1 0 evt_\<epsilon>_1) simp
+  have 4: "(\<lambda>x. ln (n_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
+    by (intro landau_sum_2 1 evt_n_1) simp
   have "(\<lambda>x. log 2 (1 / \<delta>_of x) + 16) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
-    using 9 unfolding log_def by (intro sum_in_bigo) simp_all
-  hence 4: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2)"
-    using 7 unfolding power2_eq_square by (intro landau_sum_2 landau_o.mult evt_\<epsilon>_1) simp_all
-  have 2: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2+ln (n_of x))"
-    by (intro landau_sum_1[OF _ _ 4] 5 evt_n_1)
-  have 3: "(\<lambda>x. ln (1/\<epsilon>_of x)) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2+ln (n_of x))"
-    by (intro landau_sum_1 5 evt_\<epsilon>_1 7 evt_n_1) simp
+    using a2 unfolding log_def by (intro sum_in_bigo) simp_all
+  hence 5: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2)"
+    using 0 unfolding power2_eq_square by (intro landau_sum_2 landau_o.mult evt_\<epsilon>_1) simp_all
+  have 6: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2+ln (n_of x))"
+    by (intro landau_sum_1[OF _ _ 5] 1 evt_n_1)
+  have 7: "(\<lambda>x. ln (1/\<epsilon>_of x)) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2+ln (n_of x))"
+    by (intro landau_sum_1 1 evt_\<epsilon>_1 0 evt_n_1) simp
 
   have "seed_space_usage = (\<lambda>x. seed_space_usage (n_of x, \<delta>_of x, \<epsilon>_of x))"
     by (simp add:case_prod_beta' n_of_def \<epsilon>_of_def \<delta>_of_def)
   also have "... = (\<lambda>x. 2^30+2^23*ln (n_of x)+48*(log 2 (1/(\<delta>_of x))+16)\<^sup>2 + 336 * ln (1 / \<epsilon>_of x))"
     unfolding seed_space_usage_def by (simp add:divide_simps)
   also have "... \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+ln (1/\<delta>_of x)^2 + ln (n_of x))"
-    using 0 1 2 3 by (intro sum_in_bigo) simp_all
+    using 3 4 6 7 by (intro sum_in_bigo) simp_all
   also have "... = O[?F](?rhs)"
     by (simp add:case_prod_beta' n_of_def \<epsilon>_of_def \<delta>_of_def)
   finally show ?thesis by simp
@@ -667,64 +743,65 @@ proof -
   let ?f1 = "(\<lambda>x. ln (1/\<epsilon>_of x)*(1/\<delta>_of x^2)+ln (ln (n_of x)))"
   let ?f2 = "(\<lambda>x. ln(1/\<epsilon>_of x)+ln(1/\<delta>_of x)^2+ln (n_of x))"
 
-  have 14: "\<forall>\<^sub>F x in ?F. 0 \<le> (1 / (\<delta>_of x)\<^sup>2)"
+  have 0: "\<forall>\<^sub>F x in ?F. 0 \<le> (1 / (\<delta>_of x)\<^sup>2)"
     unfolding var_simps by (intro eventually_prod1' eventually_prod2' eventually_inv)
       (simp_all add:prod_filter_eq_bot eventually_nonzero_simps)
 
-  have 15: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / (\<delta>_of x)\<^sup>2)"
+
+  have 1: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2)"
+    by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 0]] mult_nonneg_nonneg) auto
+
+  have 2: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (ln (n_of x))"
+    by (intro eventually_mono[OF eventually_conj[OF 1 evt_n_2]] add_nonneg_nonneg) auto
+
+  have 3: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / (\<delta>_of x)\<^sup>2)"
     unfolding power_one_over[symmetric]
     by (intro eventually_mono[OF evt_\<delta>[of "1"]] ln_ge_zero) simp
 
-  have 10: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2)"
-    by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 14]] mult_nonneg_nonneg) auto
-
-  have 0: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (ln (n_of x))"
-    by (intro eventually_mono[OF eventually_conj[OF 10 evt_n_2]] add_nonneg_nonneg) auto
-
-  have 1: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x)"
-    by (intro eventually_mono[OF eventually_conj[OF evt_n_1 eventually_conj[OF evt_\<epsilon>_1 15]]] 
+  have 4: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x)"
+    by (intro eventually_mono[OF eventually_conj[OF evt_n_1 eventually_conj[OF evt_\<epsilon>_1 3]]] 
         add_nonneg_nonneg) auto
 
-  have 11: "(\<lambda>_. 1) \<in> O[?F](\<lambda>x. 1 / (\<delta>_of x)\<^sup>2)"
+  have 5: "(\<lambda>_. 1) \<in> O[?F](\<lambda>x. 1 / (\<delta>_of x)\<^sup>2)"
     unfolding var_simps by (intro bigo_prod_1 bigo_prod_2 bigo_inv) 
       (simp_all add:power_divide prod_filter_eq_bot)
 
-  have 12: "(\<lambda>_. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x))"
+  have 6: "(\<lambda>_. 1) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x))"
     unfolding var_simps 
     by (intro bigo_prod_1 bigo_prod_2 bigo_inv) (simp_all add:prod_filter_eq_bot)
 
-  have 2: "state_space_usage \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (ln (n_of x)))"
+  have 7: "state_space_usage \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (ln (n_of x)))"
     using asymptotic_state_space_complexity unfolding \<epsilon>_of_def \<delta>_of_def n_of_def
     by (simp add:case_prod_beta')
 
-  have 3: "seed_space_usage \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
+  have 8: "seed_space_usage \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
     using asymptotic_seed_space_complexity unfolding \<epsilon>_of_def \<delta>_of_def n_of_def
     by (simp add:case_prod_beta')
 
-  have 4: "(\<lambda>x. ln (n_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (n_of x))"
-    by (intro landau_sum_2 evt_n_1 10) simp
+  have 9: "(\<lambda>x. ln (n_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (n_of x))"
+    by (intro landau_sum_2 evt_n_1 1) simp
 
-  have "(\<lambda>x. (ln (1 / \<delta>_of x))\<^sup>2) \<in> O[?F](\<lambda>x. 1 / (\<delta>_of x)\<^sup>2)"
+  have "(\<lambda>x. (ln (1 / \<delta>_of x))\<^sup>2) \<in> O[?F](\<lambda>x. 1 / \<delta>_of x^2)"
     unfolding var_simps
     by (intro bigo_prod_1 bigo_prod_2 bigo_inv) (simp_all add:power_divide prod_filter_eq_bot)
-  hence 5: "(\<lambda>x. (ln (1 / \<delta>_of x))\<^sup>2) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (n_of x))"
-    by (intro landau_sum_1 evt_n_1 10 landau_o.big_mult_1' 12) 
-  have 6: "(\<lambda>x. ln (1 / \<epsilon>_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (n_of x))"
-    by (intro landau_sum_1 evt_n_1 10 landau_o.big_mult_1 11) simp
-  have 7: "(\<lambda>x. ln (1/\<epsilon>_of x) * (1/(\<delta>_of x)\<^sup>2)) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)*(1/(\<delta>_of x)\<^sup>2)+ln (n_of x))"
-    by (intro landau_sum_1 10 evt_n_1) simp
+  hence 10: "(\<lambda>x. (ln (1 / \<delta>_of x))\<^sup>2) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / \<delta>_of x^2) + ln (n_of x))"
+    by (intro landau_sum_1 evt_n_1 1 landau_o.big_mult_1' 6) 
+  have 11: "(\<lambda>x. ln (1 / \<epsilon>_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / \<delta>_of x^2) + ln (n_of x))"
+    by (intro landau_sum_1 evt_n_1 1 landau_o.big_mult_1 5) simp
+  have 12: "(\<lambda>x. ln (1/\<epsilon>_of x) * (1/\<delta>_of x^2)) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)*(1/\<delta>_of x^2)+ln (n_of x))"
+    by (intro landau_sum_1 1 evt_n_1) simp
 
   have "(\<lambda>x. ln (ln (n_of x))) \<in> O[?F](\<lambda>x. ln (n_of x))"
     unfolding var_simps by (intro bigo_prod_1 bigo_prod_2) (simp_all add:prod_filter_eq_bot)
-  hence 8: "(\<lambda>x. ln (ln (n_of x))) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2) + ln (n_of x))"
-    by (intro landau_sum_2 evt_n_1 10)
+  hence 13: "(\<lambda>x. ln (ln (n_of x))) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1 / \<delta>_of x^2) + ln (n_of x))"
+    by (intro landau_sum_2 evt_n_1 1)
 
   have "space_usage = (\<lambda>x. state_space_usage x + seed_space_usage x)"
     unfolding space_usage_def by simp
   also have "... \<in> O[?F](\<lambda>x. ?f1 x + ?f2 x)"
-    by (intro landau_sum 0 1 2 3) 
+    by (intro landau_sum 2 4 7 8) 
   also have "... \<subseteq> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) * (1/\<delta>_of x^2) + ln (n_of x))"
-    by (intro landau_o.big.subsetI sum_in_bigo 4 5 6 7 8)
+    by (intro landau_o.big.subsetI sum_in_bigo 9 10 11 12 13)
   also have "... = O[?F](?rhs)"
     unfolding \<epsilon>_of_def \<delta>_of_def n_of_def
     by (simp add:case_prod_beta')

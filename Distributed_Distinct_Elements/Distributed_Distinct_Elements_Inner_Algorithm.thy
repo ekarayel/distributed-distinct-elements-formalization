@@ -1,9 +1,33 @@
 section \<open>Inner Algorithm\label{sec:inner_algorithm}\<close>
 
+text \<open>This section introduces the inner algorithm (as mentioned it is already a solution to the
+cardinality estimation with the caveat that, if $\varepsilon$ is too small it requires to much
+space. The outer algorithm in Section~\ref{sec:outer_algorithm} resolved this problem.
+
+The algorithm makes use of the balls and bins model, more precisely, the fact that the number of
+hit bins can be used to estimate the number of balls thrown (even if there are collusions). I.e.
+it assigns each universe element to a bin using a $k$-wise independent hash function. Then it
+counts the number of bins hit.
+
+This strategy however would only work if the number of balls is roughly equal to the number of 
+bins, to remedy that the algorithm performs an adaptive sub-sampling strategy. This works by
+assigning each universe element a level (using a second hash function) with a geometric
+distribution. The algorithm then selects a level that is appropriate based on a rough estimate
+obtained using the maximum level in the bins.
+
+To save space the algorithm drops information about small levels, whenever the space usage would
+be too high otherwise. This level will be called the cutoff-level. This is okey as long as the
+cutoff level is not larger than the sub-sampling threshold. A lot of the complexity in the
+proof is devoted to verifying that the cutoff-level will not cross it, it works by defining a
+third value @{term "s\<^sub>M"} that is both an upper bound for the cutoff level and a lower bound for the
+subsampling threshold simultaneously with high probability.\<close>
+
 theory Distributed_Distinct_Elements_Inner_Algorithm
   imports 
     Pseudorandom_Combinators
     Distributed_Distinct_Elements_Preliminary
+    Distributed_Distinct_Elements_Balls_and_Bins
+    Distributed_Distinct_Elements_Tail_Bounds
     Prefix_Free_Code_Combinators.Prefix_Free_Code_Combinators
 begin
 

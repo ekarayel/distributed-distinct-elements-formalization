@@ -1,4 +1,9 @@
-section \<open>Accuracy without cutoff\<close>
+section \<open>Accuracy without cutoff\label{sec:accuracy_wo_cutoff}\<close>
+
+text \<open>This section verifies that each of the $l$ estimate have the required accuracy with high
+probability assuming that there was no cut-off, i.e., that $s=0$. Section~\ref{sec:accuracy} will
+then show that this remains true as long as the cut-off is below @{term "t f"} the subsampling
+threshold.\<close>
 
 theory Distributed_Distinct_Elements_Accuracy_Without_Cutoff
   imports 
@@ -870,7 +875,8 @@ proof -
     by (simp add:\<rho>_inv'_def algebra_simps)
 qed
 
-lemma l_6_8: "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
+lemma accuracy_without_cutoff: 
+  "measure \<Psi> {(f,g,h). \<bar>A\<^sub>S (f,g,h) - real Y\<bar> > \<delta> * Y \<or> t f < s\<^sub>M} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
   have "?L \<le> measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"

@@ -1,4 +1,8 @@
-section \<open>Accuracy with cutoff\<close>
+section \<open>Accuracy with cutoff\label{sec:accuracy}\<close>
+
+text \<open>This section verifies that each of the $l$ estimate have the required accuracy with high
+probability assuming as long as the cutoff is below @{term "s\<^sub>M"}, generalizing the result from
+Section~\ref{sec:accuracy_wo_cutoff}.\<close>
 
 theory Distributed_Distinct_Elements_Accuracy
   imports 
@@ -123,7 +127,7 @@ lemma A_1_eq_A\<^sub>S:
   shows "A_1 (f,g,h) \<sigma> = A\<^sub>S (f,g,h)"
   unfolding A_1_def  A\<^sub>S_def t_2_eq_t[OF assms(1,2)] p_1_eq_p[OF assms(1,2)] by simp
 
-lemma l_6_9: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * Y} \<le> 1/2^4" 
+lemma accuracy_single: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * Y} \<le> 1/2^4" 
   (is "?L \<le> ?R")
 proof -
   have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * real Y} \<le>
@@ -151,7 +155,7 @@ proof -
     qed
   qed
   also have "... \<le> 1/2^4"
-    using l_6_8 by simp
+    using accuracy_without_cutoff by simp
   finally show ?thesis by simp
 qed
 
@@ -195,7 +199,7 @@ proof -
     by blast
 qed
 
-lemma l_6_10:
+lemma estimate_result_1:
   "measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M. \<delta>*Y < \<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>) } \<le> \<epsilon>/2"
     (is "?L \<le> ?R")
 proof -
@@ -209,7 +213,7 @@ proof -
   have "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> s\<^sub>M. \<bar>A_1 \<psi> \<sigma> - real Y\<bar> > \<delta> * Y}"
     unfolding \<mu>_def I_def by (simp add:not_le)
   also have "... \<le>  1 / 2 ^ 4"
-    by (intro l_6_9)
+    by (intro accuracy_single)
   also have "... = 1/ 16" 
     by simp
   finally have 1:"\<mu> \<le> 1 / 16" by simp
@@ -286,7 +290,7 @@ proof -
     by simp
 qed
 
-theorem theorem_6_2:
+theorem estimate_result:
   "measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- Y\<bar> >  \<delta> * Y} \<le>  \<epsilon>"
   (is "?L \<le> ?R")
 proof -
@@ -297,7 +301,7 @@ proof -
   also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>s\<^sub>M.  \<delta>*real Y<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-Y\<bar>)} + ?P {\<omega>. s \<omega> A> s\<^sub>M}"
     by (intro pmf_add) auto
   also have "...\<le>  \<epsilon>/2 +  \<epsilon>/2"
-    by (intro add_mono cutoff_level l_6_10) 
+    by (intro add_mono cutoff_level estimate_result_1) 
   also have "... =  \<epsilon>"
     by simp 
   finally show ?thesis 
@@ -306,7 +310,7 @@ qed
 
 end
 
-lemma (in inner_algorithm) theorem_6_2:
+lemma (in inner_algorithm) estimate_result:
   assumes "A \<subseteq> {..<n}" "A \<noteq> {}"
   shows "measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- real (card A)\<bar> >  \<delta> * real (card A)} \<le> \<epsilon>" (is "?L \<le> ?R")
 proof -
@@ -315,7 +319,7 @@ proof -
   have "?L = measure \<Omega> {\<omega>. \<bar>estimate (\<tau> \<omega> A)- Y\<bar> >  \<delta> * Y}"
     unfolding Y_def by simp
   also have "... \<le> ?R"
-    by (intro theorem_6_2)
+    by (intro estimate_result)
   finally show ?thesis
     by simp
 qed
