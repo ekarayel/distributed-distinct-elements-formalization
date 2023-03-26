@@ -370,6 +370,10 @@ lemmas Polynomials_intros =
   Polynomials_constI
   Polynomials_ffact  
 
+
+definition C\<^sub>2 :: real where "C\<^sub>2 = 7.5"
+definition C\<^sub>3 :: real where "C\<^sub>3 = 16"
+
 text \<open>A locale fixing the sets of balls and bins\<close>
 
 locale balls_and_bins_abs =
@@ -1861,7 +1865,7 @@ qed
 lemma devitation_bound:
   assumes "card R \<le> card B" 
   assumes "lim_balls_and_bins k p"
-  assumes "real k \<ge> 7.5 * ln (real (card B)) + 16"
+  assumes "real k \<ge> C\<^sub>2 * ln (real (card B)) + C\<^sub>3"
   shows "measure p {\<omega>. \<bar>Y \<omega> - \<mu>\<bar> > 9 * real (card R) / sqrt (real (card B))} \<le> 1 / 2^6" 
     (is "?L \<le> ?R")
 proof (cases "card R > 0")
@@ -1871,13 +1875,13 @@ proof (cases "card R > 0")
   have "(1::real) \<le> 7.5 * 0 + 16" by simp
   also have "... \<le> 7.5 * ln (real (card B)) + 16"
     using card_B_ge_1 by (intro add_mono mult_left_mono ln_ge_zero) auto
-  also have "... \<le> k" using assms(3) by simp
+  also have "... \<le> k"  using assms(3) unfolding C\<^sub>2_def C\<^sub>3_def by simp
   finally have k_ge_1: "k \<ge> 1" by simp 
   have lim: "lim_balls_and_bins (k'+1) p" 
     using k_ge_1 assms(2) unfolding  k'_def by simp
 
   have k'_min: "real k' \<ge> 7.5 * (ln (real (card B)) + 2)"
-    using k_ge_1 assms(3) unfolding k'_def by simp
+    using k_ge_1 assms(3) unfolding C\<^sub>2_def C\<^sub>3_def k'_def by simp
 
   let ?r = "real (card R)" 
   let ?b = "real (card B)"
