@@ -79,7 +79,7 @@ proof -
     also have "... = measure (map_pmf (\<lambda>\<omega>. \<omega> a) (sample_pmf \<Psi>\<^sub>1)) {f. x \<le> f}"
       by simp
     also have "... = measure (\<G> n_exp) {f. x \<le> f}"
-      unfolding \<Psi>\<^sub>1.\<H>_single[OF a_le_n] by simp
+      unfolding \<Psi>\<^sub>1.single[OF a_le_n] by simp
     also have "... = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x"
       unfolding \<G>_prob n_exp_def by simp
     finally show ?thesis by simp
@@ -545,7 +545,7 @@ proof -
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (map_pmf (\<lambda>\<omega>. \<omega> \<xi>) (sample_pmf \<Psi>\<^sub>2)) {g. g = z}) "
       by (simp add:vimage_def) 
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure [C\<^sub>7 * b\<^sup>2]\<^sub>S {g. g=z})"
-      using b \<Psi>\<^sub>2.\<H>_single by (intro prod.cong) fastforce+ 
+      using b \<Psi>\<^sub>2.single by (intro prod.cong) fastforce+ 
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (pmf_of_set {..<C\<^sub>7 * b\<^sup>2}) {z})"
       by (subst nat_sample_pmf) simp
     also have "... = (measure (pmf_of_set {..<C\<^sub>7 * b\<^sup>2}) {z})^2"
@@ -681,7 +681,7 @@ proof -
       unfolding sample_pmf_def nat_sample_space_def by simp
     hence " map_pmf (\<lambda>\<omega>. \<omega> x) (sample_pmf (\<H> k (C\<^sub>7 * b\<^sup>2) [b]\<^sub>S)) = pmf_of_set {..<b}"
       if "x \<in> g ` R f" for x 
-      using g_ran \<Psi>\<^sub>3.\<H>_single that by auto
+      using g_ran \<Psi>\<^sub>3.single that by auto
     moreover have "prob_space.k_wise_indep_vars \<Psi>\<^sub>3 k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) (g ` R f)"
       by (intro prob_space.k_wise_indep_subset[OF _ _ \<Psi>\<^sub>3.\<H>_indep] g_ran prob_space_measure_pmf)
     ultimately have lim_balls_and_bins: "B.lim_balls_and_bins k (sample_pmf (\<H> k (C\<^sub>7 * b\<^sup>2) [b]\<^sub>S))"

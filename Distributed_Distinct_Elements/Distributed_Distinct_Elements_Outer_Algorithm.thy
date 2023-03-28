@@ -182,10 +182,7 @@ proof (cases "stage_two")
 
   define \<mu> where "\<mu> = measure I.\<Omega> {\<omega>. I.estimate (I.\<tau> \<omega> A) \<notin> I}"
 
-  have 2: "5 \<le> ln (ln n\<^sub>0)"
-    using n_lbound by (subst ln_ge_iff) simp
-
-  have 3:"\<mu> + \<alpha> > 0" 
+  have 0:"\<mu> + \<alpha> > 0" 
     unfolding \<mu>_def
     by (intro add_nonneg_pos \<alpha>_gt_0) auto
 
@@ -199,21 +196,21 @@ proof (cases "stage_two")
     unfolding \<alpha>_def using True by (intro add_mono) auto
   also have "... = 2/ln n\<^sub>0"
     by simp
-  finally have 5:"\<mu> + \<alpha> \<le> 2 / ln n\<^sub>0"
+  finally have 1:"\<mu> + \<alpha> \<le> 2 / ln n\<^sub>0"
     by simp
-  hence 0:"ln n\<^sub>0 \<le> 2 / (\<mu> + \<alpha>)"
-    using 3 n_lbound by (simp add:field_simps)
-
-  have 4: "2 * ln 2 + 8 * exp (- 1) \<le> (5::real)"
-    by (approximation 5)
+  hence 2:"ln n\<^sub>0 \<le> 2 / (\<mu> + \<alpha>)"
+    using 0 n_lbound by (simp add:field_simps)
 
   have "\<mu> + \<alpha> \<le> 2/ln n\<^sub>0"
-    by (intro 5)
+    by (intro 1)
   also have "... \<le> 2/exp 5"
     using n_lbound by (intro divide_left_mono) simp_all
   also have "... \<le> 1/2"
     by (approximation 5)
-  finally have 1:"\<mu> + \<alpha> \<le> 1/2" by simp
+  finally have 3:"\<mu> + \<alpha> \<le> 1/2" by simp
+
+  have 4: "2 * ln 2 + 8 * exp (- 1) \<le> (5::real)"
+    by (approximation 5)
 
   have "?L = measure p {\<omega>. median m (\<lambda>i. I.estimate (\<nu> \<omega> A  ! i)) \<notin> I}"
     unfolding I_def by (simp add:not_le)
@@ -249,9 +246,9 @@ proof (cases "stage_two")
   also have "...=measure \<Theta>{\<theta>. real(card {i \<in> {..<m}. I.estimate (I.\<tau> (\<theta> i) A) \<notin> I})\<ge>(1/2)*real m}"
     unfolding sample_pmf_alt[OF \<Theta>.sample_space] p_def by (simp del:I.estimate.simps)
   also have "... \<le> exp (-real m * ((1/2) * ln (1/ (\<mu> + \<alpha>)) - 2*exp (-1)))"
-    using 1 m_gt_0 \<alpha>_gt_0 unfolding \<mu>_def by (intro \<Theta>.tail_bound) force+
+    using 3 m_gt_0 \<alpha>_gt_0 unfolding \<mu>_def by (intro \<Theta>.tail_bound) force+
   also have "... \<le> exp (-real m * ((1/2) * ln (ln n\<^sub>0 / 2) - 2*exp (-1)))"
-    using 0 1 3 n_lbound
+    using 0 2 3 n_lbound
     by (intro iffD2[OF exp_le_cancel_iff] mult_right_mono mult_left_mono_neg[where c="-real m"]
         diff_mono mult_left_mono iffD2[OF ln_le_cancel_iff]) (simp_all)
   also have "... = exp (-real m * (ln (ln n\<^sub>0) / 2 - (ln 2/2 + 2*exp (-1))))"
@@ -260,15 +257,15 @@ proof (cases "stage_two")
     using 4
     by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono_neg[where c="-real m"] diff_mono) simp_all 
   also have "... \<le> exp (-real m * (ln (ln n\<^sub>0) / 2 - (ln (ln n\<^sub>0) / 4)))"
-    using 2
+    using n_lbound
     by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono_neg[where c="-real m"] diff_mono) simp_all
   also have "... = exp (- real m * (ln (ln n\<^sub>0)/ 4) )"
     by (simp add:algebra_simps)
   also have "... \<le> exp (- (4 * ln (1/ \<epsilon>)/ln(ln n\<^sub>0)) * (ln (ln n\<^sub>0)/4))"
-    using m_lbound[OF True] 2
+    using m_lbound[OF True] n_lbound
     by (intro iffD2[OF exp_le_cancel_iff] mult_right_mono divide_nonneg_pos) simp_all
   also have "... = exp (- ln (1/ \<epsilon>))"
-    using 2 by simp
+    using n_lbound by simp
   also have "... = \<epsilon>"
     using \<epsilon>_gt_0 by (subst ln_inverse[symmetric]) auto
   finally show ?thesis by simp
@@ -433,10 +430,10 @@ proof -
     using n_gt_0 unfolding n\<^sub>0_def by (subst ln_max_swap) auto
   also have "... \<le> 180^3 * (ln n + exp 5)"
     using n_gt_0 unfolding ln_exp by (intro mult_left_mono) auto
-  finally have 5:"(55+60*ln (ln n\<^sub>0))^3 \<le> 180^3 * ln n + 180^3*exp 5"
+  finally have 2:"(55+60*ln (ln n\<^sub>0))^3 \<le> 180^3 * ln n + 180^3*exp 5"
     by simp
 
-  have 6:"((1::real)+180^3*exp 5) \<le> 2^30" "((4::real)/ln 2 + 180^3) \<le> 2^23"
+  have 3:"((1::real)+180^3*exp 5) \<le> 2^30" "((4::real)/ln 2 + 180^3) \<le> 2^23"
     by (approximation 10)+
 
   have "?L = ereal (real (floorlog 2 (size \<Theta> - 1)))"
@@ -465,13 +462,13 @@ proof -
     have "-1 < (0::real)" by simp
     also have "... \<le> ln \<alpha> / ln 0.95"
       using \<alpha>_gt_0 \<alpha>_le_1 by (intro divide_nonpos_neg) auto
-    finally have 2: "- 1 < ln \<alpha> / ln 0.95" by simp
+    finally have 4: "- 1 < ln \<alpha> / ln 0.95" by simp
 
-    have 3: "- 1 / ln 0.95 \<le> (20::real)"
+    have 5: "- 1 / ln 0.95 \<le> (20::real)"
       by (approximation 10)
 
     have "(4*(m-1)*nat\<lceil>ln \<alpha>/ln 0.95\<rceil>) = 4 * (real m-1) * of_int \<lceil>ln \<alpha>/ln 0.95\<rceil>"
-      using 2 m_gt_0 unfolding of_nat_mult by (subst of_nat_nat) auto
+      using 4 m_gt_0 unfolding of_nat_mult by (subst of_nat_nat) auto
     also have "... \<le> 4 * (real m-1) * (ln \<alpha>/ln 0.95 + 1)"
       using m_gt_0 by (intro mult_left_mono) auto
     also have "... = 4 * (real m-1) * (-ln (ln n\<^sub>0)/ln 0.95 + 1)"
@@ -480,7 +477,7 @@ proof -
     also have "... = 4 * (real m - 1 ) * (ln (ln n\<^sub>0) * (-1/ln 0.95) + 1)"
       by simp
     also have "... \<le> 4 * (real m - 1 ) * (ln (ln n\<^sub>0) * 20 + 1)"
-      using n_lbound m_gt_0 by (intro mult_left_mono add_mono 3) auto
+      using n_lbound m_gt_0 by (intro mult_left_mono add_mono 5) auto
     also have "... = 4 * (real (nat \<lceil>4 * ln (1 / \<epsilon>) / ln (ln n\<^sub>0)\<rceil>)-1) *  (ln (ln n\<^sub>0) * 20 + 1)"
       using True unfolding m_def by simp
     also have "... = 4 * (real_of_int \<lceil>4 * ln (1 / \<epsilon>) / ln (ln n\<^sub>0)\<rceil>-1) *  (ln (ln n\<^sub>0) * 20 + 1)"
@@ -493,17 +490,17 @@ proof -
        simp_all
     also have "... = 336 * ln (1  / \<epsilon>)"
       using n_lbound by simp
-    finally have 4: "4 * (m-1) * nat \<lceil>ln \<alpha>/ln 0.95\<rceil> \<le> 336 * ln (1/\<epsilon>)" 
+    finally have 6: "4 * (m-1) * nat \<lceil>ln \<alpha>/ln 0.95\<rceil> \<le> 336 * ln (1/\<epsilon>)" 
       by simp
 
     have "?L1 =1+4*log 2 n+48*(log 2(1/\<delta>)+16)\<^sup>2+(55+60*ln (ln n\<^sub>0))^3+(4*(m-1)*nat\<lceil>ln \<alpha>/ln 0.95\<rceil>)"
       using True unfolding \<epsilon>\<^sub>i_def by simp
     also have "... \<le> 1+4*log 2 n+48*(log 2(1/\<delta>)+16)\<^sup>2+(180^3 * ln n + 180^3*exp 5) + 336 * ln (1/\<epsilon>)"
-      by (intro add_mono 4 5 ereal_mono order.refl)
+      by (intro add_mono 6 2 ereal_mono order.refl)
     also have "... = (1+180^3*exp 5)+ (4/ln 2 + 180^3)*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2+ 336 * ln (1/\<epsilon>)"
       by (simp add:log_def algebra_simps)
     also have "... \<le> 2^30 + 2^23*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2+ 336 * ln (1/\<epsilon>)"
-      using n_gt_0 by (intro add_mono ereal_mono 6 order.refl mult_right_mono) auto
+      using n_gt_0 by (intro add_mono ereal_mono 3 order.refl mult_right_mono) auto
     finally show ?thesis by simp
   next
     case False
@@ -523,11 +520,11 @@ proof -
       using \<epsilon>_gt_0 \<epsilon>_lt_1
       by (intro add_mono order.refl ereal_mono power_mono mult_left_mono add_nonneg_nonneg 7) auto
     also have "... \<le> 1+4*log 2(real n)+48*(log 2 (1 / \<delta>)+16)\<^sup>2+(180^3*ln (real n) + 180 ^ 3 * exp 5)"
-      by (intro add_mono ereal_mono 5 order.refl)
+      by (intro add_mono ereal_mono 2 order.refl)
     also have "... = (1+180^3*exp 5)+ (4/ln 2 + 180^3)*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2+ 0"
       by (simp add:log_def algebra_simps)
     also have "... \<le> 2^30 + 2^23*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2 + 336*ln (1/\<epsilon>)"
-      using n_gt_0 by (intro add_mono ereal_mono 6 order.refl mult_right_mono 8) auto
+      using n_gt_0 by (intro add_mono ereal_mono 3 order.refl mult_right_mono 8) auto
     finally show ?thesis by simp
   qed
   also have "... = seed_space_usage (real n, \<delta>, \<epsilon>)"
@@ -562,7 +559,7 @@ theorem correctness:
   assumes "sketch_tree_set t \<subseteq> {..<n}"
   defines "p \<equiv> pmf_of_set {..<size \<Theta>}"
   defines "Y \<equiv> real (card (sketch_tree_set t))"
-  shows "measure p {\<omega>. \<bar>estimate (eval \<omega> t)- Y\<bar> > \<delta> * Y} \<le> \<epsilon>" (is "?L \<le> ?R")
+  shows "measure p {\<omega>. \<bar>estimate (eval \<omega> t) - Y\<bar> > \<delta> * Y} \<le> \<epsilon>" (is "?L \<le> ?R")
 proof -
   define A where "A = sketch_tree_set t"
   have Y_eq: "Y = real (card A)"
@@ -574,6 +571,7 @@ proof -
 
   have 1: "A \<subseteq> {..<n}" 
     using assms(1) unfolding A_def by blast
+
   have 2: "A \<noteq> {}" 
     unfolding A_def by (induction t) auto
 
@@ -700,7 +698,7 @@ proof -
   have 1: "\<forall>\<^sub>F x in ?F. 0 \<le> ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2"
     by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 0]] add_nonneg_nonneg) auto
 
-  have a2: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
+  have 2: "(\<lambda>x. 1) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
     using order_less_le_trans[OF exp_gt_zero]
     by (intro landau_o.big_mono eventually_mono[OF evt_\<delta>[of "exp 1"]])
       (auto intro!:iffD2[OF ln_ge_iff] simp add:abs_ge_iff)
@@ -714,7 +712,7 @@ proof -
   have 4: "(\<lambda>x. ln (n_of x)) \<in> O[?F](\<lambda>x. ln (1 / \<epsilon>_of x) + (ln (1 / \<delta>_of x))\<^sup>2 + ln (n_of x))"
     by (intro landau_sum_2 1 evt_n_1) simp
   have "(\<lambda>x. log 2 (1 / \<delta>_of x) + 16) \<in> O[?F](\<lambda>x. ln (1 / \<delta>_of x))"
-    using a2 unfolding log_def by (intro sum_in_bigo) simp_all
+    using 2 unfolding log_def by (intro sum_in_bigo) simp_all
   hence 5: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2)"
     using 0 unfolding power2_eq_square by (intro landau_sum_2 landau_o.mult evt_\<epsilon>_1) simp_all
   have 6: "(\<lambda>x. (log 2 (1 / \<delta>_of x) + 16)\<^sup>2) \<in> O[?F](\<lambda>x. ln (1/\<epsilon>_of x)+(ln (1/\<delta>_of x))\<^sup>2+ln (n_of x))"
@@ -744,7 +742,6 @@ proof -
   have 0: "\<forall>\<^sub>F x in F. 0 \<le> (1 / (\<delta>_of x)\<^sup>2)"
     unfolding var_simps by (intro eventually_prod1' eventually_prod2' eventually_inv)
       (simp_all add:prod_filter_eq_bot eventually_nonzero_simps)
-
 
   have 1: "\<forall>\<^sub>F x in F. 0 \<le> ln (1 / \<epsilon>_of x) * (1 / (\<delta>_of x)\<^sup>2)"
     by (intro eventually_mono[OF eventually_conj[OF evt_\<epsilon>_1 0]] mult_nonneg_nonneg) auto

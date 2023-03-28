@@ -1,8 +1,8 @@
 section \<open>Cutoff Level\<close>
 
-text \<open>This section verifies that the cutoff will be below @{term "s\<^sub>M"} with high probability.
+text \<open>This section verifies that the cutoff will be below @{term "q_max"} with high probability.
 The result will be needed in Section~\ref{sec:accuracy}, where it is shown that the estimates
-will be accurate if the cutoff is below @{term "s\<^sub>M"}.\<close>
+will be accurate for any cutoff below @{term "q_max"}.\<close>
 
 theory Distributed_Distinct_Elements_Cutoff_Level
   imports 
@@ -120,7 +120,7 @@ proof (cases "k \<le> n_exp - 1")
   have "?L = (\<integral>x. real_of_int (max 0 (int x - k)) \<partial>map_pmf (\<lambda>x. x a) \<Psi>\<^sub>1)"
     by simp
   also have "... = (\<integral>x. real_of_int (max 0 (int x - k)) \<partial>(\<G> n_exp))"
-    unfolding \<Psi>\<^sub>1.\<H>_single[OF a_le_n] by simp
+    unfolding \<Psi>\<^sub>1.single[OF a_le_n] by simp
   also have "... = (\<integral>x. max 0 (real x - real k) \<partial>(\<G> n_exp))"
     unfolding max_of_mono[OF mono_real_of_int,symmetric] by simp
   also have "... = (\<Sum>x\<le>n_exp.  max 0 (real x - real k) * pmf (\<G> n_exp) x)"
@@ -180,14 +180,13 @@ next
   have "?L = (\<integral>x. real_of_int (max 0 (int x - k)) \<partial>map_pmf (\<lambda>x. x a) \<Psi>\<^sub>1)"
     by simp
   also have "... = (\<integral>x. real_of_int (max 0 (int x - k)) \<partial>(\<G> n_exp))"
-    unfolding \<Psi>\<^sub>1.\<H>_single[OF a_lt_n] by simp
+    unfolding \<Psi>\<^sub>1.single[OF a_lt_n] by simp
   also have "... = (\<integral>x. real_of_int 0 \<partial>(\<G> n_exp))"
     using \<G>_range k_ge_n_exp unfolding sample_space_alt[OF \<G>_sample_space]
     by (intro integral_cong_AE AE_pmfI iffD2[OF of_int_eq_iff] max_absorb1) force+
   also have "... = 0" by simp
   finally show ?thesis by simp
 qed
-
 
 lemma cutoff_eq_5:
   assumes "x \<ge> (-1 :: real)"
@@ -258,7 +257,6 @@ proof -
       by simp
   ultimately show ?thesis using order_trans by blast
 qed
-
 
 lemma cutoff_level:
   "measure \<Omega> {\<omega>. q \<omega> A > q_max} \<le> \<epsilon>/2" (is "?L \<le> ?R")

@@ -269,7 +269,6 @@ proof -
     by simp
 qed
 
-
 definition C\<^sub>1 :: real where "C\<^sub>1 = exp 2 + exp 3 + (exp 1 - 1)"
 
 lemma (in regular_graph) deviation_bound:

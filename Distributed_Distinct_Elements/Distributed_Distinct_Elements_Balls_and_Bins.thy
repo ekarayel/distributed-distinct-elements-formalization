@@ -370,7 +370,6 @@ lemmas Polynomials_intros =
   Polynomials_constI
   Polynomials_ffact  
 
-
 definition C\<^sub>2 :: real where "C\<^sub>2 = 7.5"
 definition C\<^sub>3 :: real where "C\<^sub>3 = 16"
 

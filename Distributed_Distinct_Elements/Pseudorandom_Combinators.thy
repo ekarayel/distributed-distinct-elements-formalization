@@ -409,7 +409,7 @@ lemma sample_space: "sample_space S"
 lemma sample_space_R: "sample_space R"
   using size_R p_n_gt_0 unfolding sample_space_def by auto
 
-lemma \<H>_range: "range (select S i) \<subseteq> sample_set R"
+lemma range: "range (select S i) \<subseteq> sample_set R"
 proof -
   define \<alpha> where "\<alpha> = select S i"
   have "\<alpha> x \<in> sample_set R" for x
@@ -440,7 +440,7 @@ proof-
     by (intro map_pmf_of_set_bij_betw) auto
 qed
 
-lemma \<H>_single:
+lemma single:
   assumes "x < d"
   shows "map_pmf (\<lambda>\<omega>. \<omega> x) (sample_pmf S) = sample_pmf R" (is "?L = ?R")
 proof -

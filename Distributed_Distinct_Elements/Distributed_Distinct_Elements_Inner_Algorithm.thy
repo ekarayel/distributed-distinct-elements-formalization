@@ -289,7 +289,7 @@ proof -
     using sample_set_\<Psi> assms by auto
   then obtain i where f_def:"f = select \<Psi>\<^sub>1 i" unfolding sample_set_def by auto
   hence "f x \<in> sample_set (\<G> n_exp)"
-    using \<Psi>\<^sub>1.\<H>_range by auto
+    using \<Psi>\<^sub>1.range by auto
   also have "... \<subseteq> {..n_exp}"
     by (intro \<G>_range)
   finally have "f x \<in> {..n_exp}" 
@@ -304,7 +304,7 @@ proof -
   obtain i where f_def:"g = select (\<H> 2 n [(C\<^sub>7*b\<^sup>2)]\<^sub>S) i"
     using assms unfolding sample_set_def by auto
   hence "range g \<subseteq> sample_set ([(C\<^sub>7*b\<^sup>2)]\<^sub>S)"
-    unfolding f_def by (intro \<Psi>\<^sub>2.\<H>_range) 
+    unfolding f_def by (intro \<Psi>\<^sub>2.range) 
   thus ?thesis
     unfolding sample_set_alt[OF \<Psi>\<^sub>2.sample_space_R] 
     unfolding nat_sample_space_def by auto
@@ -317,7 +317,7 @@ proof -
   obtain i where f_def:"h = select \<Psi>\<^sub>3 i"
     using assms unfolding sample_set_def by auto
   hence "range h \<subseteq> sample_set ([b]\<^sub>S)"
-    unfolding f_def by (intro \<Psi>\<^sub>3.\<H>_range) 
+    unfolding f_def by (intro \<Psi>\<^sub>3.range) 
   thus ?thesis
     unfolding sample_set_alt[OF \<Psi>\<^sub>3.sample_space_R] 
     unfolding nat_sample_space_def by auto
