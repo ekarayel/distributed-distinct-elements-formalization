@@ -104,7 +104,7 @@ proof -
   have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> prob_space.indep_vars \<Psi>\<^sub>1 (\<lambda>_. borel) V J" for J
     unfolding V_def using A_range finite_subset[OF _ fin_A]
     by (intro prob_space.indep_vars_compose2[where Y="\<lambda>i y. of_bool(x \<le> y)" and M'="\<lambda>_. discrete"]
-        prob_space.k_wise_indep_vars_subset[OF _ \<Psi>\<^sub>1.\<H>_indep]) (auto simp:prob_space_measure_pmf)
+        prob_space.k_wise_indep_vars_subset[OF _ \<Psi>\<^sub>1.indep]) (auto simp:prob_space_measure_pmf)
   hence "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) = (\<Sum> a \<in> A. measure_pmf.variance \<Psi>\<^sub>1 (V a))"
     unfolding r_eq V_def using \<Psi>\<^sub>1.sample_space
     by (intro measure_pmf.var_sum_pairwise_indep_2 fin_A) (simp_all)
@@ -528,7 +528,7 @@ proof -
   proof -
     obtain x y z where \<omega>_def: "\<omega> = (z,x,y)" by (metis prod_cases3)
     have a:"prob_space.k_wise_indep_vars \<Psi>\<^sub>2 2 (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x = z) {..<n}"
-      by (intro prob_space.k_wise_indep_vars_compose[OF _ \<Psi>\<^sub>2.\<H>_indep]) 
+      by (intro prob_space.k_wise_indep_vars_compose[OF _ \<Psi>\<^sub>2.indep]) 
        (simp_all add:prob_space_measure_pmf)
 
     have "u \<in> R f \<Longrightarrow> u < n" for u
@@ -683,7 +683,7 @@ proof -
       if "x \<in> g ` R f" for x 
       using g_ran \<Psi>\<^sub>3.single that by auto
     moreover have "prob_space.k_wise_indep_vars \<Psi>\<^sub>3 k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) (g ` R f)"
-      by (intro prob_space.k_wise_indep_subset[OF _ _ \<Psi>\<^sub>3.\<H>_indep] g_ran prob_space_measure_pmf)
+      by (intro prob_space.k_wise_indep_subset[OF _ _ \<Psi>\<^sub>3.indep] g_ran prob_space_measure_pmf)
     ultimately have lim_balls_and_bins: "B.lim_balls_and_bins k (sample_pmf (\<H> k (C\<^sub>7 * b\<^sup>2) [b]\<^sub>S))"
       unfolding B.lim_balls_and_bins_def by auto
 

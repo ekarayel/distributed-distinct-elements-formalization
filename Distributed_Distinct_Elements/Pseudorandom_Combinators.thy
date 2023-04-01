@@ -486,7 +486,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma \<H>_indep:
+lemma indep:
   "prob_space.k_wise_indep_vars (sample_pmf S) k (\<lambda>_. discrete) (\<lambda>i \<omega>. \<omega> i) {..<d}" 
 proof -
   let ?p = "map_pmf g (pmf_of_set {..<p ^ (m * k)})"

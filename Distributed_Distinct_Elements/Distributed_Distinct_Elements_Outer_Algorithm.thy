@@ -19,11 +19,11 @@ begin
 unbundle intro_cong_syntax
 
 text \<open>The following are non-asymptotic hard bounds on the space usage for the sketches and seeds
-repsectively. The end of this section contains a proof the sum is asymptotically in 
+repsectively. The end of this section contains a proof that the sum is asymptotically in 
 $\mathcal O(\ln( \varepsilon^{-1}) \delta^{-1} + \ln n)$.\<close>
 
 definition "state_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^40 * (ln(1/\<epsilon>)+1)/ \<delta>^2 + log 2 (log 2 n + 3))"
-definition "seed_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^30 + 2^23*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2 + 336*ln (1/\<epsilon>))"
+definition "seed_space_usage = (\<lambda>(n,\<delta>,\<epsilon>). 2^30+2^23*ln n+48*(log 2(1/\<delta>)+16)\<^sup>2+336*ln (1/\<epsilon>))"
 
 locale outer_algorithm =
   fixes n :: nat
@@ -433,7 +433,7 @@ proof -
   finally have 2:"(55+60*ln (ln n\<^sub>0))^3 \<le> 180^3 * ln n + 180^3*exp 5"
     by simp
 
-  have 3:"((1::real)+180^3*exp 5) \<le> 2^30" "((4::real)/ln 2 + 180^3) \<le> 2^23"
+  have 3:"(1::real)+180^3*exp 5 \<le> 2^30" "(4::real)/ln 2 + 180^3 \<le> 2^23"
     by (approximation 10)+
 
   have "?L = ereal (real (floorlog 2 (size \<Theta> - 1)))"
@@ -555,15 +555,15 @@ fun sketch_tree_set :: "sketch_tree \<Rightarrow> nat set"
     "sketch_tree_set (Merge x y) = sketch_tree_set x \<union> sketch_tree_set y"
 
 theorem correctness:
-  fixes Y
+  fixes X
   assumes "sketch_tree_set t \<subseteq> {..<n}"
   defines "p \<equiv> pmf_of_set {..<size \<Theta>}"
-  defines "Y \<equiv> real (card (sketch_tree_set t))"
-  shows "measure p {\<omega>. \<bar>estimate (eval \<omega> t) - Y\<bar> > \<delta> * Y} \<le> \<epsilon>" (is "?L \<le> ?R")
+  defines "X \<equiv> real (card (sketch_tree_set t))"
+  shows "measure p {\<omega>. \<bar>estimate (eval \<omega> t) - X\<bar> > \<delta> * X} \<le> \<epsilon>" (is "?L \<le> ?R")
 proof -
   define A where "A = sketch_tree_set t"
-  have Y_eq: "Y = real (card A)"
-    unfolding Y_def A_def by simp
+  have X_eq: "X = real (card A)"
+    unfolding X_def A_def by simp
 
   have 0:"eval \<omega> t = \<nu> \<omega> A" for \<omega>
     unfolding A_def using single_result merge_result
@@ -576,7 +576,7 @@ proof -
     unfolding A_def by (induction t) auto
 
   show ?thesis
-    unfolding 0 Y_eq p_def by (intro estimate_result 1 2)
+    unfolding 0 X_eq p_def by (intro estimate_result 1 2)
 qed
 
 theorem space_usage:

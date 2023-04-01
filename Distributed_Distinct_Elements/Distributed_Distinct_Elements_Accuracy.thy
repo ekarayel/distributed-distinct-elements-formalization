@@ -1,7 +1,7 @@
 section \<open>Accuracy with cutoff\label{sec:accuracy}\<close>
 
 text \<open>This section verifies that each of the $l$ estimate have the required accuracy with high
-probability assuming as long as the cutoff is below @{term "s\<^sub>M"}, generalizing the result from
+probability assuming as long as the cutoff is below @{term "q_max"}, generalizing the result from
 Section~\ref{sec:accuracy_wo_cutoff}.\<close>
 
 theory Distributed_Distinct_Elements_Accuracy
@@ -199,9 +199,8 @@ proof -
     by blast
 qed
 
-lemma estimate_result\<^sub>c:
-  "measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>q_max. \<delta>*X < \<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-X\<bar>) } \<le> \<epsilon>/2"
-    (is "?L \<le> ?R")
+lemma estimate_result_1:
+  "measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>q_max. \<delta>*X < \<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-X\<bar>) } \<le> \<epsilon>/2" (is "?L \<le> ?R")
 proof -
   define I :: "real set" where "I = {x. \<bar>x - real X\<bar> \<le> \<delta>*X}"
 
@@ -301,7 +300,7 @@ proof -
   also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>q_max. \<delta>*real X<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-X\<bar>)} + ?P {\<omega>. q \<omega> A> q_max}"
     by (intro pmf_add) auto
   also have "...\<le>  \<epsilon>/2 +  \<epsilon>/2"
-    by (intro add_mono cutoff_level estimate_result\<^sub>c) 
+    by (intro add_mono cutoff_level estimate_result_1) 
   also have "... =  \<epsilon>"
     by simp 
   finally show ?thesis 
