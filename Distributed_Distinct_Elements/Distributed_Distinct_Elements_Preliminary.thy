@@ -3,7 +3,7 @@ section \<open>Preliminary Results\<close>
 text \<open>This section contains various short preliminary results used in the sections below.\<close>
 
 theory Distributed_Distinct_Elements_Preliminary
-  imports 
+  imports
     Frequency_Moments.Frequency_Moments_Preliminary_Results
     Frequency_Moments.Product_PMF_Ext
     Median_Method.Median
@@ -15,7 +15,7 @@ begin
 
 unbundle intro_cong_syntax
 
-text \<open>Simplified versions of measure theoretic results for pmfs:\<close> 
+text \<open>Simplified versions of measure theoretic results for pmfs:\<close>
 
 lemma measure_pmf_cong:
   assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> x \<in> P \<longleftrightarrow> x \<in> Q"
@@ -48,12 +48,12 @@ lemma pmf_exp_mono:
 
 lemma pmf_markov:
   assumes "integrable (measure_pmf p) f" "c > 0"
-  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0" 
+  assumes "\<And>x. x \<in> set_pmf p \<Longrightarrow> f x \<ge> 0"
   shows "measure p {\<omega>. f \<omega> \<ge> c} \<le> (\<integral>\<omega>. f \<omega> \<partial>p)/ c" (is "?L \<le> ?R")
 proof -
-  have a:"AE \<omega> in (measure_pmf p). 0 \<le> f \<omega>" 
-    by (intro AE_pmfI assms(3)) 
-  have b:"{} \<in> measure_pmf.events p" 
+  have a:"AE \<omega> in (measure_pmf p). 0 \<le> f \<omega>"
+    by (intro AE_pmfI assms(3))
+  have b:"{} \<in> measure_pmf.events p"
     unfolding assms(1) by simp
 
   have "?L = \<P>(\<omega> in (measure_pmf p). f \<omega> \<ge> c)"
@@ -74,7 +74,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma pair_pmf_prob_left: 
+lemma pair_pmf_prob_left:
   "measure_pmf.prob (pair_pmf A B) {\<omega>. P (fst \<omega>)} = measure_pmf.prob A {\<omega>. P \<omega>}" (is "?L = ?R")
 proof -
   have "?L = measure_pmf.prob (map_pmf fst (pair_pmf A B)) {\<omega>. P \<omega>}"
@@ -95,13 +95,13 @@ proof -
     using assms
     by (intro integral_measure_pmf_real) auto
   also have " ... = (\<Sum>y \<in> A. f y * measure p (g -` {y}))"
-    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map) 
+    unfolding assms(1) by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:sum.cong pmf_map)
   also have "... = ?R"
-    by (intro sum.cong) (auto simp add: vimage_def) 
+    by (intro sum.cong) (auto simp add: vimage_def)
   finally show ?thesis by simp
 qed
 
-text \<open>Cardinality rules for distinct/ordered pairs of a set without the finiteness constraint - to 
+text \<open>Cardinality rules for distinct/ordered pairs of a set without the finiteness constraint - to
 use in simplification:\<close>
 
 lemma card_distinct_pairs:
@@ -114,19 +114,19 @@ proof (cases "finite B")
   also have "... = card (B \<times> B) - card ((\<lambda>x. (x,x)) ` B)"
     by (intro card_Diff_subset finite_imageI True image_subsetI) auto
   also have "... = ?R"
-    using True by (intro_cong "[\<sigma>\<^sub>2 (-)]" more: card_image) 
+    using True by (intro_cong "[\<sigma>\<^sub>2 (-)]" more: card_image)
       (auto simp add:power2_eq_square inj_on_def)
   finally show ?thesis by simp
 next
   case False
   then obtain p where p_in: "p \<in> B" by fastforce
-  have "False" if "finite ?L" 
+  have "False" if "finite ?L"
   proof -
     have "(\<lambda>x. (p,x)) ` (B - {p}) \<subseteq> ?L"
       using p_in by (intro image_subsetI) auto
     hence "finite ((\<lambda>x. (p,x)) ` (B - {p}))"
       using finite_subset that by auto
-    hence "finite (B - {p})" 
+    hence "finite (B - {p})"
       by (rule finite_imageD) (simp add:inj_on_def)
     hence "finite B"
       by simp
@@ -140,11 +140,11 @@ next
 qed
 
 lemma card_ordered_pairs':
-  fixes M :: "('a ::linorder) set" 
+  fixes M :: "('a ::linorder) set"
   shows "card {(x,y) \<in> M \<times> M. x < y} = card M * (card M - 1) / 2"
 proof (cases "finite M")
   case True
-  show ?thesis using card_ordered_pairs[OF True] by linarith 
+  show ?thesis using card_ordered_pairs[OF True] by linarith
 next
   case False
   then obtain p where p_in: "p \<in> M" by fastforce
@@ -154,7 +154,7 @@ next
     have "?f ` (M-{p}) \<subseteq> ?X"
       using p_in by (intro image_subsetI) auto
     hence "finite (?f ` (M-{p}))" using that finite_subset by auto
-    moreover have "inj_on ?f (M-{p})" 
+    moreover have "inj_on ?f (M-{p})"
       by (intro inj_onI) (metis Pair_inject)
     ultimately have "finite (M - {p})"
       using finite_imageD by blast
@@ -217,11 +217,11 @@ proof -
 qed
 
 text \<open>Ln is monotone on the positive numbers and thus commutes with min and max:\<close>
-lemma ln_min_swap: 
+lemma ln_min_swap:
   "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (min x y) = min (ln x) (ln y)"
   using ln_less_cancel_iff by fastforce
 
-lemma ln_max_swap: 
+lemma ln_max_swap:
   "x > (0::real) \<Longrightarrow> (y > 0) \<Longrightarrow> ln (max x y) = max (ln x) (ln y)"
   using ln_le_cancel_iff by fastforce
 
@@ -233,9 +233,9 @@ proof (cases "n > 0")
   case True
   have "ln ?L = ln (2*pi*n)/2 + n * ln n - n"
     using True by (simp add: ln_mult ln_sqrt ln_realpow ln_div algebra_simps)
-  also have "... \<le> ln ?R" 
+  also have "... \<le> ln ?R"
     by (intro Stirling_Formula.ln_fact_bounds True)
-  finally show ?thesis 
+  finally show ?thesis
     using iffD1[OF ln_le_cancel_iff] True by simp
 next
   case False
@@ -248,9 +248,9 @@ lemma fact_lower_bound_1:
 proof -
   have "2 * pi \<ge> 1" using pi_ge_two by auto
   moreover have "n \<ge> 1" using assms by simp
-  ultimately have "2 * pi * n \<ge> 1*1" 
+  ultimately have "2 * pi * n \<ge> 1*1"
     by (intro mult_mono) auto
-  hence a:"2 * pi * n \<ge> 1" by simp 
+  hence a:"2 * pi * n \<ge> 1" by simp
 
   have "?L = 1 * ?L" by simp
   also have "... \<le> sqrt(2 * pi * n) * ?L"
@@ -323,11 +323,11 @@ proof -
   have "P x" if "x \<in> {0<..<1 / q}" for x
   proof -
     define n where "n = 1/x"
-    have x_eq: "x = 1 / n" 
+    have x_eq: "x = 1 / n"
       unfolding n_def using that by simp
 
     have "N \<le> q" unfolding q_def by simp
-    also have "... \<le> n" 
+    also have "... \<le> n"
       unfolding n_def using that d by (simp add:divide_simps ac_simps)
     finally have "N \<le> n" by simp
     thus ?thesis
@@ -340,7 +340,7 @@ qed
 
 lemma bigo_inv:
   fixes f g :: "real \<Rightarrow> real"
-  assumes "(\<lambda>x. f (1/x)) \<in> O(\<lambda>x. g (1/x))" 
+  assumes "(\<lambda>x. f (1/x)) \<in> O(\<lambda>x. g (1/x))"
   shows "f \<in> O[at_right 0](g)"
   using assms eventually_inv unfolding bigo_def by auto
 

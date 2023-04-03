@@ -1,18 +1,18 @@
 section \<open>Tail Bounds for Expander Walks\<close>
 
 theory Distributed_Distinct_Elements_Tail_Bounds
-  imports 
+  imports
     Distributed_Distinct_Elements_Preliminary
-    Expander_Graphs.Expander_Graphs_Definition 
+    Expander_Graphs.Expander_Graphs_Definition
     Expander_Graphs.Expander_Graphs_Walks
     "HOL-Decision_Procs.Approximation"
     Pseudorandom_Combinators
-begin 
+begin
 
 text \<open>This section introduces tail estimates for random walks in expander graphs, specific to the
 verification of this algorithm (in particular to two-stage expander graph sampling and obtained
-tail bounds for subgaussian random variables). They follow from the more fundamental results 
-@{thm [source] regular_graph.kl_chernoff_property} and 
+tail bounds for subgaussian random variables). They follow from the more fundamental results
+@{thm [source] regular_graph.kl_chernoff_property} and
 @{thm [source] regular_graph.uniform_property} which are verified in the AFP entry for
 expander graphs~\cite{Expander_Graphs-AFP}.\<close>
 
@@ -22,7 +22,7 @@ unbundle intro_cong_syntax
 
 lemma x_ln_x_min:
   assumes "x \<ge> (0::real)"
-  shows  "x * ln x \<ge> -exp (-1)" 
+  shows  "x * ln x \<ge> -exp (-1)"
 proof -
   define f where "f x = x * ln x" for x :: real
   define f' where "f' x = ln x + 1" for x :: real
@@ -31,7 +31,7 @@ proof -
     unfolding f_def f'_def using that
     by (auto intro!: derivative_eq_intros)
 
-  have "f' x \<ge> 0" if "exp (-1) \<le> x" for x :: real 
+  have "f' x \<ge> 0" if "exp (-1) \<le> x" for x :: real
   proof -
     have "ln x \<ge> -1"
       using that order_less_le_trans[OF exp_gt_zero]
@@ -43,12 +43,12 @@ proof -
   hence "\<exists>y. (f has_real_derivative y) (at x) \<and> 0 \<le> y" if "x \<ge> exp (-1)" for x :: real
     using that order_less_le_trans[OF exp_gt_zero]
     by (intro exI[where x="f' x"] conjI 0) auto
-  hence "f (exp (-1)) \<le> f x" if "exp(-1) \<le> x" 
+  hence "f (exp (-1)) \<le> f x" if "exp(-1) \<le> x"
     by (intro DERIV_nonneg_imp_nondecreasing[OF that]) auto
-  hence 2:?thesis if  "exp(-1) \<le> x" 
+  hence 2:?thesis if  "exp(-1) \<le> x"
     unfolding f_def using that by simp
 
-  have "f' x \<le> 0" if "x > 0" "x \<le> exp (-1)" for x :: real 
+  have "f' x \<le> 0" if "x > 0" "x \<le> exp (-1)" for x :: real
   proof -
     have "ln x \<le> ln (exp (-1))"
       by (intro iffD2[OF ln_le_cancel_iff] that exp_gt_zero)
@@ -65,9 +65,9 @@ proof -
   hence 3:?thesis if "x > 0" "x \<le> exp(-1)"
     unfolding f_def using that by simp
 
-  have ?thesis if "x = 0" 
+  have ?thesis if "x = 0"
     using that by simp
-  thus ?thesis 
+  thus ?thesis
     using 2 3 assms by fastforce
 qed
 
@@ -76,49 +76,49 @@ theorem (in regular_graph) walk_tail_bound:
   assumes "S \<subseteq> verts G"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
   assumes "\<gamma> < 1" "\<mu> + \<Lambda>\<^sub>a \<le> \<gamma>"
-  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l} 
+  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l}
     \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>\<^sub>a)) - 2 * exp(-1)))" (is "?L \<le> ?R")
 proof (cases "\<mu> > 0")
   case True
 
   have "0 < \<mu> + \<Lambda>\<^sub>a"
     by (intro add_pos_nonneg \<Lambda>_ge_0 True)
-  also have "... \<le> \<gamma>" 
+  also have "... \<le> \<gamma>"
     using assms(5) by simp
   finally have \<gamma>_gt_0: "0 < \<gamma>" by simp
 
-  hence \<gamma>_ge_0: "0 \<le> \<gamma>" 
+  hence \<gamma>_ge_0: "0 \<le> \<gamma>"
     by simp
 
-  have "card S \<le> card (verts G)" 
+  have "card S \<le> card (verts G)"
     by (intro card_mono assms(2)) auto
   hence \<mu>_le_1: "\<mu> \<le> 1"
     unfolding \<mu>_def by (simp add:divide_simps)
 
-  have 2: "0 < \<mu> + \<Lambda>\<^sub>a * (1 - \<mu>)" 
+  have 2: "0 < \<mu> + \<Lambda>\<^sub>a * (1 - \<mu>)"
     using \<mu>_le_1 by (intro add_pos_nonneg True mult_nonneg_nonneg \<Lambda>_ge_0) auto
 
   have "\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>) \<le> \<mu> +  \<Lambda>\<^sub>a * 1"
     using \<Lambda>_ge_0 True by (intro add_mono mult_left_mono) auto
-  also have "... \<le> \<gamma>" 
+  also have "... \<le> \<gamma>"
     using assms(5) by simp
-  also have "... < 1" 
+  also have "... < 1"
     using assms(4) by simp
   finally have 4:"\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>) < 1" by simp
-  hence 3: "1 \<le> 1 / (1 - (\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>)))" 
+  hence 3: "1 \<le> 1 / (1 - (\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>)))"
     using 2 by (subst pos_le_divide_eq) simp_all
 
   have "card S \<le> n"
     unfolding n_def by (intro card_mono assms(2)) auto
-  hence 0:"\<mu> \<le> 1" 
+  hence 0:"\<mu> \<le> 1"
     unfolding \<mu>_def n_def[symmetric] using n_gt_0 by simp
 
   have "\<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a)) - 2*exp (- 1) = \<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a*1))+0 -2*exp (- 1)"
     by simp
   also have "... \<le> \<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a*(1-\<mu>)))+0-2*exp(-1)"
     using True \<gamma>_ge_0 \<Lambda>_ge_0 0 2
-    by (intro diff_right_mono mult_left_mono iffD2[OF ln_le_cancel_iff] divide_pos_pos 
-        divide_left_mono add_mono) auto 
+    by (intro diff_right_mono mult_left_mono iffD2[OF ln_le_cancel_iff] divide_pos_pos
+        divide_left_mono add_mono) auto
   also have "... \<le> \<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a*(1-\<mu>)))+(1-\<gamma>)*ln(1/(1-(\<mu>+\<Lambda>\<^sub>a*(1-\<mu>))))-2* exp(-1)"
     using assms(4) 3 by (intro add_mono diff_mono mult_nonneg_nonneg ln_ge_zero) auto
   also have "... = (-exp(-1))+\<gamma>*ln(1/(\<mu>+\<Lambda>\<^sub>a*(1-\<mu>)))+(-exp(-1))+(1-\<gamma>)*ln(1/(1-(\<mu>+\<Lambda>\<^sub>a*(1-\<mu>))))"
@@ -132,7 +132,7 @@ proof (cases "\<mu> > 0")
     by (intro_cong "[\<sigma>\<^sub>2(+), \<sigma>\<^sub>2(*)]" more:ln_mult[symmetric] divide_pos_pos) auto
   also have "... = KL_div \<gamma> (\<mu>+\<Lambda>\<^sub>a*(1-\<mu>))"
     unfolding KL_div_def by simp
-  finally have 1: "\<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a)) - 2 * exp (- 1) \<le> KL_div \<gamma> (\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>))" 
+  finally have 1: "\<gamma> * ln (1 / (\<mu> + \<Lambda>\<^sub>a)) - 2 * exp (- 1) \<le> KL_div \<gamma> (\<mu> + \<Lambda>\<^sub>a * (1 - \<mu>))"
     by simp
 
   have "\<mu>+\<Lambda>\<^sub>a*(1-\<mu>) \<le> \<mu>+\<Lambda>\<^sub>a*1"
@@ -152,7 +152,7 @@ proof (cases "\<mu> > 0")
 next
   case False
   hence "\<mu> \<le> 0" by simp
-  hence "card S = 0" 
+  hence "card S = 0"
     unfolding \<mu>_def n_def[symmetric] using n_gt_0 by (simp add:divide_simps)
   moreover have "finite S"
     using finite_subset[OF assms(2) finite_verts] by auto
@@ -161,7 +161,7 @@ next
     unfolding \<mu>_def 0 by simp
   hence "\<mu> + \<Lambda>\<^sub>a \<ge>0 "
     using \<Lambda>_ge_0 by simp
-  hence "\<gamma> \<ge> 0" 
+  hence "\<gamma> \<ge> 0"
     using assms(5) by simp
   hence "\<gamma> * real l \<ge> 0"
     by (intro mult_nonneg_nonneg) auto
@@ -173,21 +173,21 @@ theorem (in regular_graph) walk_tail_bound_2:
   assumes "S \<subseteq> verts G"
   defines "\<mu> \<equiv> real (card S) / card (verts G)"
   assumes "\<gamma> < 1" "\<mu> + \<Lambda> \<le> \<gamma>"
-  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l} 
+  shows "measure (pmf_of_multiset (walks G l)) {w. real (card {i \<in> {..<l}. w ! i \<in> S}) \<ge> \<gamma>*l}
     \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>)) - 2 * exp(-1)))" (is "?L \<le> ?R")
 proof (cases "\<mu> > 0")
   case True
 
-  have 0: "0 < \<mu> + \<Lambda>\<^sub>a" 
+  have 0: "0 < \<mu> + \<Lambda>\<^sub>a"
     by (intro add_pos_nonneg \<Lambda>_ge_0 True)
   hence "0 < \<mu> + \<Lambda>"
     using assms(2) by simp
-  hence 1: "0 < (\<mu> + \<Lambda>) * (\<mu> + \<Lambda>\<^sub>a)" 
+  hence 1: "0 < (\<mu> + \<Lambda>) * (\<mu> + \<Lambda>\<^sub>a)"
     using 0 by simp
 
-  have 3:"\<mu> + \<Lambda>\<^sub>a \<le> \<gamma>" 
+  have 3:"\<mu> + \<Lambda>\<^sub>a \<le> \<gamma>"
     using assms(2,7) by simp
-  have 2: "0 \<le> \<gamma>" 
+  have 2: "0 \<le> \<gamma>"
     using 3 True \<Lambda>_ge_0 by simp
 
   have "?L \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>\<^sub>a)) - 2 * exp(-1)))"
@@ -196,15 +196,15 @@ proof (cases "\<mu> > 0")
     by simp
   also have "... \<le> exp (- (real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>)) - 2 * exp(-1))))"
     using True assms(2,3) using 0 1 2
-    by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono diff_mono iffD2[OF ln_le_cancel_iff] 
+    by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono diff_mono iffD2[OF ln_le_cancel_iff]
         divide_left_mono le_imp_neg_le) simp_all
-  also have "... = ?R" 
+  also have "... = ?R"
     by simp
   finally show ?thesis by simp
 next
   case False
   hence "\<mu> \<le> 0" by simp
-  hence "card S = 0" 
+  hence "card S = 0"
     unfolding \<mu>_def n_def[symmetric] using n_gt_0 by (simp add:divide_simps)
   moreover have "finite S"
     using finite_subset[OF assms(4) finite_verts] by auto
@@ -213,7 +213,7 @@ next
     unfolding \<mu>_def 0 by simp
   hence "\<mu> + \<Lambda>\<^sub>a \<ge>0 "
     using \<Lambda>_ge_0 by simp
-  hence "\<gamma> \<ge> 0" 
+  hence "\<gamma> \<ge> 0"
     using assms by simp
   hence "\<gamma> * real l \<ge> 0"
     by (intro mult_nonneg_nonneg) auto
@@ -225,13 +225,13 @@ lemma (in expander_sample_space) tail_bound:
   assumes "l > 0" "\<Lambda> > 0"
   defines "\<mu> \<equiv> measure (sample_pmf S) {w. T w}"
   assumes "\<gamma> < 1" "\<mu> + \<Lambda> \<le> \<gamma>"
-  shows "measure (\<E> l \<Lambda> S) {w. real (card {i \<in> {..<l}. T (w i)}) \<ge> \<gamma>*l} 
+  shows "measure (\<E> l \<Lambda> S) {w. real (card {i \<in> {..<l}. T (w i)}) \<ge> \<gamma>*l}
     \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>)) - 2 * exp(-1)))" (is "?L \<le> ?R")
 proof -
   let ?w = "pmf_of_multiset (walks (graph_of e) l)"
   define V where "V = {v\<in> verts (graph_of e). T (select S v)} "
 
-  have 0: "card {i \<in> {..<l}. T (select S (w ! i))} = card {i \<in> {..<l}. w ! i \<in> V}" 
+  have 0: "card {i \<in> {..<l}. T (select S (w ! i))} = card {i \<in> {..<l}. w ! i \<in> V}"
     if "w  \<in> set_pmf (pmf_of_multiset (walks (graph_of e) l))" for w
   proof -
     have a0: "w \<in># walks (graph_of e) l" using that E.walks_nonempty by simp
@@ -249,13 +249,13 @@ proof -
     unfolding V_def by simp
 
   have "\<mu> = measure (pmf_of_set {..<size S}) ({v. T (select S v)})"
-    unfolding \<mu>_def sample_pmf_alt[OF sample_space_S] 
+    unfolding \<mu>_def sample_pmf_alt[OF sample_space_S]
     by simp
   also have "... = real (card ({v\<in>{..<size S}. T (select S v)})) / real (size S)"
     using size_S_gt_0 by (subst measure_pmf_of_set) (auto simp add:Int_def)
   also have "... = real (card V) / card (verts (graph_of e))"
     unfolding V_def graph_of_def e_def using see_standard by (simp add:Int_commute)
-  finally have \<mu>_eq: "\<mu> = real (card V) / card (verts (graph_of e))" 
+  finally have \<mu>_eq: "\<mu> = real (card V) / card (verts (graph_of e))"
     by simp
 
   have "?L = measure ?w {y. \<gamma> * real l \<le> real (card {i \<in> {..<l}. T (select S (y ! i))})}"
@@ -276,7 +276,7 @@ lemma (in regular_graph) deviation_bound:
   assumes "l > 0"
   assumes "\<Lambda>\<^sub>a \<le> exp (-real l * ln (real l)^3)"
   assumes "\<And>x. x \<ge> 20 \<Longrightarrow> measure (pmf_of_set (verts G)) {v. f v \<ge> x} \<le> exp (-x * ln x^3)"
-  shows "measure (pmf_of_multiset (walks G l)) {w. (\<Sum>i\<leftarrow>w. f i) \<ge> C\<^sub>1 * l} \<le> exp (- real l)" 
+  shows "measure (pmf_of_multiset (walks G l)) {w. (\<Sum>i\<leftarrow>w. f i) \<ge> C\<^sub>1 * l} \<le> exp (- real l)"
     (is "?L \<le> ?R")
 proof -
   let ?w = "pmf_of_multiset (walks G l)"
@@ -287,7 +287,7 @@ proof -
   have b_gt_0: "b > 0"
     unfolding b_def by (approximation 5)
 
-  define L where 
+  define L where
     "L k = measure ?w {w. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2}" for k
 
   define k_max where "k_max = max 4 (MAX v \<in> verts G. nat \<lfloor>ln (f v)\<rfloor>+1)"
@@ -305,8 +305,8 @@ proof -
   have k_max_ge_3: "k_max \<ge> 3"
     unfolding k_max_def by simp
 
-  have 1:"of_bool(\<lfloor>ln(max x (exp 1))\<rfloor>+1=int k) = 
-    (of_bool(x \<ge> exp (real k-1)) - of_bool(x \<ge> exp k)::real)" 
+  have 1:"of_bool(\<lfloor>ln(max x (exp 1))\<rfloor>+1=int k) =
+    (of_bool(x \<ge> exp (real k-1)) - of_bool(x \<ge> exp k)::real)"
     (is "?L1 = ?R1") if "k \<ge> 3" for k x
   proof -
     have a1: "real k - 1 \<le> k" by simp
@@ -322,7 +322,7 @@ proof -
     proof (cases "x \<ge> exp 1")
       case True
       then show ?thesis by simp
-    next 
+    next
       case False
       have "{exp (real k - 1)..<exp (real k)} \<subseteq> {exp (real k - 1)..}"
         by auto
@@ -331,7 +331,7 @@ proof -
       finally have "{exp (real k - 1)..<exp (real k)} \<subseteq> {exp 1..}" by simp
       moreover have "x \<notin> {exp 1..}"
         using False by simp
-      ultimately have "x \<notin> {exp (real k - 1)..<exp (real k)}" by blast      
+      ultimately have "x \<notin> {exp (real k - 1)..<exp (real k)}" by blast
       hence "of_bool(x \<in>{exp (real k-1)..<exp (real k)}) = 0" by simp
       also have "... = of_bool(max x (exp 1) \<in>{exp (real k-1)..<exp (real k)})"
         using False that by simp
@@ -360,7 +360,7 @@ proof -
       using True order_less_le_trans[OF exp_gt_zero]
       by (intro nat_mono floor_mono iffD2[OF ln_le_cancel_iff]) auto
     finally have "1 \<le> nat \<lfloor>ln (f x)\<rfloor>" by simp
-    hence "?L1 \<ge> 2" 
+    hence "?L1 \<ge> 2"
       using True by simp
     hence "?L1 \<in> ?R2"
       using le_0 by simp
@@ -374,7 +374,7 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have 2:"(\<Sum>i\<leftarrow>w. f i) \<le> ?a+b*(\<Sum>k=3..<k_max. exp k * card {i\<in>{..<l}. f (w!i)\<ge>exp k})" 
+  have 2:"(\<Sum>i\<leftarrow>w. f i) \<le> ?a+b*(\<Sum>k=3..<k_max. exp k * card {i\<in>{..<l}. f (w!i)\<ge>exp k})"
     (is "?L1 \<le> ?R1") if "w \<in># walks G l" for w
   proof -
     have l_w: "length w = l"
@@ -387,19 +387,19 @@ proof -
     also have "... \<le> (\<Sum>i\<leftarrow>w. exp (of_nat (nat \<lfloor>ln (max (f i) (exp 1))\<rfloor>+1)))"
       by (intro sum_list_mono iffD2[OF exp_le_cancel_iff]) linarith
     also have "... = (\<Sum>i\<leftarrow>w. (\<Sum>k=2..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1)))"
-      using Int_absorb1[OF 0] subsetD[OF s_w] by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong) 
+      using Int_absorb1[OF 0] subsetD[OF s_w] by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong)
         (simp add:of_bool_def if_distrib if_distribR sum.If_cases)
     also have "...=
       (\<Sum>i\<leftarrow>w.(\<Sum>k\<in>(insert 2{3..k_max}). exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1)))"
       using k_max_ge_3 by (intro_cong "[\<sigma>\<^sub>1 sum_list]" more:map_cong sum.cong) auto
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2* of_bool (2=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1) + 
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2* of_bool (2=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1) +
       (\<Sum>k=3..k_max. exp k * of_bool (k=nat \<lfloor>ln (max (f i)(exp 1))\<rfloor>+1)))"
       by (subst sum.insert) auto
     also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2*1+(\<Sum>k=3..k_max. exp k* of_bool(k=nat\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1)))"
       by (intro sum_list_mono add_mono mult_left_mono) auto
     also have "... = (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=3..k_max. exp k* of_bool(\<lfloor>ln(max(f i)(exp 1))\<rfloor>+1=int k)))"
       by (intro_cong "[\<sigma>\<^sub>1 sum_list,\<sigma>\<^sub>1 of_bool, \<sigma>\<^sub>2(+),\<sigma>\<^sub>2(*)]" more:map_cong sum.cong) auto
-    also have "... = 
+    also have "... =
       (\<Sum>i\<leftarrow>w. exp 2+(\<Sum>k=3..k_max. exp k*(of_bool(f i\<ge>exp (real k-1))-of_bool(f i\<ge>exp k))))"
       by (intro_cong "[\<sigma>\<^sub>1 sum_list,\<sigma>\<^sub>1 of_bool, \<sigma>\<^sub>2(+),\<sigma>\<^sub>2(*)]" more:map_cong sum.cong 1) auto
     also have "... =
@@ -418,7 +418,7 @@ proof -
       (\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
       using k_max_ge_3
       by (intro_cong "[\<sigma>\<^sub>1 sum_list, \<sigma>\<^sub>2 (+), \<sigma>\<^sub>2 (-)]" more: map_cong sum.cong) auto
-    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ exp 3 * of_bool (f i \<ge> exp 2) + 
+    also have "... = (\<Sum>i\<leftarrow>w. exp 2+ exp 3 * of_bool (f i \<ge> exp 2) +
       (\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-(\<Sum>k=3..<k_max+1. exp k* of_bool(f i\<ge>exp k)))"
       by (subst sum.insert) (simp_all add:algebra_simps)
     also have "... \<le> (\<Sum>i\<leftarrow>w. exp 2+exp 3+(\<Sum>k=3..<k_max. exp (k+1)* of_bool(f i\<ge>exp k))-
@@ -449,11 +449,11 @@ proof -
   have 3: "\<exists>k\<in>{3..<k_max}. g k \<ge> l/real k^2" if "(\<Sum>k=3..<k_max. g k) \<ge> real l" for g
   proof (rule ccontr)
     assume a3: "\<not>(\<exists>k\<in>{3..<k_max}. g k \<ge> l/real k^2)"
-    hence "g k < l/real k^2" if "k \<in>{3..<k_max}" for k 
+    hence "g k < l/real k^2" if "k \<in>{3..<k_max}" for k
       using that by force
     hence "(\<Sum>k=3..<k_max. g k) < (\<Sum>k=3..<k_max. l/real k^2)"
       using k_max_ge_4 by (intro sum_strict_mono) auto
-    also have "... \<le> (\<Sum>k=3..<k_max. l/ (real k*(real k-1)))" 
+    also have "... \<le> (\<Sum>k=3..<k_max. l/ (real k*(real k-1)))"
       by (intro sum_mono divide_left_mono) (auto simp:power2_eq_square)
     also have "... = l * (\<Sum>k=3..<k_max. 1 / (real k-1) - 1/k)"
       by (simp add:sum_distrib_left field_simps)
@@ -475,7 +475,7 @@ proof -
   have 4: "L k \<le> exp(-real l-k+2)" if "k \<ge> 3" for k
   proof (cases "k \<le> ln l")
     case True
-    define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)" 
+    define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)"
     define S where "S = {v \<in> verts G. f v \<ge> exp (real k)}"
     define \<mu> where "\<mu> = card S / card (verts G)"
 
@@ -494,7 +494,7 @@ proof -
       unfolding S_def by simp
 
     have "\<mu> = measure (pmf_of_set (verts G)) S"
-      unfolding \<mu>_def using verts_non_empty Int_absorb1[OF S_range] 
+      unfolding \<mu>_def using verts_non_empty Int_absorb1[OF S_range]
       by (simp add:measure_pmf_of_set)
     also have "... = measure (pmf_of_set (verts G)) {v. f v \<ge> exp (real k)}"
       unfolding S_def using verts_non_empty by (intro measure_pmf_cong) auto
@@ -509,21 +509,21 @@ proof -
     also have "... =  exp (-(exp(real k) * real k^3)) + exp (- (real l * ln (real l) ^ 3))"
       by simp
     also have "... \<le> exp (-(exp(real k) * real k^3)) + exp (-(exp(real k) * ln(exp (real k))^3))"
-      using assms(1) exp_k_ubound by (intro add_mono iffD2[OF exp_le_cancel_iff] le_imp_neg_le 
+      using assms(1) exp_k_ubound by (intro add_mono iffD2[OF exp_le_cancel_iff] le_imp_neg_le
           mult_mono power_mono iffD2[OF ln_le_cancel_iff]) simp_all
     also have "... = 2 * exp (-exp(real k) * real k^3)"
       by simp
-    finally have \<mu>_\<Lambda>_bound: "\<mu>+\<Lambda> \<le> 2 * exp (-exp(real k) * real k^3)" 
+    finally have \<mu>_\<Lambda>_bound: "\<mu>+\<Lambda> \<le> 2 * exp (-exp(real k) * real k^3)"
       by simp
 
-    have "\<mu>+\<Lambda> \<le> 2 * exp (-exp(real k) * real k^3)" 
+    have "\<mu>+\<Lambda> \<le> 2 * exp (-exp(real k) * real k^3)"
       by (intro \<mu>_\<Lambda>_bound)
     also have "... = exp (-exp(real k) * real k^3 + ln 2)"
       unfolding exp_add by simp
     also have "... = exp (-(exp(real k) * real k^3 - ln 2))"
       by simp
     also have "... \<le> exp (-((1+ real k) * real k^3 - ln 2))"
-      using that by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le diff_mono mult_right_mono 
+      using that by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le diff_mono mult_right_mono
           exp_ge_add_one_self_aux) auto
     also have "... = exp (-(real k^4 + (real k^3- ln 2)))"
       by (simp add:power4_eq_xxxx power3_eq_cube algebra_simps)
@@ -545,15 +545,15 @@ proof -
     also have "... = exp (-(real k + ln(k^2)) )"
       using that by (subst ln_powr[symmetric]) auto
     also have "... = \<gamma>"
-      using that unfolding \<gamma>_def exp_minus exp_add inverse_eq_divide 
+      using that unfolding \<gamma>_def exp_minus exp_add inverse_eq_divide
       by (simp add:algebra_simps)
-    finally have \<mu>_\<Lambda>_le_\<gamma>: "\<mu>+\<Lambda>\<le>\<gamma>" 
+    finally have \<mu>_\<Lambda>_le_\<gamma>: "\<mu>+\<Lambda>\<le>\<gamma>"
       by simp
 
-    have "\<mu> \<ge> 0" 
-      unfolding \<mu>_def n_def[symmetric] using n_gt_0 
+    have "\<mu> \<ge> 0"
+      unfolding \<mu>_def n_def[symmetric] using n_gt_0
       by (intro divide_nonneg_pos) auto
-    hence \<mu>_\<Lambda>_gt_0: "\<mu>+\<Lambda>>0" 
+    hence \<mu>_\<Lambda>_gt_0: "\<mu>+\<Lambda>>0"
       using \<Lambda>_gt_0 by simp
 
     have "\<gamma> = 1 / ((real k)\<^sup>2 * exp (real k))"
@@ -564,18 +564,18 @@ proof -
       by simp
 
     have "\<gamma> \<le> 1 / (4 * exp 2)"
-      by (intro \<gamma>_ubound) 
-    also have "... < 1" 
+      by (intro \<gamma>_ubound)
+    also have "... < 1"
       by (approximation 5)
-    finally have \<gamma>_lt_1: "\<gamma> < 1" 
+    finally have \<gamma>_lt_1: "\<gamma> < 1"
       by simp
 
-    have \<gamma>_ge_0: "\<gamma> \<ge> 0" 
+    have \<gamma>_ge_0: "\<gamma> \<ge> 0"
       using that unfolding \<gamma>_def by (intro divide_nonneg_pos) auto
 
     have "L k = measure ?w {w. \<gamma>*l \<le> real (card {i \<in> {..<l}. exp (real k) \<le> f (w ! i)})}"
       unfolding L_def \<gamma>_def using that
-      by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:field_simps) 
+      by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:field_simps)
     also have "... = measure ?w {w. \<gamma>*l \<le> real (card {i \<in> {..<l}. w ! i \<in> S})}"
     proof (rule measure_pmf_cong)
       fix x assume "x \<in> set_pmf ?w"
@@ -586,7 +586,7 @@ proof -
         by simp
     qed
     also have "... \<le> exp (- real l * (\<gamma> * ln (1/(\<mu>+\<Lambda>)) - 2 * exp(-1)))"
-      using \<mu>_\<Lambda>_le_\<gamma> \<gamma>_lt_1 S_range \<Lambda>\<^sub>a_le_\<Lambda> \<Lambda>_gt_0 unfolding \<mu>_def 
+      using \<mu>_\<Lambda>_le_\<gamma> \<gamma>_lt_1 S_range \<Lambda>\<^sub>a_le_\<Lambda> \<Lambda>_gt_0 unfolding \<mu>_def
       by (intro walk_tail_bound_2 assms(1)) auto
     also have "... = exp ( real l * (\<gamma> * ln (\<mu>+\<Lambda>) + 2 * exp (-1)))"
       using \<mu>_\<Lambda>_gt_0 by (simp_all add:ln_div algebra_simps)
@@ -599,7 +599,7 @@ proof -
     also have "... = exp (real l * (\<gamma> * ln 2 - real k + 2 * exp (- 1)))"
       using that unfolding \<gamma>_def by (simp add:field_simps power2_eq_square power3_eq_cube)
     also have "... \<le> exp (real l * (ln 2 / (4 * exp 2) - real k + 2 * exp (-1)))"
-      using \<gamma>_ubound by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono add_mono diff_mono) 
+      using \<gamma>_ubound by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono add_mono diff_mono)
         (auto simp:divide_simps)
     also have "... = exp (real l * (ln 2 / (4 * exp 2) + 2 *exp(-1) - real k))"
       by simp
@@ -608,7 +608,7 @@ proof -
        (approximation 12)
     also have "... \<le> exp (-real l - real k + 2)"
     proof (intro iffD2[OF exp_le_cancel_iff])
-      have "1 * (real k-2) \<le> real l * (real k-2)" 
+      have "1 * (real k-2) \<le> real l * (real k-2)"
         using assms(1) that by (intro mult_right_mono) auto
       thus "real l * (1 - real k) \<le> - real l - real k + 2"
         by argo
@@ -617,7 +617,7 @@ proof -
   next
     case False
     hence k_gt_l: "k \<ge> ln l" by simp
-    define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)" 
+    define \<gamma> where "\<gamma> = 1 / (real k)\<^sup>2 / exp (real k)"
 
     have "20 \<le> exp (3::real)"
       by (approximation 10)
@@ -626,22 +626,22 @@ proof -
     finally have exp_k_lbound: "20 \<le> exp (real k)"
       by simp
 
-    have \<gamma>_gt_0: "0 < \<gamma>" 
+    have \<gamma>_gt_0: "0 < \<gamma>"
       using that unfolding \<gamma>_def by (intro divide_pos_pos) auto
 
-    hence \<gamma>_l_gt_0: "0 < \<gamma> * real l" 
+    hence \<gamma>_l_gt_0: "0 < \<gamma> * real l"
       using assms(1) by auto
 
     have "L k = measure ?w {w. \<gamma>*l \<le> real (card {i \<in> {..<l}. exp (real k) \<le> f (w ! i)})}"
       unfolding L_def \<gamma>_def using that
-      by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:field_simps) 
+      by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:field_simps)
     also have "... \<le> (\<integral>w. real (card {i \<in> {..<l}. exp (real k) \<le> f (w ! i)}) \<partial>?w) / (\<gamma>*l)"
       using walks_nonempty \<gamma>_l_gt_0
       by (intro pmf_markov integrable_measure_pmf_finite) simp_all
     also have "... = (\<integral>w. (\<Sum>i<l. of_bool (exp(real k) \<le> f (w ! i)))\<partial>?w) / (\<gamma>*l)"
       by (intro_cong "[\<sigma>\<^sub>2 (/)]" more:integral_cong_AE AE_pmfI) (auto simp add:Int_def)
     also have "... = (\<Sum>i<l. (\<integral>w. of_bool (exp(real k) \<le> f (w ! i))\<partial>?w)) / (\<gamma>*l)"
-      using walks_nonempty 
+      using walks_nonempty
       by (intro_cong "[\<sigma>\<^sub>2 (/)]" more:integral_sum integrable_measure_pmf_finite) auto
     also have "... = (\<Sum>i<l. (\<integral>v. of_bool (exp(real k) \<le> f v)\<partial>(map_pmf (\<lambda>w. w!i) ?w))) / (\<gamma>*l)"
       by simp
@@ -656,38 +656,38 @@ proof -
     also have "... = exp (- exp (real k) * real k ^ 3) / \<gamma>"
       using assms(1) by simp
     also have "... = exp (real k + ln (k^2) - exp (real k) * real k ^ 3)"
-      using that unfolding \<gamma>_def 
+      using that unfolding \<gamma>_def
       by (simp add:exp_add exp_diff exp_minus algebra_simps inverse_eq_divide)
     also have "... = exp (real k + 2 * ln k - exp (real k) * real k ^ 3)"
       using that by (subst ln_powr[symmetric]) auto
     also have "... \<le> exp (real k + 2 * real k - exp (ln l) * real k^3)"
       using that k_gt_l ln_bound
       by (intro iffD2[OF exp_le_cancel_iff] add_mono diff_mono mult_left_mono mult_right_mono) auto
-    also have "... = exp (3* real k - l * (real k^3-1) -l)" 
+    also have "... = exp (3* real k - l * (real k^3-1) -l)"
       using assms(1) by (subst exp_ln) (auto simp add:algebra_simps)
-    also have "... \<le> exp (3* real k - 1 * (real k^3-1) -l)" 
+    also have "... \<le> exp (3* real k - 1 * (real k^3-1) -l)"
       using assms(1) that by (intro iffD2[OF exp_le_cancel_iff] diff_mono mult_right_mono) auto
-    also have "... = exp (3* real k - real k * real k^2-1 -l+2)" 
+    also have "... = exp (3* real k - real k * real k^2-1 -l+2)"
       by (simp add:power2_eq_square power3_eq_cube)
-    also have "... \<le> exp (3* real k - real k * 2^2-0 -l+2)" 
-      using assms(1) that 
+    also have "... \<le> exp (3* real k - real k * 2^2-0 -l+2)"
+      using assms(1) that
       by (intro iffD2[OF exp_le_cancel_iff] add_mono diff_mono mult_left_mono power_mono) auto
     also have "... = exp (- real l - real k + 2)"
       by simp
     finally show ?thesis by simp
   qed
 
-  have "?L \<le> measure ?w 
+  have "?L \<le> measure ?w
     {w. ?a+b*(\<Sum>k=3..<k_max. exp (real k) * card {i\<in>{..<l}. f (w!i)\<ge>exp (real k)}) \<ge> C\<^sub>1*l}"
     using order_trans[OF _ 2] walks_nonempty by (intro pmf_mono) simp
-  also have "... = measure ?w 
+  also have "... = measure ?w
     {w. (\<Sum>k=3..<k_max. exp(real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)})\<ge>l}"
     unfolding C\<^sub>1_def b_def[symmetric] using b_gt_0
     by (intro_cong "[\<sigma>\<^sub>2 measure]" more:Collect_cong) (simp add:algebra_simps)
-  also have "... \<le> measure ?w 
+  also have "... \<le> measure ?w
     {w. (\<exists>k\<in>{3..<k_max}. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2)}"
     using 3 by (intro pmf_mono) simp
-  also have "... = measure ?w 
+  also have "... = measure ?w
     (\<Union>k\<in>{3..<k_max}. {w. exp (real k)*card{i\<in>{..<l}.f(w!i)\<ge>exp(real k)} \<ge> real l/real k^2})"
     by (intro_cong "[\<sigma>\<^sub>2 measure]") auto
   also have "... \<le> (\<Sum>k=3..<k_max. L k)"
@@ -703,7 +703,7 @@ proof -
     using atLeast0LessThan
     by (simp add:exp_diff exp_add sum_distrib_left exp_minus inverse_eq_divide)
   also have "... = exp (-1-real l) * ((exp (- 1) ^ (k_max - 3) - 1) / (exp (- 1) - 1))"
-    unfolding exp_of_nat_mult by (subst geometric_sum) auto 
+    unfolding exp_of_nat_mult by (subst geometric_sum) auto
   also have "... = exp(-1-real l) * (1-exp (- 1) ^ (k_max - 3)) / (1-exp (- 1))"
     by (simp add:field_simps)
   also have "... \<le> exp(-1-real l) * (1-0) / (1-exp (- 1))"
@@ -742,7 +742,7 @@ proof -
       unfolding sample_pmf_alt[OF sample_space_S] by simp
     also have "... \<le> ?R1"
       by (intro assms(3) that)
-    finally show ?thesis 
+    finally show ?thesis
       by simp
   qed
 

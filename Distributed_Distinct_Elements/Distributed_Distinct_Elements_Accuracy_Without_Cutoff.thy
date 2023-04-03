@@ -4,10 +4,10 @@ text \<open>This section verifies that each of the $l$ estimate have the require
 probability assuming that there was no cut-off, i.e., that $s=0$. Section~\ref{sec:accuracy} will
 then show that this remains true as long as the cut-off is below @{term "t f"} the subsampling
 threshold.\<close>
-                        
+
 theory Distributed_Distinct_Elements_Accuracy_Without_Cutoff
-  imports 
-    Distributed_Distinct_Elements_Inner_Algorithm 
+  imports
+    Distributed_Distinct_Elements_Inner_Algorithm
     Distributed_Distinct_Elements_Balls_and_Bins
 begin
 
@@ -23,7 +23,7 @@ definition X :: nat where "X = card A"
 
 definition q_max where "q_max = nat (\<lceil>log 2 X\<rceil> - b_exp)"
 
-definition t :: "(nat \<Rightarrow> nat) \<Rightarrow> int" 
+definition t :: "(nat \<Rightarrow> nat) \<Rightarrow> int"
   where "t f = int (Max (f ` A)) - b_exp + 9"
 
 definition s :: "(nat \<Rightarrow> nat) \<Rightarrow> nat"
@@ -44,14 +44,14 @@ lemma fin_A: "finite A"
 
 lemma X_le_n: "X \<le> n"
 proof -
-  have "card A \<le> card {..<n}" 
+  have "card A \<le> card {..<n}"
     by (intro card_mono A_range) simp
   thus ?thesis
     unfolding X_def by simp
 qed
 
 lemma X_ge_1: "X \<ge> 1"
-  unfolding X_def 
+  unfolding X_def
   using fin_A A_nonempty by (simp add: leI)
 
 lemma of_bool_square: "(of_bool x)\<^sup>2 = ((of_bool x)::real)"
@@ -61,14 +61,14 @@ lemma r_eq: "r x f = (\<Sum> a \<in> A.( of_bool( x \<le> f a) :: real))"
   unfolding r_def of_bool_def sum.If_cases[OF fin_A]
   by (simp add: Collect_conj_eq)
 
-lemma 
-  shows 
+lemma
+  shows
     r_exp: "(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = real X * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)" and
     r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
 proof -
   define V :: "nat \<Rightarrow> (nat \<Rightarrow> nat) \<Rightarrow> real" where "V = (\<lambda>a f. of_bool (x \<le> f a))"
 
-  have V_exp: "(\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x" 
+  have V_exp: "(\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1) = of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x"
     (is "?L = ?R") if "a \<in> A" for a
   proof -
     have a_le_n: "a < n"
@@ -85,9 +85,9 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have b:"(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1))" 
+  have b:"(\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1) = (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial>\<Psi>\<^sub>1))"
     unfolding r_eq V_def  using \<Psi>\<^sub>1.sample_space
-    by (intro Bochner_Integration.integral_sum) auto 
+    by (intro Bochner_Integration.integral_sum) auto
   also have "... = (\<Sum> a \<in> A.  of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1)/2^x)"
     using V_exp by (intro sum.cong) auto
   also have "... = X * (of_bool (x \<le> max (nat \<lceil>log 2 n\<rceil>) 1) / 2^x)"
@@ -98,7 +98,7 @@ proof -
   have "(\<integral>\<omega>. (V a \<omega>)^2 \<partial> \<Psi>\<^sub>1) = (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1)" for a
     unfolding V_def of_bool_square by simp
 
-  hence a:"measure_pmf.variance \<Psi>\<^sub>1 (V a) \<le> measure_pmf.expectation \<Psi>\<^sub>1 (V a)"  for a 
+  hence a:"measure_pmf.variance \<Psi>\<^sub>1 (V a) \<le> measure_pmf.expectation \<Psi>\<^sub>1 (V a)"  for a
     using \<Psi>\<^sub>1.sample_space by (subst measure_pmf.variance_eq) auto
 
   have "J \<subseteq> A \<Longrightarrow> card J = 2 \<Longrightarrow> prob_space.indep_vars \<Psi>\<^sub>1 (\<lambda>_. borel) V J" for J
@@ -109,7 +109,7 @@ proof -
     unfolding r_eq V_def using \<Psi>\<^sub>1.sample_space
     by (intro measure_pmf.var_sum_pairwise_indep_2 fin_A) (simp_all)
   also have "... \<le> (\<Sum> a \<in> A. (\<integral>\<omega>. V a \<omega> \<partial> \<Psi>\<^sub>1))"
-    by (intro sum_mono a) 
+    by (intro sum_mono a)
   also have "... = (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)"
     unfolding b by simp
   finally show "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r x \<omega>)) \<le> (\<integral>\<omega>. real (r x \<omega>) \<partial> \<Psi>\<^sub>1)" by simp
@@ -117,7 +117,7 @@ qed
 
 definition E\<^sub>1 where "E\<^sub>1 = (\<lambda>(f,g,h). 2 powr (-t f) * X \<in> {b/2^16..b/2})"
 
-lemma t_low: 
+lemma t_low:
   "measure \<Psi>\<^sub>1 {f. of_int (t f) < log 2 (real X) + 1 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
 proof (cases "log 2 (real X) \<ge> 8")
   case True
@@ -127,7 +127,7 @@ proof (cases "log 2 (real X) \<ge> 8")
     using X_le_n X_ge_1 by (intro log_mono) auto
   hence "nat \<lceil>log 2 (real X) - 8\<rceil> \<le> nat \<lceil>log 2 (real n)\<rceil>"
     by (intro nat_mono ceiling_mono) simp
-  hence a:"(nat \<lceil>log 2 (real X) - 8\<rceil> \<le> max (nat \<lceil>log 2 (real n)\<rceil>) 1)" 
+  hence a:"(nat \<lceil>log 2 (real X) - 8\<rceil> \<le> max (nat \<lceil>log 2 (real n)\<rceil>) 1)"
     by simp
 
   have b:"real (nat (\<lceil>log 2 (real X)\<rceil> - 8)) \<le> log 2 (real X) - 7"
@@ -141,12 +141,12 @@ proof (cases "log 2 (real X) \<ge> 8")
     using b by (intro divide_left_mono powr_mono) auto
   also have "... = real X / 2 ^ nat \<lceil>log 2 (real X) - 8\<rceil>"
     by (subst powr_realpow) auto
-  finally have "2 ^ 7 \<le> real X / 2 ^ nat \<lceil>log 2 (real X) - 8\<rceil>" 
+  finally have "2 ^ 7 \<le> real X / 2 ^ nat \<lceil>log 2 (real X) - 8\<rceil>"
     by simp
-  hence exp_Z_gt_2_7: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<ge> 2^7" 
+  hence exp_Z_gt_2_7: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<ge> 2^7"
     using a unfolding Z_def r_exp by simp
 
-  have var_Z_le_exp_Z: "measure_pmf.variance \<Psi>\<^sub>1 Z \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)" 
+  have var_Z_le_exp_Z: "measure_pmf.variance \<Psi>\<^sub>1 Z \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)"
     unfolding Z_def by (intro r_var)
 
   have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) < log 2 (real X) - 8}"
@@ -170,13 +170,13 @@ proof (cases "log 2 (real X) \<ge> 8")
     thus "f \<in> {f \<in> space \<Psi>\<^sub>1.  (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> \<bar>Z f - (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)\<bar>}"
       by auto
   qed
-  also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 Z / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2" 
+  also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 Z / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2"
     using exp_Z_gt_2_7 \<Psi>\<^sub>1.sample_space by (intro measure_pmf.second_moment_method) simp_all
-  also have "... \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2" 
+  also have "... \<le> (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)^2"
     by (intro divide_right_mono var_Z_le_exp_Z) simp
-  also have "... = 1 / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)" 
+  also have "... = 1 / (\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1)"
     using exp_Z_gt_2_7 by (simp add:power2_eq_square)
-  also have "... \<le> ?R" 
+  also have "... \<le> ?R"
     using exp_Z_gt_2_7 by (intro divide_left_mono) auto
   finally show ?thesis by simp
 next
@@ -191,7 +191,7 @@ next
   finally show ?thesis by simp
 qed
 
-lemma t_high: 
+lemma t_high:
   "measure \<Psi>\<^sub>1 {f. of_int (t f) > log 2 (real X) + 16 - b_exp} \<le> 1/2^7" (is "?L \<le> ?R")
 proof -
   define Z :: "(nat \<Rightarrow> nat) \<Rightarrow> real" where "Z = r (nat \<lfloor>log 2 (real X) + 8\<rfloor>)"
@@ -211,7 +211,7 @@ proof -
     by (subst powr_add) simp
   also have "... \<le> 1/2 powr 7"
     using X_ge_1 by (subst powr_log_cancel) auto
-  finally have Z_exp: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> 1/2^7" 
+  finally have Z_exp: "(\<integral>\<omega>. Z \<omega> \<partial>\<Psi>\<^sub>1) \<le> 1/2^7"
     by simp
 
   have "?L \<le> measure \<Psi>\<^sub>1 {f. of_nat (Max (f ` A)) > log 2 (real X) + 7}"
@@ -246,14 +246,14 @@ qed
 
 lemma e_1: "measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi>} \<le> 1/2^6"
 proof -
-  have "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X \<notin> {real b/2^16..real b/2}} \<le> 
-    measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X < real b/2^16} + 
+  have "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X \<notin> {real b/2^16..real b/2}} \<le>
+    measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X < real b/2^16} +
     measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X > real b/2}"
     by (intro pmf_add) auto
-  also have "... \<le> measure \<Psi>\<^sub>1 {f. of_int (t f) > log 2 X + 16 - b_exp} + 
+  also have "... \<le> measure \<Psi>\<^sub>1 {f. of_int (t f) > log 2 X + 16 - b_exp} +
                    measure \<Psi>\<^sub>1 {f. of_int (t f) < log 2 X + 1 - b_exp}"
   proof (rule add_mono)
-    show "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X < real b/2^16} \<le> 
+    show "measure \<Psi>\<^sub>1 {f. 2 powr (of_int (-t f)) * real X < real b/2^16} \<le>
     measure \<Psi>\<^sub>1 {f. of_int (t f) > log 2 X + 16 - b_exp}"
     proof (rule pmf_mono)
       fix f assume "f \<in> {f. 2 powr real_of_int (-t f) * real X < real b / 2 ^ 16}"
@@ -264,7 +264,7 @@ proof -
       hence "of_int (-t f) + log  2 (real X) < log 2 (real b / 2^16)"
         using X_ge_1 by (subst (asm) log_mult) auto
       also have  "... = real b_exp - log 2 (2 powr 16)"
-        unfolding b_def by (subst log_divide) auto 
+        unfolding b_def by (subst log_divide) auto
       also have "... = real b_exp - 16"
         by (subst log_powr_cancel) auto
       finally have "of_int (-t f) + log 2 (real X) < real b_exp - 16" by simp
@@ -272,7 +272,7 @@ proof -
         by simp
     qed
   next
-    show "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t f) * real X > real b/2} \<le> 
+    show "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t f) * real X > real b/2} \<le>
       measure \<Psi>\<^sub>1 {f. of_int (t f) < log 2 X + 1 - b_exp}"
     proof (rule pmf_mono)
       fix f assume "f \<in> {f. 2 powr real_of_int (-t f) * real X > real b / 2}"
@@ -283,7 +283,7 @@ proof -
       hence "of_int (-t f) + log  2 (real X) > log 2 (real b / 2)"
         using X_ge_1 by (subst (asm) log_mult) auto
       hence  "of_int (-t f) + log  2 (real X) > real b_exp - 1"
-        unfolding b_def by (subst (asm) log_divide) auto 
+        unfolding b_def by (subst (asm) log_divide) auto
       hence "of_int (t f) < log 2 (real X) + 1 - b_exp"
         by simp
       thus "f \<in> {f. of_int (t f) < log 2 (real X) + 1 - b_exp}"
@@ -293,7 +293,7 @@ proof -
   also have "... \<le> 1/2^7 + 1/2^7"
     by (intro add_mono t_low t_high)
   also have "... = 1/2^6" by simp
-  finally have "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t f) * real X \<notin> {real b/2^16..real b/2}} \<le> 1/2^6" 
+  finally have "measure \<Psi>\<^sub>1 {f. 2 powr of_int (-t f) * real X \<notin> {real b/2^16..real b/2}} \<le> 1/2^6"
     by simp
 
   thus ?thesis
@@ -312,7 +312,7 @@ proof -
 
   have "real b / 2^16 = (real X * (1/ X)) * (real b / 2^16)"
     using X_ge_1 by simp
-  also have "... = (real X * 2 powr (-log 2 X)) * (real b / 2^16)" 
+  also have "... = (real X * 2 powr (-log 2 X)) * (real b / 2^16)"
     using X_ge_1 by (subst powr_minus_divide) simp
   also have "... \<le> (real X * 2 powr (- \<lfloor>log 2 (real X)\<rfloor>)) * (2 powr b_exp / 2^16)"
     unfolding b_def using powr_realpow
@@ -353,13 +353,13 @@ proof -
     unfolding zless_nat_eq_int_zless by simp
   finally have T_eq_2: "T = {x. x < nat (t\<^sub>m + 1)}"
     by simp
-                                              
+
   have inj_1: "inj_on ((-) (nat t\<^sub>m)) T"
     unfolding T_eq by (intro inj_onI) simp
-  have fin_T: "finite T" 
+  have fin_T: "finite T"
     unfolding T_eq_2 by simp
 
-  have r_exp: "(\<integral>\<omega>. real (r t \<omega>) \<partial>\<Psi>\<^sub>1) = real X / 2^t" if "t \<in> T" for t 
+  have r_exp: "(\<integral>\<omega>. real (r t \<omega>) \<partial>\<Psi>\<^sub>1) = real X / 2^t" if "t \<in> T" for t
   proof -
     have "t \<le> t\<^sub>m"
       using that unfolding T_eq by simp
@@ -377,38 +377,38 @@ proof -
       unfolding r_exp by simp
   qed
 
-  have r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) \<le> real X / 2^t" if "t \<in> T" for t 
+  have r_var: "measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) \<le> real X / 2^t" if "t \<in> T" for t
     using r_exp[OF that] r_var by metis
 
-  have "9 = C\<^sub>4 / \<delta>\<^sup>2 * \<delta>^2/2^23" 
+  have "9 = C\<^sub>4 / \<delta>\<^sup>2 * \<delta>^2/2^23"
     using \<delta>_gt_0 by (simp add:C\<^sub>4_def)
-  also have "... = 2 powr (log 2 (C\<^sub>4 /  \<delta>\<^sup>2)) *  \<delta>^2/2^23" 
+  also have "... = 2 powr (log 2 (C\<^sub>4 /  \<delta>\<^sup>2)) *  \<delta>^2/2^23"
     using \<delta>_gt_0 C\<^sub>4_def by (subst powr_log_cancel) auto
-  also have "... \<le> 2 powr b_exp * \<delta>^2/2^23" 
+  also have "... \<le> 2 powr b_exp * \<delta>^2/2^23"
     unfolding b_exp_def
-    by (intro divide_right_mono mult_right_mono powr_mono, linarith) auto 
-  also have "... = b * \<delta>^2/2^23"  
+    by (intro divide_right_mono mult_right_mono powr_mono, linarith) auto
+  also have "... = b * \<delta>^2/2^23"
     using powr_realpow unfolding b_def by simp
-  also have "... = (b/2^16) * (\<delta>^2/2^7)" 
+  also have "... = (b/2^16) * (\<delta>^2/2^7)"
     by simp
-  also have "... \<le> (X * 2 powr (-t\<^sub>m)) * (\<delta>^2/2^7)" 
+  also have "... \<le> (X * 2 powr (-t\<^sub>m)) * (\<delta>^2/2^7)"
     by (intro mult_mono c) auto
-  also have "... = X * (2 powr (-t\<^sub>m) * 2 powr (-7)) * \<delta>^2" 
+  also have "... = X * (2 powr (-t\<^sub>m) * 2 powr (-7)) * \<delta>^2"
     using powr_realpow by simp
-  also have "... = 2 powr (-t\<^sub>m-7) * (\<delta>^2 * X)" 
+  also have "... = 2 powr (-t\<^sub>m-7) * (\<delta>^2 * X)"
     by (subst powr_add[symmetric]) (simp )
   finally have "9 \<le> 2 powr (-t\<^sub>m-7) * (\<delta>^2 * X)" by simp
   hence b: "9/ (\<delta>^2 * X) \<le> 2 powr (-t\<^sub>m -7)"
     using \<delta>_gt_0 X_ge_1
     by (subst pos_divide_le_eq) auto
 
-  have a: "measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real X/2^t\<bar>> \<delta>/3 *real X/2^t} \<le> 2 powr (real t-t\<^sub>m-7)" 
+  have a: "measure \<Psi>\<^sub>1 {f.\<bar>real (r t f)-real X/2^t\<bar>> \<delta>/3 *real X/2^t} \<le> 2 powr (real t-t\<^sub>m-7)"
     (is"?L1 \<le> ?R1") if "t \<in> T" for t
   proof -
     have "?L1 \<le> \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f) - real X / 2^t\<bar> \<ge>  \<delta>/3 * real X / 2^t)"
       by (intro pmf_mono) auto
     also have "... = \<P>(f in \<Psi>\<^sub>1. \<bar>real (r t f)-(\<integral>\<omega>. real (r t \<omega>) \<partial> \<Psi>\<^sub>1)\<bar> \<ge> \<delta>/3 * real X/2^t)"
-      by (simp add: r_exp[OF that]) 
+      by (simp add: r_exp[OF that])
     also have "... \<le> measure_pmf.variance \<Psi>\<^sub>1 (\<lambda>\<omega>. real (r t \<omega>)) / (\<delta>/3 * real X / 2^t)^2"
       using X_ge_1 \<delta>_gt_0 \<Psi>\<^sub>1.sample_space
       by (intro measure_pmf.Chebyshev_inequality divide_pos_pos mult_pos_pos) auto
@@ -418,17 +418,17 @@ proof -
       by (simp add:power2_eq_square algebra_simps)
     also have "... \<le> 2^t*(2 powr (-t\<^sub>m-7))"
       by (intro mult_left_mono b) simp
-    also have "... = 2 powr t * 2 powr (-t\<^sub>m-7)" 
+    also have "... = 2 powr t * 2 powr (-t\<^sub>m-7)"
       by (subst powr_realpow[symmetric]) auto
     also have "... = ?R1"
       by (subst powr_add[symmetric]) (simp add:algebra_simps)
     finally show "?L1 \<le> ?R1" by simp
   qed
 
-  have "\<exists>y<nat (t\<^sub>m + 1). x = nat t\<^sub>m - y" if "x < nat (t\<^sub>m+1)" for x 
+  have "\<exists>y<nat (t\<^sub>m + 1). x = nat t\<^sub>m - y" if "x < nat (t\<^sub>m+1)" for x
     using that by (intro exI[where x="nat t\<^sub>m - x"]) simp
   hence T_reindex: "(-) (nat t\<^sub>m) ` {x. x < nat (t\<^sub>m + 1)} = {..<nat (t\<^sub>m + 1)}"
-    by (auto simp add: set_eq_iff image_iff) 
+    by (auto simp add: set_eq_iff image_iff)
 
   have "?L \<le> measure \<Psi> {\<psi>. (\<exists>t \<in> T. \<bar>real (r t (fst \<psi>))-real X/2^t\<bar> > \<delta>/3 * real X / 2^t)}"
   proof (rule pmf_mono)
@@ -441,9 +441,9 @@ proof -
       unfolding E\<^sub>1_def E\<^sub>2_def by (auto simp add:\<psi>_def)
     have "\<bar>card (R f) - X / 2^(s f)\<bar> = 0" if "s f= 0"
       using that by (simp add:R_def X_def)
-    moreover have "( \<delta>/3) * (X / 2^s f) \<ge> 0" 
+    moreover have "( \<delta>/3) * (X / 2^s f) \<ge> 0"
       using \<delta>_gt_0 X_ge_1 by (intro mult_nonneg_nonneg) auto
-    ultimately have "False" if "s f = 0" 
+    ultimately have "False" if "s f = 0"
       using b that by simp
     hence "s f > 0" by auto
     hence "t f = s f" unfolding s_def by simp
@@ -454,7 +454,7 @@ proof -
     hence "real X / 2 ^ (s f) \<ge> b / 2^16"
       by (subst (asm) powr_realpow, auto)
     hence "s f \<in> T" unfolding T_def by simp
-    moreover have "\<bar>r (s f) f - X / 2^s f\<bar> >  \<delta>/3 * X / 2^s f" 
+    moreover have "\<bar>r (s f) f - X / 2^s f\<bar> >  \<delta>/3 * X / 2^s f"
       using R_def r_def b by simp
     ultimately have "\<exists>t \<in> T. \<bar>r t (fst \<psi>) - X / 2^t\<bar> >  \<delta>/3 * X / 2^t"
       using \<psi>_def by (intro bexI[where x="s f"]) simp
@@ -468,7 +468,7 @@ proof -
     by (intro measure_UNION_le fin_T) (simp)
   also have "... \<le> (\<Sum>t \<in> T.  2 powr (real t - of_int t\<^sub>m - 7))"
     by (intro sum_mono a)
-  also have "... = (\<Sum>t \<in> T.  2 powr (-int (nat t\<^sub>m-t) - 7))" 
+  also have "... = (\<Sum>t \<in> T.  2 powr (-int (nat t\<^sub>m-t) - 7))"
     unfolding T_eq
     by (intro sum.cong refl arg_cong2[where f="(powr)"]) simp
   also have "... = (\<Sum>x \<in> (\<lambda>x. nat t\<^sub>m - x) ` T. 2 powr (-real x - 7))"
@@ -523,29 +523,29 @@ proof -
   let ?\<alpha> = "(\<lambda>(z,x,y) f. z < C\<^sub>7*b^2 \<and> x \<in> R f \<and> y \<in> R f \<and> x < y)"
   let ?\<beta> = "(\<lambda>(z,x,y) g. g x = z \<and> g y = z)"
 
-  have \<beta>_prob: "measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g} \<le> (1/real (C\<^sub>7*b^2)^2)" 
+  have \<beta>_prob: "measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g} \<le> (1/real (C\<^sub>7*b^2)^2)"
     if "?\<alpha> \<omega> f" for \<omega> f
   proof -
     obtain x y z where \<omega>_def: "\<omega> = (z,x,y)" by (metis prod_cases3)
     have a:"prob_space.k_wise_indep_vars \<Psi>\<^sub>2 2 (\<lambda>i. discrete) (\<lambda>x \<omega>. \<omega> x = z) {..<n}"
-      by (intro prob_space.k_wise_indep_vars_compose[OF _ \<Psi>\<^sub>2.indep]) 
+      by (intro prob_space.k_wise_indep_vars_compose[OF _ \<Psi>\<^sub>2.indep])
        (simp_all add:prob_space_measure_pmf)
 
     have "u \<in> R f \<Longrightarrow> u < n" for u
       unfolding R_def using A_range by auto
-    hence b: "x < n" "y < n" "card {x, y} = 2" 
+    hence b: "x < n" "y < n" "card {x, y} = 2"
       using that \<omega>_def by auto
     have c: "z < C\<^sub>7*b\<^sup>2" using \<omega>_def that by simp
 
     have "measure \<Psi>\<^sub>2 {g. ?\<beta> \<omega> g} = measure \<Psi>\<^sub>2 {g. (\<forall>\<xi> \<in> {x,y}. g \<xi> = z)}"
       by (simp add:\<omega>_def)
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure \<Psi>\<^sub>2 {g. g \<xi> = z})"
-      using b by (intro measure_pmf.split_indep_events[OF refl, where I="{x,y}"] 
+      using b by (intro measure_pmf.split_indep_events[OF refl, where I="{x,y}"]
           prob_space.k_wise_indep_vars_subset[OF _ a]) (simp_all add:prob_space_measure_pmf)
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (map_pmf (\<lambda>\<omega>. \<omega> \<xi>) (sample_pmf \<Psi>\<^sub>2)) {g. g = z}) "
-      by (simp add:vimage_def) 
+      by (simp add:vimage_def)
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure [C\<^sub>7 * b\<^sup>2]\<^sub>S {g. g=z})"
-      using b \<Psi>\<^sub>2.single by (intro prod.cong) fastforce+ 
+      using b \<Psi>\<^sub>2.single by (intro prod.cong) fastforce+
     also have "... = (\<Prod>\<xi> \<in> {x,y}. measure (pmf_of_set {..<C\<^sub>7 * b\<^sup>2}) {z})"
       by (subst nat_sample_pmf) simp
     also have "... = (measure (pmf_of_set {..<C\<^sub>7 * b\<^sup>2}) {z})^2"
@@ -556,24 +556,24 @@ proof -
       by (simp add:algebra_simps power2_eq_square)
     finally show ?thesis by simp
   qed
-  
-  have \<alpha>_card: "card {\<omega>. ?\<alpha> \<omega> f} \<le> (C\<^sub>7*b^2) * (card (R f) * (card (R f)-1)/2)" 
+
+  have \<alpha>_card: "card {\<omega>. ?\<alpha> \<omega> f} \<le> (C\<^sub>7*b^2) * (card (R f) * (card (R f)-1)/2)"
     (is "?TL \<le> ?TR") and fin_\<alpha>: "finite {\<omega>. ?\<alpha> \<omega> f}" (is "?T2") for f
   proof -
-    have t1: "{\<omega>. ?\<alpha> \<omega> f} \<subseteq> {..<C\<^sub>7*b^2} \<times> {(x,y) \<in> R f \<times> R f. x < y}" 
+    have t1: "{\<omega>. ?\<alpha> \<omega> f} \<subseteq> {..<C\<^sub>7*b^2} \<times> {(x,y) \<in> R f \<times> R f. x < y}"
       by (intro subsetI) auto
     moreover have "card ({..<C\<^sub>7*b^2} \<times> {(x,y) \<in> R f \<times> R f. x < y}) = ?TR"
       using  card_ordered_pairs'[where M="R f"]
-      by (simp add: card_cartesian_product) 
-    moreover have "finite (R f)" 
-      unfolding R_def using fin_A finite_subset by simp    
+      by (simp add: card_cartesian_product)
+    moreover have "finite (R f)"
+      unfolding R_def using fin_A finite_subset by simp
     hence "finite {(x, y). (x, y) \<in> R f \<times> R f \<and> x < y}"
       by (intro finite_subset[where B="R f \<times> R f", OF _ finite_cartesian_product]) auto
     hence t2: "finite ({..<C\<^sub>7*b^2} \<times> {(x,y) \<in> R f \<times> R f. x < y})"
       by (intro finite_cartesian_product) auto
-    ultimately show "?TL \<le> ?TR" 
-      using card_mono of_nat_le_iff by (metis (no_types, lifting)) 
-    show ?T2 
+    ultimately show "?TL \<le> ?TR"
+      using card_mono of_nat_le_iff by (metis (no_types, lifting))
+    show ?T2
       using finite_subset[OF t1 t2] by simp
   qed
 
@@ -601,14 +601,14 @@ proof -
   also have "... = (\<integral>f. measure (pair_pmf \<Psi>\<^sub>2 \<Psi>\<^sub>3)
      {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) (fst g))} \<partial>\<Psi>\<^sub>1)"
     unfolding sample_pmf_\<Psi> split_pair_pmf by (simp add: case_prod_beta)
-  also have 
+  also have
     "... = (\<integral>f. measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<partial>\<Psi>\<^sub>1)"
     by (subst pair_pmf_prob_left) simp
   also have "... \<le> (\<integral>f. 1/real (2*C\<^sub>7) \<partial>\<Psi>\<^sub>1)"
-  proof (rule pmf_exp_mono[OF integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space] 
-          integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]]) 
+  proof (rule pmf_exp_mono[OF integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]
+          integrable_sample_pmf[OF \<Psi>\<^sub>1.sample_space]])
     fix f assume "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)"
-    show "measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<le> 1 / real (2 * C\<^sub>7)" 
+    show "measure \<Psi>\<^sub>2 {g. card (R f) \<le> b \<and> (\<exists>x y z. ?\<alpha> (x,y,z) f \<and> ?\<beta> (x,y,z) g)} \<le> 1 / real (2 * C\<^sub>7)"
       (is "?L1 \<le> ?R1")
     proof (cases "card (R f) \<le> b")
       case True
@@ -623,7 +623,7 @@ proof -
       also have "... \<le> (C\<^sub>7*b^2) * (card (R f) * (card (R f)-1)/2) / (C\<^sub>7*b^2)^2"
         by (intro \<alpha>_card divide_right_mono) simp
       also have "... \<le> (C\<^sub>7*b^2) * (b * b / 2)  / (C\<^sub>7*b^2)^2"
-        unfolding C\<^sub>7_def using True 
+        unfolding C\<^sub>7_def using True
         by (intro divide_right_mono Nat.of_nat_mono mult_mono) auto
       also have "... = 1/(2*C\<^sub>7)"
         using b_min by (simp add:algebra_simps power2_eq_square)
@@ -656,9 +656,9 @@ qed
 
 lemma e_4: "measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>} \<le> 1/2^6" (is "?L \<le> ?R")
 proof -
-  have a: "measure \<Psi>\<^sub>3 {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)} \<le> 1/2^6" 
+  have a: "measure \<Psi>\<^sub>3 {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)} \<le> 1/2^6"
     (is "?L1 \<le> ?R1") if "f \<in> set_pmf (sample_pmf \<Psi>\<^sub>1)" "g \<in> set_pmf(sample_pmf \<Psi>\<^sub>2)"
-    for f g 
+    for f g
   proof (cases "card (R f) \<le> b \<and> inj_on g (R f)")
     case True
 
@@ -670,24 +670,24 @@ proof -
       by (intro finite_imageI) simp
 
     interpret B:balls_and_bins_abs "g ` R f" "{..<b}"
-      using fin_R b_ne by unfold_locales auto 
+      using fin_R b_ne by unfold_locales auto
 
     have "range g \<subseteq> {..<C\<^sub>7 * b\<^sup>2}"
       using g_range_1 that(2) unfolding sample_space_alt[OF \<Psi>\<^sub>2.sample_space] by auto
-    hence g_ran: "g ` R f \<subseteq> {..<C\<^sub>7 * b\<^sup>2}" 
+    hence g_ran: "g ` R f \<subseteq> {..<C\<^sub>7 * b\<^sup>2}"
       by auto
 
-    have "sample_pmf [b]\<^sub>S = pmf_of_set {..<b}" 
+    have "sample_pmf [b]\<^sub>S = pmf_of_set {..<b}"
       unfolding sample_pmf_def nat_sample_space_def by simp
     hence " map_pmf (\<lambda>\<omega>. \<omega> x) (sample_pmf (\<H> k (C\<^sub>7 * b\<^sup>2) [b]\<^sub>S)) = pmf_of_set {..<b}"
-      if "x \<in> g ` R f" for x 
+      if "x \<in> g ` R f" for x
       using g_ran \<Psi>\<^sub>3.single that by auto
     moreover have "prob_space.k_wise_indep_vars \<Psi>\<^sub>3 k (\<lambda>_. discrete) (\<lambda>x \<omega>. \<omega> x) (g ` R f)"
       by (intro prob_space.k_wise_indep_subset[OF _ _ \<Psi>\<^sub>3.indep] g_ran prob_space_measure_pmf)
     ultimately have lim_balls_and_bins: "B.lim_balls_and_bins k (sample_pmf (\<H> k (C\<^sub>7 * b\<^sup>2) [b]\<^sub>S))"
       unfolding B.lim_balls_and_bins_def by auto
 
-    have card_g_R: "card (g ` R f) = card (R f)" 
+    have card_g_R: "card (g ` R f) = card (R f)"
       using True card_image by auto
     hence b_mu: "\<rho> (card (R f)) = B.\<mu>"
       unfolding B.\<mu>_def \<rho>_def using b_min by (simp add:powr_realpow)
@@ -718,10 +718,10 @@ proof -
       also have "... = h ` (g ` (R f))"
         by (simp add:image_image)
       finally have c:"{j \<in> {..<b}. int (s f) \<le> \<tau>\<^sub>1 (f, g, h) A 0 j} = h ` (g ` R f)"
-        by simp 
+        by simp
       have "9 * real (card (g ` R f)) / sqrt (card {..<b}) = 9/ sqrt b * real (card (R f))"
         using card_image[OF g_inj] by simp
-      also have "... \<le>  \<delta>/12 * card (R f)" 
+      also have "... \<le>  \<delta>/12 * card (R f)"
         by (intro mult_right_mono e_4_h) simp
       also have "... < \<bar>B.Y h - B.\<mu>\<bar>"
         using b c unfolding B.Y_def p_def b_mu by simp
@@ -739,7 +739,7 @@ proof -
       fix h assume b:"h \<in> {h. E\<^sub>1 (f, g, h) \<and> E\<^sub>2 (f, g, h) \<and> E\<^sub>3 (f, g, h) \<and> \<not> E\<^sub>4 (f, g, h)}"
       hence "card (R f) \<le> (2/3)*b"
         by (auto intro!: R_bound[simplified])
-      hence "card (R f) \<le> b" 
+      hence "card (R f) \<le> b"
         by simp
       moreover have "inj_on g (R f)"
         using b by (simp add:E\<^sub>3_def)
@@ -750,31 +750,31 @@ proof -
     finally show ?thesis by simp
   qed
 
-  have "?L = (\<integral>f. (\<integral>g. 
+  have "?L = (\<integral>f. (\<integral>g.
     measure \<Psi>\<^sub>3 {h. E\<^sub>1 (f,g,h) \<and> E\<^sub>2 (f,g,h) \<and> E\<^sub>3 (f,g,h) \<and> \<not>E\<^sub>4 (f,g,h)} \<partial>\<Psi>\<^sub>2) \<partial>\<Psi>\<^sub>1)"
     unfolding sample_pmf_\<Psi> split_pair_pmf by simp
   also have "... \<le> (\<integral>f. (\<integral>g.  1/2^6  \<partial>\<Psi>\<^sub>2) \<partial>\<Psi>\<^sub>1)"
     using a \<Psi>\<^sub>1.sample_space \<Psi>\<^sub>2.sample_space
     by (intro integral_mono_AE AE_pmfI) simp_all
-  also have "... = 1/2^6" 
+  also have "... = 1/2^6"
     by simp
   finally show ?thesis by simp
 qed
 
 lemma \<rho>_inverse: "\<rho>_inv (\<rho> x) = x"
 proof -
-  have a:"1-1/b \<noteq> 0" 
+  have a:"1-1/b \<noteq> 0"
     using b_min by simp
 
-  have "\<rho> x = b * (1-(1-1/b) powr x)" 
+  have "\<rho> x = b * (1-(1-1/b) powr x)"
     unfolding \<rho>_def by simp
   hence "\<rho> x / real b = 1-(1-1/b) powr x" by simp
   hence "ln (1 - \<rho> x / real b) = ln ((1-1/b) powr x)" by simp
-  also have "... = x * ln (1 - 1/ b)" 
-    using a by (intro ln_powr) 
+  also have "... = x * ln (1 - 1/ b)"
+    using a by (intro ln_powr)
   finally have "ln (1 - \<rho> x / real b) = x * ln (1- 1/ b)"
     by simp
-  moreover have "ln (1-1/b) < 0" 
+  moreover have "ln (1-1/b) < 0"
     using b_min by (subst ln_less_zero_iff) auto
   ultimately show ?thesis
     using \<rho>_inv_def by simp
@@ -782,37 +782,37 @@ qed
 
 lemma rho_mono:
   assumes "x \<le> y"
-  shows "\<rho> x \<le> \<rho> y" 
+  shows "\<rho> x \<le> \<rho> y"
 proof-
-  have "(1 - 1 / real b) powr y \<le> (1 - 1 / real b) powr x" 
+  have "(1 - 1 / real b) powr y \<le> (1 - 1 / real b) powr x"
     using b_min
     by (intro powr_mono_rev assms) auto
-  thus ?thesis 
+  thus ?thesis
     unfolding \<rho>_def by (intro mult_left_mono) auto
 qed
 
 lemma rho_two_thirds: "\<rho> (2/3 * b) \<le> 3/5 *b"
 proof -
-  have "1/3 \<le> exp ( - 13 / 12::real )" 
+  have "1/3 \<le> exp ( - 13 / 12::real )"
     by (approximation 8)
-  also have "... \<le> exp ( - 1 - 2 / real b )" 
+  also have "... \<le> exp ( - 1 - 2 / real b )"
     using b_min by (intro iffD2[OF exp_le_cancel_iff]) (simp add:algebra_simps)
-  also have "... \<le> exp ( b * (-(1/real b)-2*(1/real b)^2))" 
+  also have "... \<le> exp ( b * (-(1/real b)-2*(1/real b)^2))"
     using b_min by (simp add:algebra_simps power2_eq_square)
-  also have  "... \<le> exp ( b * ln (1-1/real b))" 
+  also have  "... \<le> exp ( b * ln (1-1/real b))"
     using b_min
     by (intro iffD2[OF exp_le_cancel_iff] mult_left_mono ln_one_minus_pos_lower_bound) auto
   also have "... = exp ( ln ( (1-1/real b) powr b))"
     using b_min by (subst ln_powr) auto
-  also have "... = (1-1/real b) powr b" 
+  also have "... = (1-1/real b) powr b"
     using b_min by (subst exp_ln) auto
   finally have a:"1/3 \<le> (1-1/real b) powr b" by simp
 
   have "2/5 \<le> (1/3) powr (2/3::real)"
     by (approximation 5)
-  also have "... \<le> ((1-1/real b) powr b) powr (2/3)" 
+  also have "... \<le> ((1-1/real b) powr b) powr (2/3)"
     by (intro powr_mono2 a) auto
-  also have "... = (1-1/real b) powr (2/3 * real b)" 
+  also have "... = (1-1/real b) powr (2/3 * real b)"
     by (subst powr_powr) (simp add:algebra_simps)
   finally have "2/5 \<le> (1 - 1 / real b) powr (2 / 3 * real b)" by simp
   hence "1 - (1 - 1 / real b) powr (2 / 3 * real b) \<le> 3/5"
@@ -838,14 +838,14 @@ proof -
     using b_min assms by (intro Rings.mult_pos_neg) auto
 
   have "(1::real) \<le> 31/30" by simp
-  also have "... \<le> (31/30) * (b * -(- 1 / real b))" 
+  also have "... \<le> (31/30) * (b * -(- 1 / real b))"
     using b_min by simp
-  also have "... \<le> (31/30) * (b * -ln (1 + (- 1 / real b)))" 
+  also have "... \<le> (31/30) * (b * -ln (1 + (- 1 / real b)))"
     using b_min
     by (intro mult_left_mono le_imp_neg_le  ln_add_one_self_le_self2) auto
   also have "... \<le> 3 * (31/90) * (- b * ln (1 - 1 / real b))"
     by simp
-  also have "... \<le> 3 * (1 - x / real b) * (- b * ln (1 - 1 / real b))" 
+  also have "... \<le> 3 * (1 - x / real b) * (- b * ln (1 - 1 / real b))"
     using assms b_min pos_divide_le_eq[where c="b"] c
     by (intro mult_right_mono mult_left_mono mult_nonpos_nonpos) auto
   also have "... \<le> 3 * (real b * (1 - x / real b) * (-ln (1 - 1 / real b)))"
@@ -855,7 +855,7 @@ proof -
   hence "\<rho>_inv' x \<le> 3"
     unfolding \<rho>_inv'_def using d
     by (subst neg_divide_le_eq) auto
-  moreover have "\<rho>_inv' x > 0" 
+  moreover have "\<rho>_inv' x > 0"
     unfolding \<rho>_inv'_def using d by (intro divide_neg_neg) auto
   ultimately show ?thesis by simp
 qed
@@ -863,7 +863,7 @@ qed
 lemma \<rho>_inv':
   fixes x :: real
   assumes "x < b"
-  shows "DERIV \<rho>_inv x :> \<rho>_inv' x" 
+  shows "DERIV \<rho>_inv x :> \<rho>_inv' x"
 proof -
   have "DERIV (ln \<circ> (\<lambda>x. (1 - x / real b))) x :> 1 / (1-x / real b) * (0 -1/b)"
     using assms b_min
@@ -874,15 +874,15 @@ proof -
     by (simp add:\<rho>_inv'_def algebra_simps)
 qed
 
-lemma accuracy_without_cutoff: 
-  "measure \<Psi> {(f,g,h). \<bar>Y (f,g,h) - real X\<bar> > \<delta> * X \<or> s f < q_max} \<le> 1/2^4" 
+lemma accuracy_without_cutoff:
+  "measure \<Psi> {(f,g,h). \<bar>Y (f,g,h) - real X\<bar> > \<delta> * X \<or> s f < q_max} \<le> 1/2^4"
   (is "?L \<le> ?R")
 proof -
   have "?L \<le> measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or>  \<not>E\<^sub>2 \<psi> \<or>  \<not>E\<^sub>3 \<psi> \<or>  \<not>E\<^sub>4 \<psi>}"
   proof (rule pmf_rev_mono)
     fix \<psi> assume "\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain f g h where \<psi>_def: "\<psi> = (f,g,h)" by (metis prod_cases3)
-    
+
     assume "\<psi> \<notin> {\<psi>. \<not> E\<^sub>1 \<psi> \<or> \<not> E\<^sub>2 \<psi> \<or> \<not> E\<^sub>3 \<psi> \<or> \<not> E\<^sub>4 \<psi>}"
     hence assms: "E\<^sub>1 (f,g,h)" "E\<^sub>2 (f,g,h)" "E\<^sub>3 (f,g,h)" "E\<^sub>4 (f,g,h)"
       unfolding \<psi>_def by auto
@@ -909,21 +909,21 @@ proof -
       using rho_two_thirds by simp
     also have "... \<le> b * 59/90" by simp
     finally have "\<rho> (card (R f)) \<le> b * 59/90" by simp
-    moreover have "(1 - 1 / real b) powr (real (card (R f))) \<le> 1 powr (real (card (R f)))" 
+    moreover have "(1 - 1 / real b) powr (real (card (R f))) \<le> 1 powr (real (card (R f)))"
       using b_min by (intro powr_mono2) auto
     hence "\<rho> (card (R f)) \<ge> 0"
       unfolding \<rho>_def by (intro mult_nonneg_nonneg) auto
     ultimately have "\<rho> (card (R f)) \<in> I"
       unfolding I_def by simp
 
-    moreover have "interval I" 
+    moreover have "interval I"
       unfolding I_def interval_def by simp
-    moreover have "59 / 90 * b < b" 
+    moreover have "59 / 90 * b < b"
       using b_min by simp
     hence "DERIV \<rho>_inv x :> \<rho>_inv' x" if "x \<in> I" for x
-      using that I_def by (intro \<rho>_inv') simp 
+      using that I_def by (intro \<rho>_inv') simp
     ultimately obtain \<xi> :: real where \<xi>_def: "\<xi> \<in> I"
-      "\<rho>_inv (p(f,g,h)) - \<rho>_inv (\<rho> (card (R f))) = (p (f,g,h) - \<rho>(card (R f))) * \<rho>_inv' \<xi>" 
+      "\<rho>_inv (p(f,g,h)) - \<rho>_inv (\<rho> (card (R f))) = (p (f,g,h) - \<rho>(card (R f))) * \<rho>_inv' \<xi>"
       using p_in_I MVT_interval by blast
 
     have "\<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> = \<bar>\<rho>_inv(p (f,g,h)) - \<rho>_inv(\<rho>(card (R f)))\<bar>"
@@ -938,24 +938,24 @@ proof -
     also have "... = \<delta>/3 * card (R f)" by simp
     finally have b: "\<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> \<le> \<delta>/3 * card (R f)"  by simp
 
-    have "\<bar>\<rho>_inv(p (f,g,h)) - X / 2 ^ (s f)\<bar> \<le> 
-      \<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> + \<bar>card (R f) - X / 2 ^ (s f)\<bar>" 
+    have "\<bar>\<rho>_inv(p (f,g,h)) - X / 2 ^ (s f)\<bar> \<le>
+      \<bar>\<rho>_inv(p (f,g,h)) - card (R f)\<bar> + \<bar>card (R f) - X / 2 ^ (s f)\<bar>"
       by simp
     also have "... \<le> \<delta>/3 * card (R f) + \<bar>card (R f) - X / 2 ^ (s f)\<bar>"
       by (intro add_mono b) auto
-    also have "... =  \<delta>/3 * \<bar>X / 2 ^ (s f) + (card (R f) - X / 2 ^ (s f))\<bar> + 
+    also have "... =  \<delta>/3 * \<bar>X / 2 ^ (s f) + (card (R f) - X / 2 ^ (s f))\<bar> +
       \<bar>card (R f) - X / 2 ^ (s f)\<bar>" by simp
-    also have "... \<le>  \<delta>/3 * (\<bar>X / 2 ^ (s f)\<bar> + \<bar>card (R f) - X / 2 ^ (s f)\<bar>) + 
-      \<bar>card (R f) - X / 2 ^ (s f)\<bar>" 
+    also have "... \<le>  \<delta>/3 * (\<bar>X / 2 ^ (s f)\<bar> + \<bar>card (R f) - X / 2 ^ (s f)\<bar>) +
+      \<bar>card (R f) - X / 2 ^ (s f)\<bar>"
       using \<delta>_gt_0 by (intro mult_left_mono add_mono abs_triangle_ineq) auto
     also have "... \<le>  \<delta>/3 * \<bar>X / 2 ^ (s f)\<bar> + (1+  \<delta>/3) * \<bar>card (R f) - X / 2 ^ (s f)\<bar>"
-      using \<delta>_gt_0 \<delta>_lt_1 by (simp add:algebra_simps) 
+      using \<delta>_gt_0 \<delta>_lt_1 by (simp add:algebra_simps)
     also have "... \<le>  \<delta>/3 * \<bar>X / 2 ^ s f\<bar> + (4/3) * ( \<delta> / 3 * real X / 2 ^ s f)"
-      using assms(2) \<delta>_gt_0 \<delta>_lt_1 
+      using assms(2) \<delta>_gt_0 \<delta>_lt_1
       unfolding E\<^sub>2_def by (intro add_mono mult_mono) auto
     also have "... = (7/9) * \<delta> * real X / 2^s f"
       using X_ge_1 by (subst abs_of_nonneg) auto
-    also have "... \<le> 1 * \<delta> * real X / 2^s f" 
+    also have "... \<le> 1 * \<delta> * real X / 2^s f"
       using \<delta>_gt_0 by (intro mult_mono divide_right_mono) auto
     also have "... =  \<delta> * real X / 2^s f" by simp
     finally have a:"\<bar>\<rho>_inv(p (f,g,h)) - X / 2 ^ (s f)\<bar> \<le> \<delta> * X / 2 ^ (s f)"
@@ -965,7 +965,7 @@ proof -
       unfolding Y_def by (subst abs_mult[symmetric]) (simp add:algebra_simps powr_add[symmetric])
     also have "... \<le> 2 ^ (s f) * (\<delta> * X / 2 ^ (s f))"
       by (intro mult_mono a) auto
-    also have "... = \<delta> * X" 
+    also have "... = \<delta> * X"
       by (simp add:algebra_simps powr_add[symmetric])
     finally have "\<bar>Y (f, g, h) - real X\<bar> \<le> \<delta> * X" by simp
     moreover have "2 powr (\<lceil>log 2 (real X)\<rceil> - t f) \<le> 2 powr b_exp" (is "?L1 \<le> ?R1")
@@ -974,9 +974,9 @@ proof -
         by (intro powr_mono, linarith) auto
       also have "... = 2 powr 1 * 2 powr (log 2 (real X)) * 2 powr (- t f)"
         unfolding powr_add[symmetric] by simp
-      also have "... = 2 * (2 powr (-t f) * X)" 
+      also have "... = 2 * (2 powr (-t f) * X)"
         using X_ge_1 by simp
-      also have "... \<le> 2 * (b/2)" 
+      also have "... \<le> 2 * (b/2)"
         using assms(1) unfolding E\<^sub>1_def by (intro mult_left_mono) auto
       also have "... = b" by simp
       also have "... = ?R1"
@@ -989,7 +989,7 @@ proof -
     ultimately show "\<psi> \<notin> {(f, g, h). \<delta> * X < \<bar>Y (f, g, h) - real X\<bar> \<or> s f < q_max}"
       unfolding \<psi>_def by auto
   qed
-  also have "... \<le> 
+  also have "... \<le>
     measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi> \<or> \<not>E\<^sub>3 \<psi>} + measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> E\<^sub>3 \<psi> \<and> \<not>E\<^sub>4 \<psi>}"
     by (intro pmf_add) auto
   also have "... \<le> (measure \<Psi> {\<psi>. \<not>E\<^sub>1 \<psi> \<or> \<not>E\<^sub>2 \<psi>} + measure \<Psi> {\<psi>. E\<^sub>1 \<psi> \<and> E\<^sub>2 \<psi> \<and> \<not>E\<^sub>3 \<psi>}) + 1/2^6"

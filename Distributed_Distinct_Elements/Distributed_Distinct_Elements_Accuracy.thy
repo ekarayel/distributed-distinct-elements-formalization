@@ -5,8 +5,8 @@ probability assuming as long as the cutoff is below @{term "q_max"}, generalizin
 Section~\ref{sec:accuracy_wo_cutoff}.\<close>
 
 theory Distributed_Distinct_Elements_Accuracy
-  imports 
-    Distributed_Distinct_Elements_Accuracy_Without_Cutoff 
+  imports
+    Distributed_Distinct_Elements_Accuracy_Without_Cutoff
     Distributed_Distinct_Elements_Cutoff_Level
 begin
 
@@ -37,7 +37,7 @@ next
 qed
 
 text \<open>This is similar to the existing @{thm [source] hom_Max_commute} with the crucial difference
-that it works even if the function is a homomorphism between distinct lattices. 
+that it works even if the function is a homomorphism between distinct lattices.
 An example application is @{term "Max (int ` A) = int (Max A)"}.\<close>
 
 lemma hom_Max_commute':
@@ -55,7 +55,7 @@ definition t\<^sub>c
 definition s\<^sub>c (* tilde t *)
   where "s\<^sub>c \<psi> \<sigma> = nat (t\<^sub>c \<psi> \<sigma>)"
 
-definition p\<^sub>c (* tilde p *) 
+definition p\<^sub>c (* tilde p *)
   where "p\<^sub>c \<psi> \<sigma> = card {j\<in> {..<b}. \<tau>\<^sub>1 \<psi> A \<sigma> j + \<sigma> \<ge> s\<^sub>c \<psi> \<sigma>}"
 
 definition Y\<^sub>c (* tilde A* *)
@@ -92,7 +92,7 @@ proof -
     (MAX x\<in>{..<b}. Max ({int (f a) |a. a \<in> A \<and> h (g a) = x} \<union> {-1} \<union> {int \<sigma> -1}))"
     using fin_f[OF assms(1)] by (simp add:max_add_distrib_left max.commute \<tau>\<^sub>1_def)
   also have "... = Max (\<Union>x<b. {int (f a) |a. a \<in> A \<and> h (g a) = x} \<union> {- 1} \<union> {int \<sigma> - 1})"
-    using fin_f[OF assms(1)] b_ne by (intro Max.Union[symmetric]) auto 
+    using fin_f[OF assms(1)] b_ne by (intro Max.Union[symmetric]) auto
   also have "... = Max ({int (f a) |a. a \<in> A} \<union> {- 1, int \<sigma> - 1})"
     using h_range by (intro arg_cong[where f="Max"]) auto
   also have "... = max (Max (int ` f ` A)) (int \<sigma> - 1)"
@@ -101,7 +101,7 @@ proof -
   also have "... = max (int (Max (f ` A))) (int \<sigma> - 1)"
     using fin_A A_nonempty by (subst hom_Max_commute') auto
   also have "... = int (Max (f ` A))"
-    by (intro max_absorb1 0) 
+    by (intro max_absorb1 0)
   finally have "(MAX j\<in>{..<b}. \<tau>\<^sub>1 (f, g, h) A \<sigma> j + int \<sigma>) = Max (f ` A)" by simp
 
   thus ?thesis
@@ -113,11 +113,11 @@ lemma p\<^sub>c_eq_p:
   assumes "\<sigma> \<le> s f"
   shows "p\<^sub>c (f,g,h) \<sigma> = p (f,g,h)"
 proof -
-  have "{j \<in> {..<b}. int (s f) \<le> max (\<tau>\<^sub>0 (f, g, h) A j) (int \<sigma> - 1)} = 
+  have "{j \<in> {..<b}. int (s f) \<le> max (\<tau>\<^sub>0 (f, g, h) A j) (int \<sigma> - 1)} =
     {j \<in> {..<b}. int (s f) \<le> max (\<tau>\<^sub>0 (f, g, h) A j) (- 1)}"
     using assms(2) unfolding le_max_iff_disj by simp
   thus ?thesis
-    unfolding p\<^sub>c_def p_def s\<^sub>c_eq_s[OF assms] 
+    unfolding p\<^sub>c_def p_def s\<^sub>c_eq_s[OF assms]
     by (simp add:max_add_distrib_left \<tau>\<^sub>1_def del:\<tau>\<^sub>0.simps)
 qed
 
@@ -127,13 +127,13 @@ lemma Y\<^sub>c_eq_Y:
   shows "Y\<^sub>c (f,g,h) \<sigma> = Y (f,g,h)"
   unfolding Y\<^sub>c_def Y_def s\<^sub>c_eq_s[OF assms] p\<^sub>c_eq_p[OF assms] by simp
 
-lemma accuracy_single: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> q_max. \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar> > \<delta> * X} \<le> 1/2^4" 
+lemma accuracy_single: "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> q_max. \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar> > \<delta> * X} \<le> 1/2^4"
   (is "?L \<le> ?R")
 proof -
   have "measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> q_max. \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar> > \<delta> * real X} \<le>
     measure \<Psi> {(f,g,h). \<bar>Y (f,g,h) - real X\<bar> >  \<delta> * real X \<or> s f < q_max}"
   proof (rule pmf_mono)
-    fix \<psi> 
+    fix \<psi>
     assume a:"\<psi> \<in> {\<psi>. \<exists>\<sigma>\<le>q_max. \<delta> * real X < \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar>}"
     assume d:"\<psi> \<in> set_pmf (sample_pmf \<Psi>)"
     obtain \<sigma> where b:"\<sigma> \<le> q_max" and c:" \<delta> * real X < \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar>"
@@ -142,12 +142,12 @@ proof -
     hence e:"(f,g,h) \<in> sample_set \<Psi>"
       using d unfolding sample_space_alt[OF sample_space_\<Psi>] by simp
 
-    show "\<psi> \<in> {(f, g, h). \<delta> * real X < \<bar>Y (f, g, h) - real X\<bar> \<or> s f < q_max}" 
+    show "\<psi> \<in> {(f, g, h). \<delta> * real X < \<bar>Y (f, g, h) - real X\<bar> \<or> s f < q_max}"
     proof (cases "s f \<ge> q_max")
       case True
       hence f:"\<sigma> \<le> s f" using b by simp
       have "\<delta> * real X < \<bar>Y \<psi> - real X\<bar>"
-        using Y\<^sub>c_eq_Y[OF e f] c unfolding \<psi>_def by simp      
+        using Y\<^sub>c_eq_Y[OF e f] c unfolding \<psi>_def by simp
       then show ?thesis unfolding \<psi>_def by simp
     next
       case False
@@ -159,7 +159,7 @@ proof -
   finally show ?thesis by simp
 qed
 
-lemma estimate1_eq: 
+lemma estimate1_eq:
   assumes "j < l"
   shows "estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) j = Y\<^sub>c (\<omega> j) \<sigma>" (is "?L = ?R")
 proof -
@@ -171,7 +171,7 @@ proof -
   have 1: "\<lfloor>log 2 b\<rfloor> = b_exp"
     unfolding b_def by simp
 
-  have "b > 0" 
+  have "b > 0"
     using b_min by simp
   hence 2: " {..<b} \<noteq> {}" by auto
 
@@ -189,7 +189,7 @@ proof -
     using assms unfolding p_def p\<^sub>c_def 3 \<tau>\<^sub>2_def by simp
 
   have "?L = 2 powr t * ln (1-p/b) / ln(1-1/b)"
-    unfolding estimate1.simps \<tau>_def \<tau>\<^sub>3_def 
+    unfolding estimate1.simps \<tau>_def \<tau>\<^sub>3_def
     by (simp only:t_def p_def Let_def)
   also have "... = 2 powr (s\<^sub>c (\<omega> j) \<sigma>) * \<rho>_inv p"
     unfolding 3 \<rho>_inv_def by (simp)
@@ -206,30 +206,30 @@ proof -
 
   define \<mu> where "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma>\<le>q_max. Y\<^sub>c \<psi> \<sigma>\<notin>I}"
 
-  have int_I: "interval I" 
+  have int_I: "interval I"
     unfolding interval_def I_def by auto
 
   have "\<mu> = measure \<Psi> {\<psi>. \<exists>\<sigma> \<le> q_max. \<bar>Y\<^sub>c \<psi> \<sigma> - real X\<bar> > \<delta> * X}"
     unfolding \<mu>_def I_def by (simp add:not_le)
   also have "... \<le>  1 / 2 ^ 4"
     by (intro accuracy_single)
-  also have "... = 1/ 16" 
+  also have "... = 1/ 16"
     by simp
   finally have 1:"\<mu> \<le> 1 / 16" by simp
 
   have "(\<mu> + \<Lambda>) \<le> 1/16 + 1/16"
     unfolding \<Lambda>_def by (intro add_mono 1) auto
-  also have "... \<le> 1/8" 
+  also have "... \<le> 1/8"
     by simp
-  finally have 2:"(\<mu> + \<Lambda>) \<le> 1/8" 
-    by simp
-
-  hence 0: "(\<mu> + \<Lambda>) \<le> 1/2" 
+  finally have 2:"(\<mu> + \<Lambda>) \<le> 1/8"
     by simp
 
-  have "\<mu> \<ge> 0" 
+  hence 0: "(\<mu> + \<Lambda>) \<le> 1/2"
+    by simp
+
+  have "\<mu> \<ge> 0"
     unfolding \<mu>_def by simp
-  hence 3: "\<mu> + \<Lambda> > 0" 
+  hence 3: "\<mu> + \<Lambda> > 0"
     by (intro add_nonneg_pos \<Lambda>_gt_0)
 
   have "?L = measure \<Omega> {\<omega>. (\<exists>\<sigma>\<le>q_max. \<delta>*X < \<bar>median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>))-X\<bar>) }"
@@ -239,14 +239,14 @@ proof -
   also have "... \<le> measure \<Omega> {\<omega>. real(card{i\<in>{..<l}.(\<exists>\<sigma>\<le>q_max. Y\<^sub>c (\<omega> i) \<sigma>\<notin>I)})\<ge> real l/2}"
   proof (rule pmf_mono)
     fix \<omega>
-    assume "\<omega> \<in> set_pmf \<Omega>" "\<omega> \<in> {\<omega>. \<exists>\<sigma>\<le>q_max. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I}" 
+    assume "\<omega> \<in> set_pmf \<Omega>" "\<omega> \<in> {\<omega>. \<exists>\<sigma>\<le>q_max. median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I}"
     then obtain \<sigma> where \<sigma>_def: "median l (estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)) \<notin> I" "\<sigma>\<le>q_max"
       by auto
 
-    have "real l = 2 * real l - real l" 
+    have "real l = 2 * real l - real l"
       by simp
     also have "... \<le> 2 * real l - 2 * card {i. i < l \<and> estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) i \<in> I}"
-      using \<sigma>_def median_est[OF int_I, where n="l"] not_less  
+      using \<sigma>_def median_est[OF int_I, where n="l"] not_less
       by (intro diff_left_mono Nat.of_nat_mono) (auto simp del:estimate1.simps)
     also have "... = 2 * (real (card {..<l}) -card {i. i < l \<and> estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) i \<in> I})"
       by (simp del:estimate1.simps)
@@ -254,7 +254,7 @@ proof -
       by (intro_cong "[\<sigma>\<^sub>2 (*)]" more:of_nat_diff[symmetric] card_mono)
         (auto simp del:estimate1.simps)
     also have "... = 2 * real (card ({..<l} - {i. i < l \<and> estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) i \<in> I}))"
-      by (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat]" more:card_Diff_subset[symmetric]) 
+      by (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat]" more:card_Diff_subset[symmetric])
         (auto simp del:estimate1.simps)
     also have "... = 2 * real (card {i\<in>{..<l}. estimate1 (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>) i \<notin> I})"
       by (intro_cong "[\<sigma>\<^sub>2 (*), \<sigma>\<^sub>1 of_nat, \<sigma>\<^sub>1 card]") (auto simp del:estimate1.simps)
@@ -274,7 +274,7 @@ proof -
   also have "... = exp (- (real l * ((1/2) * ln (1 / (\<mu> + \<Lambda>)) - 2 * exp (- 1))))"
     by simp
   also have "... \<le> exp (- (real l * ((1/2) * ln 8 - 2 * exp (- 1))))"
-    using 2 3 l_gt_0 by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_left_mono diff_mono) 
+    using 2 3 l_gt_0 by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_left_mono diff_mono)
       (auto simp add:divide_simps)
   also have "... \<le> exp (- (real l * (1/4)))"
     by (intro iffD2[OF exp_le_cancel_iff] le_imp_neg_le mult_left_mono of_nat_0_le_iff)
@@ -285,7 +285,7 @@ proof -
     unfolding C\<^sub>6_def by simp
   also have "... = ?R"
     using \<epsilon>_gt_0 by (subst ln_inverse[symmetric]) auto
-  finally show ?thesis 
+  finally show ?thesis
     by simp
 qed
 
@@ -295,15 +295,15 @@ theorem estimate_result:
 proof -
   let ?P = "measure \<Omega>"
   have "?L \<le> ?P {\<omega>. (\<exists>\<sigma>\<le>q_max.  \<delta>*real X<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>, \<sigma>)-real X\<bar>)\<or>q \<omega> A> q_max}"
-    unfolding \<tau>_def \<tau>\<^sub>3_def not_le[symmetric] 
-    by (intro pmf_mono) auto 
+    unfolding \<tau>_def \<tau>\<^sub>3_def not_le[symmetric]
+    by (intro pmf_mono) auto
   also have "...\<le> ?P {\<omega>. (\<exists>\<sigma>\<le>q_max. \<delta>*real X<\<bar>estimate (\<tau>\<^sub>2 \<omega> A \<sigma>,\<sigma>)-X\<bar>)} + ?P {\<omega>. q \<omega> A> q_max}"
     by (intro pmf_add) auto
   also have "...\<le>  \<epsilon>/2 +  \<epsilon>/2"
-    by (intro add_mono cutoff_level estimate_result_1) 
+    by (intro add_mono cutoff_level estimate_result_1)
   also have "... =  \<epsilon>"
-    by simp 
-  finally show ?thesis 
+    by simp
+  finally show ?thesis
     by simp
 qed
 
