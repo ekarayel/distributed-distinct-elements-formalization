@@ -153,7 +153,7 @@ lemma pmf_of_set_prod_eq:
   shows  "pmf_of_set (A \<times> B) = pair_pmf (pmf_of_set A) (pmf_of_set B)"
 proof -
   have "indicat_real (A \<times> B) (i, j) = indicat_real A i * indicat_real B j" for i j
-    by (case_tac[!] "i \<in> A", case_tac[!] "j \<in> B") auto
+    by (cases "i \<in> A"; cases "j \<in> B") auto
   hence "pmf (pmf_of_set (A \<times> B)) (i,j) = pmf (pair_pmf (pmf_of_set A) (pmf_of_set B)) (i,j)"
     for i j using assms by (simp add:pmf_pair)
   thus ?thesis
