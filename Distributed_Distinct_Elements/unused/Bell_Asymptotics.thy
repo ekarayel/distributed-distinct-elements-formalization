@@ -1,19 +1,67 @@
 section \<open>Approximation of the Bell numbers\<close>
 
-text \<open>Important note: I intend to move the formalization in this file to the existing AFP entry 
-Bell_Numbers_Spivey, assuming Lukas Bulwahn has no objections --- if/after this submission is
-accepted.\<close>
-
 theory Bell_Asymptotics
   imports 
-    Bell_Numbers_Spivey.Bell_Numbers 
     "HOL-Decision_Procs.Approximation"
-    "Stirling_Formula.Stirling_Formula" 
-    "Lambert_W.Lambert_W"
-    "../DDE_Transcendental_Extras"
+    Bell_Numbers_Spivey.Bell_Numbers 
+    Stirling_Formula.Stirling_Formula
+    Lambert_W.Lambert_W
 begin
 
 subsection \<open>Some preliminary generic results\<close>
+
+lemma powr_mono_rev:
+  fixes x :: real
+  assumes "a \<le> b" and  "x > 0" "x \<le> 1"
+  shows "x powr b \<le> x powr a"
+proof -
+  have "x powr b = (1/x) powr (-b)"
+    using assms by (simp add: powr_divide powr_minus_divide)
+  also have "... \<le> (1/x) powr (-a)"
+    using assms by (intro powr_mono) auto
+  also have "... = x powr a"
+    using assms by (simp add: powr_divide powr_minus_divide)
+  finally show ?thesis by simp
+qed
+
+lemma exp_powr: "(exp x) powr y = exp (x*y)" for x :: real
+  unfolding powr_def by simp
+
+lemma fact_lower_bound:
+  "sqrt(2*pi*n)*(n/exp(1))^n \<le> fact n" (is "?L \<le> ?R")
+proof (cases "n > 0")
+  case True
+  have "ln ?L = ln (2*pi*n)/2 + n * ln n - n"
+    using True by (simp add: ln_mult ln_sqrt ln_realpow ln_div algebra_simps)
+  also have "... \<le> ln ?R" 
+    by (intro ln_fact_bounds True)
+  finally show ?thesis 
+    using iffD1[OF ln_le_cancel_iff] True by simp
+next
+  case False
+  then show ?thesis by simp
+qed
+
+text \<open>This is a loose lower bound for the factorials used in the proof by Berend and Tassa.\<close>
+
+lemma fact_lower_bound_1:
+  assumes "n > 0"
+  shows "(n/exp 1)^n \<le> fact n" (is "?L \<le> ?R")
+proof -
+  have "2 * pi \<ge> 1" using pi_ge_two by auto
+  moreover have "n \<ge> 1" using assms by simp
+  ultimately have "2 * pi * n \<ge> 1*1" 
+    by (intro mult_mono) auto
+  hence a:"2 * pi * n \<ge> 1" by simp 
+
+  have "?L = 1 * ?L" by simp
+  also have "... \<le> sqrt(2 * pi * n) * ?L"
+    using a by (intro mult_right_mono) auto
+  also have "... \<le> ?R"
+    using fact_lower_bound by simp
+  finally show ?thesis by simp
+qed
+
 
 subsection \<open>Fast evaluation of Bell numbers\<close>
 
@@ -345,7 +393,7 @@ proof -
     sums ( (exp(-1) *\<^sub>R (1/(1-exp(-1)))) *\<^sub>R exp(-2*?p))"
     by (intro sums_scaleR_left sums_scaleR_right)
   hence "(\<lambda>k. exp (h_ub (k + 2*n))) sums (exp(-(2*?p+1))/(1-exp(-1)))"
-    unfolding h_ub_def by (simp add:exp_powr exp_add[symmetric] algebra_simps)
+    unfolding h_ub_def by (simp add:powr_def exp_add[symmetric] algebra_simps)
   hence "(\<lambda>n. exp (h_ub n)) sums ((exp(-(2*?p+1))/(1-exp(-1))) + sum (\<lambda>n. exp (h_ub n)) {..<2*n})"
     by (intro iffD1[OF sums_iff_shift])
   hence a:"(\<lambda>n. exp (h_ub n)) sums sum_h_ub"
@@ -468,7 +516,7 @@ proof -
     using apx by (intro add_mono mult_left_mono) auto
   also have "... = ((2 * real n) powr (1/n)) powr n * 
     (exp (ln (?p) - ln (ln (?p + 1)) + (\<epsilon> + ln \<alpha> - 1))) powr n + exp (- (2*?p))"
-    unfolding h_max_def exp_powr by (simp add:algebra_simps powr_powr)
+    unfolding h_max_def powr_def by (simp add:algebra_simps powr_powr)
   also have "... = ((2 * ?p) powr (1/n)) powr n * 
     (n / ln (?p+1) * exp ((\<epsilon> + ln \<alpha> - 1))) powr n + exp (- (2 * ?p))"
     using assms by (simp add: exp_add exp_diff algebra_simps)
@@ -495,7 +543,7 @@ proof -
     by (simp add:algebra_simps)
   also have "... = ?R * exp(-0.0007) powr n + exp(-1) powr n *exp(-n)"
     by (subst powr_mult[symmetric]) 
-      (auto simp add:algebra_simps exp_add[symmetric] exp_powr)
+      (auto simp add:algebra_simps exp_add[symmetric] powr_def)
   also have "... \<le> ?R * exp(-0.0007) powr 55 + exp(-1) powr n *exp(-55)"
     using assms by (intro add_mono mult_left_mono powr_mono_rev) auto
   also have "... < ?R * 0.97 + exp(-1) powr n * 0.03"
